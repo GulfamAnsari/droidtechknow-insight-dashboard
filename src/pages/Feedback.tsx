@@ -42,11 +42,13 @@ const Feedback = () => {
   // Filter feedback based on search term
   const filteredFeedback = feedbacks
     ? feedbacks.filter((feedback) => {
+        if (!searchTerm) return true; // Return all if no search term
+        
         const searchLower = searchTerm.toLowerCase();
         return (
-          feedback.name.toLowerCase().includes(searchLower) ||
-          feedback.email.toLowerCase().includes(searchLower) ||
-          feedback.feedback.toLowerCase().includes(searchLower)
+          feedback.name?.toLowerCase().includes(searchLower) ||
+          feedback.email?.toLowerCase().includes(searchLower) ||
+          feedback.feedback?.toLowerCase().includes(searchLower)
         );
       })
     : [];
@@ -90,12 +92,14 @@ const Feedback = () => {
   };
 
   const feedbackStats = feedbackPerDay();
-  const mostActiveDayCount = Math.max(...Object.values(feedbackStats));
+  const mostActiveDayCount = Object.values(feedbackStats).length > 0 ? 
+    Math.max(...Object.values(feedbackStats)) : 0;
   const mostActiveDay = Object.keys(feedbackStats).find(
     day => feedbackStats[day] === mostActiveDayCount
   );
 
   const getInitials = (name: string) => {
+    if (!name) return "??";
     return name
       .split(" ")
       .map(n => n[0])
@@ -110,7 +114,7 @@ const Feedback = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
           </CardHeader>
@@ -118,18 +122,18 @@ const Feedback = () => {
             <div className="text-2xl font-bold">{totalFeedbacks}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Most Active Day</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{mostActiveDay || "N/A"}</div>
             {mostActiveDay && (
-              <p className="text-sm text-gray-500">{mostActiveDayCount} feedbacks</p>
+              <p className="text-sm text-muted-foreground">{mostActiveDayCount} feedbacks</p>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Average Per Day</CardTitle>
           </CardHeader>
@@ -159,7 +163,7 @@ const Feedback = () => {
       <div className="space-y-4">
         {filteredFeedback.length > 0 ? (
           filteredFeedback.map((feedback) => (
-            <Card key={feedback.id} className="overflow-hidden">
+            <Card key={feedback.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <Avatar className="h-10 w-10 border">
@@ -172,7 +176,7 @@ const Feedback = () => {
                         {new Date(`${feedback.date} ${feedback.time}`).toLocaleString()}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-500">{feedback.email}</p>
+                    <p className="text-sm text-muted-foreground">{feedback.email}</p>
                     <p className="pt-2">{feedback.feedback}</p>
                   </div>
                 </div>
@@ -180,7 +184,7 @@ const Feedback = () => {
             </Card>
           ))
         ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center text-gray-500 dark:text-gray-400">
             No feedback found.
           </div>
         )}

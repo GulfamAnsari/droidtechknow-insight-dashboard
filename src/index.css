@@ -49,7 +49,7 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 6.9%;
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
@@ -89,14 +89,37 @@
 
 @layer components {
   .dashboard-container {
-    @apply container mx-auto px-4 py-6;
+    @apply container px-4 py-6 mx-auto max-w-7xl transition-all duration-200;
   }
   
   .stats-card {
-    @apply bg-white rounded-lg shadow-md p-4;
+    @apply bg-card rounded-lg shadow-md p-4 border border-border transition-all duration-200 hover:shadow-lg;
   }
   
   .table-container {
-    @apply bg-white rounded-lg shadow-md overflow-hidden;
+    @apply bg-card rounded-lg shadow-md overflow-hidden border border-border;
   }
+
+  /* Animation classes */
+  .fade-in {
+    @apply animate-[fadeIn_0.5s_ease-out_forwards];
+  }
+  
+  .slide-in {
+    @apply animate-[slideIn_0.3s_ease-out_forwards];
+  }
+  
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
