@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { useTheme } from "@/hooks/use-theme";
 
 const DashboardLayout = () => {
