@@ -881,7 +881,7 @@ const Analytics = () => {
             </Card>
           </div>
         </TabsContent>
-      </div>
+      </Tabs>
     </div>
   );
 };
