@@ -32,11 +32,12 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter,
-  DialogTrigger 
+  DialogFooter
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Article {
   articleDate: string;
@@ -57,6 +58,16 @@ interface Article {
   views: string;
 }
 
+interface DeletePayload {
+  password: string;
+  post: string;
+}
+
+interface EditPayload {
+  password: string;
+  article: Partial<Article>;
+}
+
 const fetchArticles = async (): Promise<Article[]> => {
   const response = await fetch(
     "https://droidtechknow.com/api/dashboard_fetch_all_results.php"
@@ -64,6 +75,44 @@ const fetchArticles = async (): Promise<Article[]> => {
   if (!response.ok) {
     throw new Error("Network response was not ok");
   }
+  return response.json();
+};
+
+const deleteArticle = async (payload: DeletePayload): Promise<any> => {
+  const response = await fetch(
+    "https://droidtechknow.com/admin/api/deleteArticle.php", 
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  
+  if (!response.ok) {
+    throw new Error("Failed to delete article");
+  }
+  
+  return response.json();
+};
+
+const editArticle = async (payload: EditPayload): Promise<any> => {
+  const response = await fetch(
+    "https://droidtechknow.com/admin/api/editArticle.php", 
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  
+  if (!response.ok) {
+    throw new Error("Failed to edit article");
+  }
+  
   return response.json();
 };
 
@@ -75,16 +124,28 @@ const Articles = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editedArticle, setEditedArticle] = useState<Partial<Article>>({});
 
   const {
     data: articles,
     isLoading,
     isError,
     error,
+    refetch
   } = useQuery({
     queryKey: ["articles"],
     queryFn: fetchArticles,
   });
+
+  // Initialize edited article when a article is selected for editing
+  useEffect(() => {
+    if (selectedArticle && editDialogOpen) {
+      setEditedArticle({ ...selectedArticle });
+    }
+  }, [selectedArticle, editDialogOpen]);
 
   // Filter articles based on search term
   const filteredArticles = articles
@@ -136,8 +197,7 @@ const Articles = () => {
 
   const handleEdit = (article: Article) => {
     setSelectedArticle(article);
-    // In a real application, you would open an edit form/modal
-    toast.info("Edit functionality would open a form with the article data");
+    setEditDialogOpen(true);
   };
 
   const handleDelete = (article: Article) => {
@@ -145,12 +205,70 @@ const Articles = () => {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (selectedArticle) {
-      // In a real application, you would call an API to delete the article
+  const confirmDelete = async () => {
+    if (!selectedArticle || !password) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await deleteArticle({
+        password: password,
+        post: selectedArticle.post
+      });
+      
       toast.success(`Article "${selectedArticle.articleTitle}" deleted successfully!`);
       setDeleteDialogOpen(false);
+      setPassword("");
+      refetch(); // Refresh the articles list
+    } catch (err) {
+      toast.error(`Failed to delete article: ${(err as Error).message}`);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const confirmEdit = async () => {
+    if (!selectedArticle || !password || !editedArticle) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Make sure post ID is included
+      const articleWithId = {
+        ...editedArticle,
+        post: selectedArticle.post
+      };
+      
+      await editArticle({
+        password: password,
+        article: articleWithId
+      });
+      
+      toast.success(`Article "${editedArticle.articleTitle}" updated successfully!`);
+      setEditDialogOpen(false);
+      setPassword("");
+      setEditedArticle({});
+      refetch(); // Refresh the articles list
+    } catch (err) {
+      toast.error(`Failed to update article: ${(err as Error).message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditedArticle(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSelectChange = (field: string, value: string) => {
+    setEditedArticle(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Stats calculations
@@ -411,7 +529,7 @@ const Articles = () => {
           <DialogHeader>
             <DialogTitle className="text-xl">Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <p>
               Are you sure you want to delete the article:{" "}
               <strong>
@@ -419,22 +537,172 @@ const Articles = () => {
               </strong>
               ?
             </p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500">
               This action cannot be undone.
             </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Enter Password</Label>
+              <Input 
+                id="delete-password" 
+                type="password" 
+                placeholder="Enter password to confirm" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setPassword("");
+              }}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDelete}
+              disabled={!password || isSubmitting}
             >
-              Delete
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Article Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Edit Article</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="articleTitle">Title</Label>
+                <Input 
+                  id="articleTitle" 
+                  name="articleTitle"
+                  value={editedArticle.articleTitle || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="author">Author</Label>
+                <Input 
+                  id="author" 
+                  name="author"
+                  value={editedArticle.author || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="catagory">Category</Label>
+                <Input 
+                  id="catagory" 
+                  name="catagory"
+                  value={editedArticle.catagory || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="subCatagory">Subcategory</Label>
+                <Input 
+                  id="subCatagory" 
+                  name="subCatagory"
+                  value={editedArticle.subCatagory || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="articleDate">Date</Label>
+                <Input 
+                  id="articleDate" 
+                  name="articleDate"
+                  value={editedArticle.articleDate || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="keywords">Keywords</Label>
+                <Input 
+                  id="keywords" 
+                  name="keywords"
+                  value={editedArticle.keywords || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="imageLink">Image Link</Label>
+                <Input 
+                  id="imageLink" 
+                  name="imageLink"
+                  value={editedArticle.imageLink || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="imageAlt">Image Alt</Label>
+                <Input 
+                  id="imageAlt" 
+                  name="imageAlt"
+                  value={editedArticle.imageAlt || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="articleDescription">Description</Label>
+              <Textarea 
+                id="articleDescription" 
+                name="articleDescription"
+                rows={3}
+                value={editedArticle.articleDescription || ""}
+                onChange={handleInputChange}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">Enter Password</Label>
+              <Input 
+                id="edit-password" 
+                type="password" 
+                placeholder="Enter password to save changes" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setPassword("");
+                setEditedArticle({});
+              }}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={confirmEdit}
+              disabled={!password || isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

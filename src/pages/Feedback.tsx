@@ -6,14 +6,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Feedback {
-  id: string;
-  name: string;
-  email: string;
-  feedback: string;
-  date: string;
-  time: string;
+  postId: string;
+  postUrl: string;
+  likes: string;
+  dislikes: string;
+  defaultComment: string; // JSON string of comments
+  userComment: string; // JSON string of comments
 }
 
 const fetchFeedback = async (): Promise<Feedback[]> => {
@@ -28,6 +29,7 @@ const fetchFeedback = async (): Promise<Feedback[]> => {
 
 const Feedback = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
 
   const {
     data: feedbacks,
@@ -39,17 +41,44 @@ const Feedback = () => {
     queryFn: fetchFeedback,
   });
 
-  // Filter feedback based on search term
+  // Parse comments from JSON strings
+  const parseComments = (commentStr: string): string[] => {
+    if (!commentStr) return [];
+    try {
+      // Remove potential escaped quotes and parse
+      const sanitized = commentStr.replace(/\\"/g, '"');
+      return JSON.parse(sanitized);
+    } catch (err) {
+      console.error("Error parsing comments:", err);
+      return [];
+    }
+  };
+
+  // Get combined comments
+  const getFeedbackComments = (feedback: Feedback): string[] => {
+    const defaultComments = parseComments(feedback.defaultComment);
+    const userComments = parseComments(feedback.userComment);
+    return [...defaultComments, ...userComments];
+  };
+  
+  // Filter feedback based on search term and active tab
   const filteredFeedback = feedbacks
     ? feedbacks.filter((feedback) => {
-        if (!searchTerm) return true; // Return all if no search term
+        // First filter by search term
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          const comments = getFeedbackComments(feedback);
+          const commentsMatch = comments.some(comment => 
+            comment.toLowerCase().includes(searchLower)
+          );
+          
+          return (
+            feedback.postUrl?.toLowerCase().includes(searchLower) ||
+            commentsMatch
+          );
+        }
         
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          feedback.name?.toLowerCase().includes(searchLower) ||
-          feedback.email?.toLowerCase().includes(searchLower) ||
-          feedback.feedback?.toLowerCase().includes(searchLower)
-        );
+        return true; // If no search term, include all
       })
     : [];
 
@@ -77,46 +106,30 @@ const Feedback = () => {
 
   // Calculate feedback statistics
   const totalFeedbacks = feedbacks?.length || 0;
-  const feedbackPerDay = () => {
-    if (!feedbacks || feedbacks.length === 0) return {};
-    
-    const feedbacksByDate: { [key: string]: number } = {};
-    feedbacks.forEach(feedback => {
-      if (feedback.date in feedbacksByDate) {
-        feedbacksByDate[feedback.date]++;
-      } else {
-        feedbacksByDate[feedback.date] = 1;
-      }
-    });
-    return feedbacksByDate;
-  };
-
-  const feedbackStats = feedbackPerDay();
-  const mostActiveDayCount = Object.values(feedbackStats).length > 0 ? 
-    Math.max(...Object.values(feedbackStats)) : 0;
-  const mostActiveDay = Object.keys(feedbackStats).find(
-    day => feedbackStats[day] === mostActiveDayCount
-  );
-
-  const getInitials = (name: string) => {
-    if (!name) return "??";
-    return name
-      .split(" ")
-      .map(n => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  const totalLikes = feedbacks
+    ? feedbacks.reduce((sum, item) => sum + parseInt(item.likes || "0"), 0)
+    : 0;
+  const totalDislikes = feedbacks
+    ? feedbacks.reduce((sum, item) => sum + parseInt(item.dislikes || "0"), 0)
+    : 0;
+  
+  // Calculate total comments
+  const totalComments = feedbacks
+    ? feedbacks.reduce((sum, item) => {
+        const comments = getFeedbackComments(item);
+        return sum + comments.length;
+      }, 0)
+    : 0;
 
   return (
     <div className="dashboard-container">
       <h1 className="text-2xl font-bold mb-6">User Feedback</h1>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalFeedbacks}</div>
@@ -124,25 +137,26 @@ const Feedback = () => {
         </Card>
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Most Active Day</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mostActiveDay || "N/A"}</div>
-            {mostActiveDay && (
-              <p className="text-sm text-muted-foreground">{mostActiveDayCount} feedbacks</p>
-            )}
+            <div className="text-2xl font-bold">{totalLikes}</div>
           </CardContent>
         </Card>
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Average Per Day</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Dislikes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.keys(feedbackStats).length 
-                ? (totalFeedbacks / Object.keys(feedbackStats).length).toFixed(1) 
-                : "0"}
-            </div>
+            <div className="text-2xl font-bold">{totalDislikes}</div>
+          </CardContent>
+        </Card>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalComments}</div>
           </CardContent>
         </Card>
       </div>
@@ -159,30 +173,72 @@ const Feedback = () => {
         />
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="all">All Posts</TabsTrigger>
+          <TabsTrigger value="popular">Most Popular</TabsTrigger>
+          <TabsTrigger value="commented">Most Commented</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Feedback List */}
       <div className="space-y-4">
         {filteredFeedback.length > 0 ? (
-          filteredFeedback.map((feedback) => (
-            <Card key={feedback.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-10 w-10 border">
-                    <AvatarFallback>{getInitials(feedback.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">{feedback.name}</h3>
-                      <Badge variant="outline" className="ml-2">
-                        {new Date(`${feedback.date} ${feedback.time}`).toLocaleString()}
-                      </Badge>
+          filteredFeedback
+            .sort((a, b) => {
+              if (activeTab === "popular") {
+                return parseInt(b.likes) - parseInt(a.likes);
+              } else if (activeTab === "commented") {
+                return getFeedbackComments(b).length - getFeedbackComments(a).length;
+              }
+              return 0; // Default no sorting
+            })
+            .map((feedback) => {
+              const comments = getFeedbackComments(feedback);
+              
+              return (
+                <Card key={feedback.postId} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-semibold truncate max-w-md">
+                          {feedback.postUrl}
+                        </h3>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary" className="ml-2">
+                            {feedback.likes} likes
+                          </Badge>
+                          <Badge variant="outline" className="ml-2">
+                            {feedback.dislikes} dislikes
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {comments.length > 0 ? (
+                        <div className="space-y-3 mt-2">
+                          <h4 className="text-sm font-medium text-muted-foreground">
+                            Comments ({comments.length})
+                          </h4>
+                          {comments.map((comment, idx) => (
+                            <div key={idx} className="flex items-start gap-2 p-2 bg-muted/50 rounded-lg">
+                              <Avatar className="h-8 w-8 border">
+                                <AvatarFallback>U{idx+1}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm">{comment}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No comments on this post</p>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{feedback.email}</p>
-                    <p className="pt-2">{feedback.feedback}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  </CardContent>
+                </Card>
+              );
+            })
         ) : (
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center text-gray-500 dark:text-gray-400">
             No feedback found.

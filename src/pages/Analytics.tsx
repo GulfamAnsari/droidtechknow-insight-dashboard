@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 interface Analytics {
   browser: string;
@@ -83,6 +84,50 @@ const fetchAnalytics = async (params: AnalyticsQueryParams): Promise<Analytics[]
   return response.json();
 };
 
+// Function to normalize referrer domains
+const normalizeReferrer = (referrer: string): string => {
+  if (!referrer || referrer === "none" || referrer === "undefined") {
+    return "Direct";
+  }
+  
+  try {
+    // Extract domain and remove www. prefix
+    let domain = referrer.toLowerCase();
+    
+    // Handle cases where the URL doesn't have a protocol
+    if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+      domain = 'https://' + domain;
+    }
+    
+    // Try to extract hostname
+    const url = new URL(domain);
+    let hostname = url.hostname;
+    
+    // Remove www. prefix if present
+    if (hostname.startsWith('www.')) {
+      hostname = hostname.substring(4);
+    }
+    
+    // Special cases for common search engines and social media
+    if (hostname.includes('google')) return 'Google';
+    if (hostname.includes('bing')) return 'Bing';
+    if (hostname.includes('yahoo')) return 'Yahoo';
+    if (hostname.includes('duckduckgo')) return 'DuckDuckGo';
+    if (hostname.includes('facebook') || hostname.includes('fb.com')) return 'Facebook';
+    if (hostname.includes('twitter') || hostname.includes('x.com')) return 'Twitter';
+    if (hostname.includes('instagram')) return 'Instagram';
+    if (hostname.includes('linkedin')) return 'LinkedIn';
+    if (hostname.includes('youtube')) return 'YouTube';
+    if (hostname.includes('reddit')) return 'Reddit';
+    if (hostname.includes('tiktok')) return 'TikTok';
+    
+    return hostname;
+  } catch (e) {
+    // If URL parsing fails, return the original referrer
+    return referrer;
+  }
+};
+
 const Analytics = () => {
   // Date range state with default as today and yesterday
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -96,6 +141,7 @@ const Analytics = () => {
   const [os, setOs] = useState<string | undefined>(undefined);
   const [browser, setBrowser] = useState<string | undefined>(undefined);
   const [referrer, setReferrer] = useState<string | undefined>(undefined);
+  const [pageUrl, setPageUrl] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState("overview");
   
   // Prepare query parameters
@@ -106,7 +152,8 @@ const Analytics = () => {
     device_type: deviceType,
     operating_system: os,
     browser: browser,
-    referrer: referrer
+    referrer: referrer,
+    page_url: pageUrl
   };
   
   const {
@@ -120,18 +167,34 @@ const Analytics = () => {
     queryFn: () => fetchAnalytics(queryParams),
   });
   
-  // Extract unique referrers for filter dropdown
+  // Extract unique referrers for filter dropdown with normalized domains
   const uniqueReferrers = useMemo(() => {
     if (!analytics) return [];
     
-    const referrers = new Set<string>();
+    const referrers = new Map<string, number>(); // Map to store counts for each normalized referrer
+    
     analytics.forEach(item => {
-      if (item.referrer && item.referrer !== "none" && item.referrer !== "undefined") {
-        referrers.add(item.referrer);
+      if (item.referrer) {
+        const normalizedReferrer = normalizeReferrer(item.referrer);
+        referrers.set(normalizedReferrer, (referrers.get(normalizedReferrer) || 0) + 1);
       }
     });
     
-    return Array.from(referrers).sort();
+    return Array.from(referrers.keys()).sort();
+  }, [analytics]);
+  
+  // Extract unique page URLs for filter dropdown
+  const uniquePageUrls = useMemo(() => {
+    if (!analytics) return [];
+    
+    const pages = new Set<string>();
+    analytics.forEach(item => {
+      if (item.page_url && item.page_url !== "none" && item.page_url !== "undefined") {
+        pages.add(item.page_url);
+      }
+    });
+    
+    return Array.from(pages).sort();
   }, [analytics]);
   
   // Prepare data for charts
@@ -221,16 +284,16 @@ const Analytics = () => {
     const referrers: { [key: string]: number } = {};
     
     analytics.forEach(item => {
-      const ref = item.referrer || "Direct";
-      if (ref in referrers) {
-        referrers[ref]++;
+      const normalizedReferrer = normalizeReferrer(item.referrer);
+      if (normalizedReferrer in referrers) {
+        referrers[normalizedReferrer]++;
       } else {
-        referrers[ref] = 1;
+        referrers[normalizedReferrer] = 1;
       }
     });
     
     return Object.entries(referrers).map(([name, value]) => ({
-      name: name === "none" ? "Direct" : name,
+      name,
       value
     })).sort((a, b) => b.value - a.value);
   };
@@ -253,15 +316,29 @@ const Analytics = () => {
       
       if (ref === "none" || ref === "direct" || ref === "undefined") {
         sources["Direct"]++;
-      } else if (ref.includes("google") || ref.includes("bing") || ref.includes("yahoo") || ref.includes("duckduckgo")) {
+      } else if (
+        ref.includes("google") || 
+        ref.includes("bing") || 
+        ref.includes("yahoo") || 
+        ref.includes("duckduckgo")
+      ) {
         sources["Organic Search"]++;
       } else if (
-        ref.includes("facebook") || ref.includes("twitter") || ref.includes("instagram") || 
-        ref.includes("linkedin") || ref.includes("pinterest") || ref.includes("youtube") ||
-        ref.includes("reddit") || ref.includes("tiktok")
+        ref.includes("facebook") || 
+        ref.includes("twitter") || 
+        ref.includes("instagram") || 
+        ref.includes("linkedin") || 
+        ref.includes("pinterest") || 
+        ref.includes("youtube") ||
+        ref.includes("reddit") || 
+        ref.includes("tiktok")
       ) {
         sources["Social Media"]++;
-      } else if (ref.includes("mail") || ref.includes("outlook") || ref.includes("gmail")) {
+      } else if (
+        ref.includes("mail") || 
+        ref.includes("outlook") || 
+        ref.includes("gmail")
+      ) {
         sources["Email"]++;
       } else if (ref !== "none" && ref !== "undefined") {
         sources["Referral"]++;
@@ -277,6 +354,27 @@ const Analytics = () => {
         value
       }));
   };
+
+  // New function to prepare page URL data
+  const preparePageUrlData = () => {
+    if (!analytics) return [];
+    
+    const pages: { [key: string]: number } = {};
+    
+    analytics.forEach(item => {
+      const pageUrl = item.page_url || "/";
+      if (pageUrl in pages) {
+        pages[pageUrl]++;
+      } else {
+        pages[pageUrl] = 1;
+      }
+    });
+    
+    return Object.entries(pages).map(([name, value]) => ({
+      name,
+      value
+    })).sort((a, b) => b.value - a.value);
+  };
   
   const visitsByDateData = prepareVisitsByDateData();
   const deviceTypeData = prepareDeviceTypeData();
@@ -284,6 +382,7 @@ const Analytics = () => {
   const osData = prepareOsData();
   const referrerData = prepareReferrerData();
   const trafficSourceData = prepareTrafficSourceData();
+  const pageUrlData = preparePageUrlData();
   
   // Calculate summary statistics
   const totalVisits = analytics?.length || 0;
@@ -329,6 +428,23 @@ const Analytics = () => {
   // Pie chart colors
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658'];
   
+  // Custom tooltip for line charts
+  const CustomLineTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border p-2 rounded-md shadow">
+          <p className="font-medium">{`Date: ${label}`}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={`item-${index}`} style={{ color: entry.color }}>
+              {`${entry.name}: ${entry.value}`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+  
   const handleFilterApply = () => {
     refetch();
   };
@@ -339,6 +455,7 @@ const Analytics = () => {
     setOs(undefined);
     setBrowser(undefined);
     setReferrer(undefined);
+    setPageUrl(undefined);
     refetch();
   };
   
@@ -447,7 +564,7 @@ const Analytics = () => {
               </Select>
             </div>
             
-            {/* Referrer Filter (NEW) */}
+            {/* Referrer Filter */}
             <div>
               <label className="text-sm font-medium mb-1 block">Referrer</label>
               <Select value={referrer} onValueChange={setReferrer}>
@@ -459,6 +576,22 @@ const Analytics = () => {
                   <SelectItem value="none">Direct</SelectItem>
                   {uniqueReferrers.map(ref => (
                     <SelectItem key={ref} value={ref}>{ref}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Page URL Filter (NEW) */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Page</label>
+              <Select value={pageUrl} onValueChange={setPageUrl}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Pages" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={undefined}>All Pages</SelectItem>
+                  {uniquePageUrls.map(url => (
+                    <SelectItem key={url} value={url}>{url}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -516,6 +649,7 @@ const Analytics = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="traffic">Traffic Sources</TabsTrigger>
+          <TabsTrigger value="pages">Pages</TabsTrigger>
           <TabsTrigger value="devices">Devices & Browsers</TabsTrigger>
           <TabsTrigger value="engagement">Engagement</TabsTrigger>
         </TabsList>
@@ -534,7 +668,7 @@ const Analytics = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip content={<CustomLineTooltip />} />
                       <Legend />
                       <Line 
                         type="monotone" 
@@ -652,7 +786,7 @@ const Analytics = () => {
                           width={150}
                           tick={{ fontSize: 12 }}
                         />
-                        <Tooltip />
+                        <Tooltip formatter={(value) => [`${value} visits`, 'Count']} />
                         <Legend />
                         <Bar dataKey="value" name="Visits" fill="#8884d8" />
                       </BarChart>
@@ -679,7 +813,7 @@ const Analytics = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip />
+                        <Tooltip formatter={(value) => [`${value} visits`, 'Count']} />
                         <Legend />
                         <Bar dataKey="value" name="Visits" fill="#82ca9d" />
                       </BarChart>
@@ -693,6 +827,75 @@ const Analytics = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        
+        {/* New Pages Tab */}
+        <TabsContent value="pages" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Most Visited Pages</CardTitle>
+              <CardDescription>Pages receiving the most visits</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                {pageUrlData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={pageUrlData.slice(0, 10)} 
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name" 
+                        width={180}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <Tooltip formatter={(value) => [`${value} visits`, 'Count']} />
+                      <Legend />
+                      <Bar dataKey="value" name="Visits" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">No page data available</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>All Pages</CardTitle>
+              <CardDescription>Complete list of visited pages</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="max-h-96 overflow-y-auto">
+                {pageUrlData.length > 0 ? (
+                  <div className="space-y-2">
+                    {pageUrlData.map((page, index) => (
+                      <div 
+                        key={index} 
+                        className="flex justify-between items-center p-2 border-b last:border-0 hover:bg-muted"
+                      >
+                        <div className="truncate max-w-[70%]">
+                          <span className="font-medium">{page.name}</span>
+                        </div>
+                        <Badge variant="secondary">{page.value} visits</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">No page data available</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="devices" className="space-y-6">
@@ -745,7 +948,7 @@ const Analytics = () => {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip />
+                        <Tooltip formatter={(value) => [`${value} visits`, 'Count']} />
                         <Legend />
                         <Bar dataKey="value" name="Visits" fill="#8884d8" />
                       </BarChart>
@@ -773,7 +976,7 @@ const Analytics = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" />
                       <YAxis type="category" dataKey="name" width={150} />
-                      <Tooltip />
+                      <Tooltip formatter={(value) => [`${value} visits`, 'Count']} />
                       <Legend />
                       <Bar dataKey="value" name="Visits" fill="#82ca9d" />
                     </BarChart>
