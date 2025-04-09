@@ -1,7 +1,8 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, Menu, X } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, Menu, X, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SidebarProps {
   open: boolean;
@@ -9,7 +10,14 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, setOpen }: SidebarProps) => {
+  const isMobile = useIsMobile();
+  
   const navItems = [
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: BarChart3,
+    },
     {
       name: "Articles",
       href: "/articles",
@@ -24,6 +32,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       name: "Analytics",
       href: "/analytics",
       icon: BarChart3,
+    },
+    {
+      name: "Todo",
+      href: "/todo",
+      icon: CheckSquare,
     },
   ];
 

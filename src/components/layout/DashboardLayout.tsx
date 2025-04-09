@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useOutletContext } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { useTheme } from "@/hooks/use-theme";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Toaster } from "@/components/ui/sonner";
 
 type DashboardContextType = {
   refreshData: () => void;
@@ -13,9 +14,18 @@ type DashboardContextType = {
 };
 
 const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { theme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const isMobile = useIsMobile();
+
+  // Close sidebar on initial mobile load
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   const refreshData = () => {
     setIsRefreshing(true);
@@ -25,10 +35,11 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-background flex`}>
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+    <div className="min-h-screen bg-background flex flex-col">
+      <Toaster position={isMobile ? "bottom-center" : "top-right"} />
+      <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <div className="flex-1 flex overflow-hidden">
+        <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-6">
           <div className="flex justify-end mb-4">
             <Button 

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Articles from "./pages/Articles";
 import Feedback from "./pages/Feedback";
 import Analytics from "./pages/Analytics";
+import Todo from "./pages/Todo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="articles" element={<Articles />} />
               <Route path="feedback" element={<Feedback />} />
               <Route path="analytics" element={<Analytics />} />
+              <Route path="todo" element={<Todo />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
