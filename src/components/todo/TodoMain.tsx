@@ -16,7 +16,9 @@ import {
   Search,
   Menu,
   Filter,
-  ListTodo
+  ListTodo,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import TodoStepsList from "./TodoStepsList";
 import {
@@ -45,8 +47,13 @@ const TodoMain = ({
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showCompletedTodos, setShowCompletedTodos] = useState(true);
   
   const activeList = state.activeListId ? getListById(state.activeListId) : null;
+  
+  // Separate todos into completed and non-completed
+  const incompleteTodos = filteredTodos.filter(todo => !todo.completed);
+  const completedTodos = filteredTodos.filter(todo => todo.completed);
   
   const handleAddTodo = () => {
     if (newTodoTitle.trim()) {
@@ -289,7 +296,7 @@ const TodoMain = ({
       
       {/* Todo list */}
       <div className="flex-1 overflow-y-auto">
-        {filteredTodos.length === 0 ? (
+        {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <p className="text-muted-foreground mb-2">No tasks found</p>
             {searchTerm && (
@@ -308,7 +315,34 @@ const TodoMain = ({
             )}
           </div>
         ) : (
-          filteredTodos.map(renderTodoItem)
+          <div>
+            {/* Incomplete todos section */}
+            {incompleteTodos.length > 0 && (
+              <div>
+                <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                  Tasks - {incompleteTodos.length}
+                </div>
+                {incompleteTodos.map(renderTodoItem)}
+              </div>
+            )}
+            
+            {/* Completed todos section */}
+            {completedTodos.length > 0 && (
+              <div>
+                <button 
+                  className="w-full px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 flex justify-between items-center"
+                  onClick={() => setShowCompletedTodos(!showCompletedTodos)}
+                >
+                  <span>Completed - {completedTodos.length}</span>
+                  {showCompletedTodos ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </button>
+                {showCompletedTodos && completedTodos.map(renderTodoItem)}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
