@@ -1,4 +1,113 @@
 
+import { useState } from "react";
+import { useTodo } from "@/contexts/TodoContext";
+import { TodoItem } from "@/types/todo";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { 
+  Check, 
+  Star,
+  StarOff,
+  Calendar,
+  Bell,
+  Plus,
+  Search,
+  Menu,
+  Filter
+} from "lucide-react";
+import TodoStepsList from "./TodoStepsList";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface TodoMainProps {
+  selectedTodoId: string | null;
+  setSelectedTodoId: (id: string | null) => void;
+  onOpenSidebar: () => void;
+  onOpenDetails: () => void;
+  isMobile: boolean;
+}
+
+const TodoMain = ({ 
+  selectedTodoId, 
+  setSelectedTodoId,
+  onOpenSidebar,
+  onOpenDetails,
+  isMobile 
+}: TodoMainProps) => {
+  const { state, dispatch, filteredTodos, getListById } = useTodo();
+  const [newTodoTitle, setNewTodoTitle] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const activeList = state.activeListId ? getListById(state.activeListId) : null;
+  
+  const handleAddTodo = () => {
+    if (newTodoTitle.trim()) {
+      dispatch({
+        type: "ADD_TODO",
+        payload: {
+          title: newTodoTitle.trim(),
+          completed: false,
+          important: false,
+          listId: state.activeListId || "tasks",
+        }
+      });
+      setNewTodoTitle("");
+    }
+  };
+  
+  const handleToggleCompleted = (todoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch({
+      type: "TOGGLE_TODO_COMPLETED",
+      payload: todoId
+    });
+  };
+  
+  const handleToggleImportant = (todoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch({
+      type: "TOGGLE_TODO_IMPORTANT",
+      payload: todoId
+    });
+  };
+  
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    dispatch({
+      type: "SET_FILTER",
+      payload: { ...state.filter, searchTerm: term }
+    });
+  };
+
+  const formatDueDate = (date: Date | null | undefined) => {
+    if (!date) return "";
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const dueDate = new Date(date);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    if (dueDate.getTime() === today.getTime()) {
+      return "Today";
+    } else if (dueDate.getTime() === tomorrow.getTime()) {
+      return "Tomorrow";
+    } else {
+      return format(dueDate, "MMM d");
+    }
+  };
+  
   const renderTodoItem = (todo: TodoItem) => {
     return (
       <div 
@@ -95,3 +204,109 @@
       </div>
     );
   };
+  
+  return (
+    <div className="flex-1 flex flex-col min-w-0 h-full">
+      {/* Header */}
+      <div className="p-4 border-b flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <Button variant="ghost" size="icon" onClick={onOpenSidebar}>
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          <h1 className="text-xl font-semibold" style={{ color: activeList?.color }}>
+            {activeList?.name || "Tasks"}
+          </h1>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Filter className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => dispatch({
+                type: "SET_FILTER",
+                payload: { ...state.filter, completed: false }
+              })}>
+                Hide completed
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => dispatch({
+                type: "SET_FILTER",
+                payload: { ...state.filter, completed: undefined }
+              })}>
+                Show all
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      
+      {/* Search box */}
+      <div className="px-4 py-2 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={handleSearch}
+            placeholder="Search tasks"
+            className="pl-9"
+          />
+        </div>
+      </div>
+      
+      {/* Add new todo */}
+      <div className="px-4 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <div className="flex-shrink-0 h-5 w-5 rounded-full border border-muted-foreground flex items-center justify-center">
+            <Plus className="h-3 w-3 text-muted-foreground" />
+          </div>
+          <Input
+            value={newTodoTitle}
+            onChange={(e) => setNewTodoTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+            placeholder="Add a task"
+            className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+          />
+          <Button 
+            onClick={handleAddTodo} 
+            size="sm"
+            disabled={!newTodoTitle.trim()}
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+      
+      {/* Todo list */}
+      <div className="flex-1 overflow-y-auto">
+        {filteredTodos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <p className="text-muted-foreground mb-2">No tasks found</p>
+            {searchTerm && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm("");
+                  dispatch({
+                    type: "SET_FILTER",
+                    payload: { ...state.filter, searchTerm: "" }
+                  });
+                }}
+              >
+                Clear search
+              </Button>
+            )}
+          </div>
+        ) : (
+          filteredTodos.map(renderTodoItem)
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TodoMain;
