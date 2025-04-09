@@ -17,6 +17,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Edit,
+  Eye,
+  RefreshCw,
   Search,
   Trash2,
 } from "lucide-react";
@@ -38,6 +40,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useDashboard } from "@/components/layout/DashboardLayout";
 
 interface Article {
   articleDate: string;
@@ -125,9 +128,11 @@ const Articles = () => {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editedArticle, setEditedArticle] = useState<Partial<Article>>({});
+  const { refreshData, isRefreshing } = useDashboard();
 
   const {
     data: articles,
@@ -147,6 +152,13 @@ const Articles = () => {
     }
   }, [selectedArticle, editDialogOpen]);
 
+  // Listen for dashboard refresh signal
+  useEffect(() => {
+    if (isRefreshing) {
+      refetch();
+    }
+  }, [isRefreshing, refetch]);
+
   // Filter articles based on search term
   const filteredArticles = articles
     ? articles.filter((article) => {
@@ -155,7 +167,8 @@ const Articles = () => {
           article.articleTitle.toLowerCase().includes(searchLower) ||
           article.author.toLowerCase().includes(searchLower) ||
           article.catagory.toLowerCase().includes(searchLower) ||
-          article.articleDescription.toLowerCase().includes(searchLower)
+          article.articleDescription.toLowerCase().includes(searchLower) ||
+          article.post.toLowerCase().includes(searchLower)
         );
       })
     : [];
@@ -203,6 +216,11 @@ const Articles = () => {
   const handleDelete = (article: Article) => {
     setSelectedArticle(article);
     setDeleteDialogOpen(true);
+  };
+
+  const handleView = (article: Article) => {
+    setSelectedArticle(article);
+    setViewDialogOpen(true);
   };
 
   const confirmDelete = async () => {
@@ -276,8 +294,8 @@ const Articles = () => {
   const totalViews = articles
     ? articles.reduce((sum, article) => sum + parseInt(article.views || "0"), 0)
     : 0;
-  const totalLikes = articles
-    ? articles.reduce((sum, article) => sum + parseInt(article.likes || "0"), 0)
+  const totalDislikes = articles
+    ? articles.reduce((sum, article) => sum + parseInt(article.dislikes || "0"), 0)
     : 0;
 
   if (isLoading) {
@@ -326,10 +344,10 @@ const Articles = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Dislikes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalLikes.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalDislikes.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -364,6 +382,15 @@ const Articles = () => {
               <SelectItem value="50">50 per page</SelectItem>
             </SelectContent>
           </Select>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
         </div>
       </div>
 
@@ -372,6 +399,12 @@ const Articles = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead
+                className="w-12 cursor-pointer"
+                onClick={() => handleSort("post")}
+              >
+                ID {sortField === "post" && (sortDirection === "asc" ? "↑" : "↓")}
+              </TableHead>
               <TableHead
                 className="w-12 cursor-pointer"
                 onClick={() => handleSort("articleTitle")}
@@ -402,12 +435,6 @@ const Articles = () => {
               >
                 Views {sortField === "views" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
-              <TableHead
-                className="cursor-pointer text-right"
-                onClick={() => handleSort("likes")}
-              >
-                Likes {sortField === "likes" && (sortDirection === "asc" ? "↑" : "↓")}
-              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -415,6 +442,9 @@ const Articles = () => {
             {paginatedArticles.length > 0 ? (
               paginatedArticles.map((article, index) => (
                 <TableRow key={`${article.articleLink}-${index}`}>
+                  <TableCell className="font-medium">
+                    {article.post}
+                  </TableCell>
                   <TableCell className="font-medium max-w-xs truncate">
                     {article.articleTitle}
                   </TableCell>
@@ -427,10 +457,16 @@ const Articles = () => {
                     {parseInt(article.views).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {parseInt(article.likes).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleView(article)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View</span>
+                      </Button>
                       <Button
                         variant="outline"
                         size="icon"
@@ -703,6 +739,94 @@ const Articles = () => {
               disabled={!password || isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Article Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Article Details</DialogTitle>
+          </DialogHeader>
+          {selectedArticle && (
+            <div className="py-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">ID</h3>
+                  <p>{selectedArticle.post}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Title</h3>
+                  <p>{selectedArticle.articleTitle}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Author</h3>
+                  <p>{selectedArticle.author}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Category</h3>
+                  <p>{selectedArticle.catagory}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Subcategory</h3>
+                  <p>{selectedArticle.subCatagory}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Date</h3>
+                  <p>{selectedArticle.articleDate}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Link</h3>
+                  <p className="break-all">{selectedArticle.articleLink}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Views</h3>
+                  <p>{selectedArticle.views}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Likes</h3>
+                  <p>{selectedArticle.likes}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Dislikes</h3>
+                  <p>{selectedArticle.dislikes}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-500">Keywords</h3>
+                  <p>{selectedArticle.keywords}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-sm text-gray-500">Description</h3>
+                <p className="whitespace-pre-wrap">{selectedArticle.articleDescription}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-sm text-gray-500">Image</h3>
+                {selectedArticle.imageLink ? (
+                  <div className="mt-2">
+                    <img 
+                      src={selectedArticle.imageLink} 
+                      alt={selectedArticle.imageAlt || selectedArticle.articleTitle} 
+                      className="max-h-48 object-contain border border-gray-200 rounded"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">{selectedArticle.imageAlt}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No image available</p>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="default"
+              onClick={() => setViewDialogOpen(false)}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
