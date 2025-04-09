@@ -679,11 +679,20 @@ const Articles = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="imageLink">Image Link</Label>
+                <Label htmlFor="imageLink">Image Link 1</Label>
                 <Input 
                   id="imageLink" 
                   name="imageLink"
                   value={editedArticle.imageLink || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="imageLink2">Image Link 2</Label>
+                <Input 
+                  id="imageLink2" 
+                  name="imageLink2"
+                  value={editedArticle.imageLink2 || ""}
                   onChange={handleInputChange}
                 />
               </div>
@@ -803,17 +812,37 @@ const Articles = () => {
                 <h3 className="font-semibold text-sm text-gray-500">Description</h3>
                 <p className="whitespace-pre-wrap">{selectedArticle.articleDescription}</p>
               </div>
+
+              <div>
+                <h3 className="font-semibold text-sm text-gray-500">Image alt</h3>
+                <p className="whitespace-pre-wrap">{selectedArticle.imageAlt}</p>
+              </div>
               
               <div>
-                <h3 className="font-semibold text-sm text-gray-500">Image</h3>
+                <h3 className="font-semibold text-sm text-gray-500">ImageLink</h3>
                 {selectedArticle.imageLink ? (
                   <div className="mt-2">
                     <img 
-                      src={selectedArticle.imageLink} 
-                      alt={selectedArticle.imageAlt || selectedArticle.articleTitle} 
+                      src={'https://droidtechknow.com' + selectedArticle.imageLink} 
+                      alt={selectedArticle.imageAlt} 
                       className="max-h-48 object-contain border border-gray-200 rounded"
                     />
                     <p className="mt-1 text-sm text-gray-500">{selectedArticle.imageAlt}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No image available</p>
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-gray-500">ImageLink2</h3>
+                {selectedArticle.imageLink2 ? (
+                  <div className="mt-2">
+                    <img 
+                      src={'https://droidtechknow.com' + selectedArticle.imageLink2} 
+                      alt={selectedArticle.imageAlt} 
+                      className="max-h-48 object-contain border border-gray-200 rounded"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">{selectedArticle.imageLink2}</p>
                   </div>
                 ) : (
                   <p className="text-gray-500">No image available</p>
