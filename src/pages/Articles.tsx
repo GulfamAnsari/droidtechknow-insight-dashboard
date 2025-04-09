@@ -827,7 +827,7 @@ const Articles = () => {
                       alt={selectedArticle.imageAlt} 
                       className="max-h-48 object-contain border border-gray-200 rounded"
                     />
-                    <p className="mt-1 text-sm text-gray-500">{selectedArticle.imageAlt}</p>
+                    <p className="mt-1 text-sm text-gray-500">{selectedArticle.imageLink}</p>
                   </div>
                 ) : (
                   <p className="text-gray-500">No image available</p>
