@@ -14,7 +14,8 @@ import {
   Star, 
   Trash2, 
   X,
-  Bell
+  Bell,
+  ListTodo
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TodoStepsList from "./TodoStepsList";
@@ -23,6 +24,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TodoDetailsProps {
   todoId: string;
@@ -30,7 +38,7 @@ interface TodoDetailsProps {
 }
 
 const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
-  const { getTodoById, dispatch } = useTodo();
+  const { getTodoById, dispatch, state } = useTodo();
   const todo = getTodoById(todoId) as TodoItem;
   const [newStep, setNewStep] = useState("");
   
@@ -111,6 +119,13 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
     });
   };
 
+  const handleChangeList = (listId: string) => {
+    dispatch({
+      type: "UPDATE_TODO",
+      payload: { ...todo, listId }
+    });
+  };
+
   const formatDateForDisplay = (date: Date | null | undefined) => {
     if (!date) return "";
     return format(new Date(date), "PPP");
@@ -166,6 +181,32 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
           )}
           {todo.important ? "Remove importance" : "Mark as important"}
         </Button>
+      </div>
+      
+      {/* List selection */}
+      <div className="mb-4">
+        <label className="text-sm font-medium mb-1 block">List</label>
+        <Select
+          value={todo.listId}
+          onValueChange={handleChangeList}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a list" />
+          </SelectTrigger>
+          <SelectContent>
+            {state.lists.map((list) => (
+              <SelectItem key={list.id} value={list.id}>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: list.color }}
+                  />
+                  {list.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       {/* Notes */}

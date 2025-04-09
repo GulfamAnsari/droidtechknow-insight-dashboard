@@ -15,7 +15,8 @@ import {
   Plus,
   Search,
   Menu,
-  Filter
+  Filter,
+  ListTodo
 } from "lucide-react";
 import TodoStepsList from "./TodoStepsList";
 import {
@@ -258,26 +259,31 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Add new todo */}
+      {/* Add new todo - Improved UI */}
       <div className="px-4 py-3 border-b bg-muted/30">
-        <div className="flex items-center gap-2">
-          <div className="flex-shrink-0 h-5 w-5 rounded-full border border-muted-foreground flex items-center justify-center">
-            <Plus className="h-3 w-3 text-muted-foreground" />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 h-5 w-5 rounded-full border border-primary flex items-center justify-center bg-primary/10">
+              <Plus className="h-3 w-3 text-primary" />
+            </div>
+            <Input
+              value={newTodoTitle}
+              onChange={(e) => setNewTodoTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+              placeholder="Add a task"
+              className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+            />
           </div>
-          <Input
-            value={newTodoTitle}
-            onChange={(e) => setNewTodoTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
-            placeholder="Add a task"
-            className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
-          />
-          <Button 
-            onClick={handleAddTodo} 
-            size="sm"
-            disabled={!newTodoTitle.trim()}
-          >
-            Add
-          </Button>
+          {newTodoTitle.trim() && (
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleAddTodo} 
+                className="bg-primary/90 hover:bg-primary transition-colors"
+              >
+                Add task
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       
