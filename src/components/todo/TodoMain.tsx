@@ -12,12 +12,15 @@ import {
   SlidersHorizontal,
   X,
   Check,
-  StarOff
+  StarOff,
+  Sun,
+  CalendarClock,
+  CheckSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TodoItem } from "@/types/todo";
+import { TodoItem, TodoList } from "@/types/todo";
 import { format, isToday, isTomorrow, isYesterday } from "date-fns";
 import { 
   Popover, 
@@ -43,6 +46,22 @@ interface TodoMainProps {
   onOpenDetails: () => void;
   isMobile: boolean;
 }
+
+// Helper function to get the appropriate icon for a list
+const getListIcon = (list: TodoList) => {
+  switch (list.id) {
+    case "my-day":
+      return <Sun className="h-5 w-5" />;
+    case "important":
+      return <Star className="h-5 w-5" />;
+    case "planned":
+      return <CalendarClock className="h-5 w-5" />;
+    case "all":
+      return <Calendar className="h-5 w-5" />;
+    default:
+      return <CheckSquare className="h-5 w-5" />;
+  }
+};
 
 const TodoMain = ({ selectedTodoId, setSelectedTodoId, onOpenSidebar, onOpenDetails, isMobile }: TodoMainProps) => {
   const { state, dispatch, filteredTodos, getListById } = useTodo();
