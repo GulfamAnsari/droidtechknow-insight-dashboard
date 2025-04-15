@@ -1,12 +1,11 @@
 
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight, ListTodo } from "lucide-react";
+import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { TodoProvider } from "@/contexts/TodoContext";
-import { TodoSummary } from "@/components/dashboard/TodoSummary";
 
+// Define interface for the stats data
 interface DashboardStats {
   totalArticles: number;
   totalViews: number;
@@ -15,6 +14,7 @@ interface DashboardStats {
   totalVisits: number;
 }
 
+// Mock functions to fetch stats data
 const fetchArticlesStats = async (): Promise<{ totalArticles: number; totalViews: number; totalLikes: number }> => {
   try {
     const response = await fetch("https://droidtechknow.com/api/dashboard_fetch_all_results.php");
@@ -52,6 +52,7 @@ const fetchFeedbackStats = async (): Promise<{ totalFeedback: number }> => {
 };
 
 const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
+  // Use today's date for analytics
   const today = new Date();
   const dateString = today.toISOString().split('T')[0];
   
@@ -76,16 +77,19 @@ const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
 const Dashboard = () => {
   const navigate = useNavigate();
   
+  // Fetch article stats
   const { data: articlesStats, isLoading: isLoadingArticles } = useQuery({
     queryKey: ["articlesStats"],
     queryFn: fetchArticlesStats,
   });
   
+  // Fetch feedback stats
   const { data: feedbackStats, isLoading: isLoadingFeedback } = useQuery({
     queryKey: ["feedbackStats"],
     queryFn: fetchFeedbackStats,
   });
   
+  // Fetch analytics stats
   const { data: analyticsStats, isLoading: isLoadingAnalytics } = useQuery({
     queryKey: ["analyticsStats"],
     queryFn: fetchAnalyticsStats,
@@ -93,6 +97,7 @@ const Dashboard = () => {
   
   const isLoading = isLoadingArticles || isLoadingFeedback || isLoadingAnalytics;
   
+  // Combine stats data
   const stats: DashboardStats = {
     totalArticles: articlesStats?.totalArticles || 0,
     totalViews: articlesStats?.totalViews || 0,
@@ -105,7 +110,8 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <h1 className="text-3xl font-bold mb-8">Welcome to DroidTechKnow Insights</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">Content</CardTitle>
@@ -179,14 +185,10 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
-        
-        {/* Todo Card - Use wrapper component */}
-        <TodoProvider>
-          <TodoSummary navigate={navigate} />
-        </TodoProvider>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Button 
           variant="default" 
           size="lg" 
@@ -210,14 +212,6 @@ const Dashboard = () => {
           onClick={() => navigate("/analytics")}
         >
           <BarChart3 className="h-5 w-5" /> Check Analytics
-        </Button>
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="flex justify-center items-center gap-2"
-          onClick={() => navigate("/todo")}
-        >
-          <ListTodo className="h-5 w-5" /> Manage Tasks
         </Button>
       </div>
     </div>
