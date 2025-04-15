@@ -41,8 +41,8 @@ const Todo = () => {
           />
           
           <div className="flex-1 flex flex-col relative">
-            {/* Fullscreen toggle button */}
-            <div className="absolute top-2 right-2 z-10">
+            {/* Fullscreen toggle button - Moved inside the container */}
+            <div className="absolute top-2 right-4 z-10">
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -76,7 +76,7 @@ const Todo = () => {
           )}
         </div>
         
-        {/* Floating Add Task Button */}
+        {/* Floating Add Task Button - Centered at the bottom */}
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
           <Button 
             size="lg" 

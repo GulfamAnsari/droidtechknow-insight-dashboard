@@ -37,6 +37,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface TodoMainProps {
   selectedTodoId: string | null;
@@ -127,16 +128,15 @@ const TodoMain = ({
         }}
       >
         <div className="flex items-start gap-3">
-          <button 
-            className={cn(
-              "mt-1 flex-shrink-0 h-5 w-5 rounded-full border flex items-center justify-center",
-              todo.completed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground"
-            )}
-            onClick={(e) => handleToggleCompleted(todo.id, e)}
-            aria-label={todo.completed ? "Mark as incomplete" : "Mark as complete"}
-          >
-            {todo.completed && <Check className="h-3 w-3" />}
-          </button>
+          <Checkbox
+            id={`todo-${todo.id}`}
+            checked={todo.completed}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleCompleted(todo.id, e);
+            }}
+            className="mt-1"
+          />
           
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -242,6 +242,7 @@ const TodoMain = ({
           </h1>
         </div>
         
+        {/* Fix for overlapping icons - added proper spacing and fixed layout */}
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -280,7 +281,7 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Task Views - Tabs for mobile, Side by Side for desktop */}
+      {/* Task Views - Tabs for mobile, Carousel for both mobile and desktop */}
       {isMobile ? (
         <Tabs defaultValue="active" className="flex-1 flex flex-col">
           <div className="px-2 pt-2 border-b">
@@ -311,6 +312,7 @@ const TodoMain = ({
           </TabsContent>
         </Tabs>
       ) : (
+        // Use Carousel for desktop as well
         <div className="flex-1">
           <Carousel className="h-full">
             <CarouselContent className="h-full">
