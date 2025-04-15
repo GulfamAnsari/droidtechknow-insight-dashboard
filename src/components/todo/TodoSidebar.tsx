@@ -10,7 +10,9 @@ import {
   Plus, 
   Calendar,
   RefreshCw,
-  X 
+  X,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,9 +25,11 @@ interface TodoSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   refreshData: () => void;
+  toggleFullScreen: () => void;
+  isFullScreen: boolean;
 }
 
-const TodoSidebar = ({ isOpen, onClose, refreshData }: TodoSidebarProps) => {
+const TodoSidebar = ({ isOpen, onClose, refreshData, toggleFullScreen, isFullScreen }: TodoSidebarProps) => {
   const { state, dispatch } = useTodo();
   const [newListName, setNewListName] = useState("");
   const [showAddList, setShowAddList] = useState(false);
@@ -87,6 +91,18 @@ const TodoSidebar = ({ isOpen, onClose, refreshData }: TodoSidebarProps) => {
       <div className="p-4 flex justify-between items-center border-b">
         <h2 className="text-xl font-semibold">Todo</h2>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleFullScreen}
+            title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+          >
+            {isFullScreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
           <Button 
             variant="ghost" 
             size="icon" 

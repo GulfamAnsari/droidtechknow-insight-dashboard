@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoItem } from "@/types/todo";
@@ -12,11 +11,9 @@ import {
   StarOff,
   Calendar,
   Bell,
-  Plus,
   Search,
   Menu,
   Filter,
-  ListTodo,
   ChevronDown,
   ChevronRight
 } from "lucide-react";
@@ -27,6 +24,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface TodoMainProps {
   selectedTodoId: string | null;
@@ -44,9 +48,7 @@ const TodoMain = ({
   isMobile 
 }: TodoMainProps) => {
   const { state, dispatch, filteredTodos, getListById } = useTodo();
-  const [newTodoTitle, setNewTodoTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const [showCompletedTodos, setShowCompletedTodos] = useState(true);
   
   const activeList = state.activeListId ? getListById(state.activeListId) : null;
@@ -54,21 +56,6 @@ const TodoMain = ({
   // Separate todos into completed and non-completed
   const incompleteTodos = filteredTodos.filter(todo => !todo.completed);
   const completedTodos = filteredTodos.filter(todo => todo.completed);
-  
-  const handleAddTodo = () => {
-    if (newTodoTitle.trim()) {
-      dispatch({
-        type: "ADD_TODO",
-        payload: {
-          title: newTodoTitle.trim(),
-          completed: false,
-          important: false,
-          listId: state.activeListId || "tasks",
-        }
-      });
-      setNewTodoTitle("");
-    }
-  };
   
   const handleToggleCompleted = (todoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -213,6 +200,26 @@ const TodoMain = ({
     );
   };
   
+  const renderEmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+      <p className="text-muted-foreground mb-2">No tasks found</p>
+      {searchTerm && (
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            setSearchTerm("");
+            dispatch({
+              type: "SET_FILTER",
+              payload: { ...state.filter, searchTerm: "" }
+            });
+          }}
+        >
+          Clear search
+        </Button>
+      )}
+    </div>
+  );
+  
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full">
       {/* Header */}
@@ -266,82 +273,60 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Add new todo - Improved UI */}
-      <div className="px-4 py-3 border-b bg-muted/30">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0 h-5 w-5 rounded-full border border-primary flex items-center justify-center bg-primary/10">
-              <Plus className="h-3 w-3 text-primary" />
-            </div>
-            <Input
-              value={newTodoTitle}
-              onChange={(e) => setNewTodoTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
-              placeholder="Add a task"
-              className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
-            />
-          </div>
-          {newTodoTitle.trim() && (
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleAddTodo} 
-                className="bg-primary/90 hover:bg-primary transition-colors"
-              >
-                Add task
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Todo list */}
+      {/* Todo list with carousel */}
       <div className="flex-1 overflow-y-auto">
         {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <p className="text-muted-foreground mb-2">No tasks found</p>
-            {searchTerm && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  dispatch({
-                    type: "SET_FILTER",
-                    payload: { ...state.filter, searchTerm: "" }
-                  });
-                }}
-              >
-                Clear search
-              </Button>
-            )}
-          </div>
+          renderEmptyState()
         ) : (
-          <div>
-            {/* Incomplete todos section */}
-            {incompleteTodos.length > 0 && (
-              <div>
-                <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
-                  Tasks - {incompleteTodos.length}
-                </div>
-                {incompleteTodos.map(renderTodoItem)}
-              </div>
-            )}
-            
-            {/* Completed todos section */}
-            {completedTodos.length > 0 && (
-              <div>
-                <button 
-                  className="w-full px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 flex justify-between items-center"
-                  onClick={() => setShowCompletedTodos(!showCompletedTodos)}
-                >
-                  <span>Completed - {completedTodos.length}</span>
-                  {showCompletedTodos ? 
-                    <ChevronDown className="h-4 w-4" /> : 
-                    <ChevronRight className="h-4 w-4" />
-                  }
-                </button>
-                {showCompletedTodos && completedTodos.map(renderTodoItem)}
-              </div>
-            )}
+          <div className="p-4">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {/* Incomplete todos panel */}
+                <CarouselItem className="md:basis-1/2">
+                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                    <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 border-b flex justify-between items-center">
+                      <span>Tasks - {incompleteTodos.length}</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                      {incompleteTodos.length > 0 ? (
+                        incompleteTodos.map(renderTodoItem)
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground">
+                          No active tasks
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CarouselItem>
+                
+                {/* Completed todos panel */}
+                <CarouselItem className="md:basis-1/2">
+                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                    <button 
+                      className="w-full px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 border-b flex justify-between items-center"
+                      onClick={() => setShowCompletedTodos(!showCompletedTodos)}
+                    >
+                      <span>Completed - {completedTodos.length}</span>
+                      {showCompletedTodos ? 
+                        <ChevronDown className="h-4 w-4" /> : 
+                        <ChevronRight className="h-4 w-4" />
+                      }
+                    </button>
+                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                      {showCompletedTodos && completedTodos.length > 0 ? (
+                        completedTodos.map(renderTodoItem)
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground">
+                          {completedTodos.length === 0 ? "No completed tasks" : "Click to show completed tasks"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CarouselItem>
+              </CarouselContent>
+              <CarouselPrevious className="left-2" />
+              <CarouselNext className="right-2" />
+            </Carousel>
           </div>
         )}
       </div>
