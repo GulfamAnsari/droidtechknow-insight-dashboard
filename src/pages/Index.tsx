@@ -2,7 +2,7 @@
 import { Navigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ListChecks, CheckSquare } from "lucide-react";
+import { CalendarClock, ListChecks, CheckSquare, FileText } from "lucide-react";
 import { useTodo } from "@/contexts/TodoContext";
 
 const Index = () => {
@@ -54,6 +54,38 @@ const Index = () => {
           <CardFooter>
             <Button asChild className="w-full">
               <Link to="/todo">Go to Todo App</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Notepad
+            </CardTitle>
+            <CardDescription>Take and manage your notes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create and manage your notes with a rich text editor.
+                Your notes are saved automatically and stored locally.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Rich text formatting</li>
+                <li>Local storage persistence</li>
+                <li>Multiple notes management</li>
+                <li>Automatic saving</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/notepad">Open Notepad</Link>
             </Button>
           </CardFooter>
         </Card>

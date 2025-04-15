@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoItem } from "@/types/todo";
@@ -25,12 +26,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface TodoMainProps {
   selectedTodoId: string | null;
@@ -273,60 +273,50 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Todo list with carousel */}
+      {/* Todo list with tabs instead of carousel */}
       <div className="flex-1 overflow-y-auto">
         {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
           renderEmptyState()
         ) : (
           <div className="p-4">
-            <Carousel className="w-full">
-              <CarouselContent>
-                {/* Incomplete todos panel */}
-                <CarouselItem className="md:basis-1/2">
-                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
-                    <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 border-b flex justify-between items-center">
-                      <span>Tasks - {incompleteTodos.length}</span>
-                    </div>
-                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
-                      {incompleteTodos.length > 0 ? (
-                        incompleteTodos.map(renderTodoItem)
-                      ) : (
-                        <div className="p-4 text-center text-muted-foreground">
-                          No active tasks
-                        </div>
-                      )}
-                    </div>
+            <Tabs defaultValue="active" className="w-full">
+              <TabsList className="w-full mb-4">
+                <TabsTrigger value="active" className="flex-1">
+                  Tasks ({incompleteTodos.length})
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="flex-1">
+                  Completed ({completedTodos.length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="active" className="mt-0">
+                <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                    {incompleteTodos.length > 0 ? (
+                      incompleteTodos.map(renderTodoItem)
+                    ) : (
+                      <div className="p-4 text-center text-muted-foreground">
+                        No active tasks
+                      </div>
+                    )}
                   </div>
-                </CarouselItem>
-                
-                {/* Completed todos panel */}
-                <CarouselItem className="md:basis-1/2">
-                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
-                    <button 
-                      className="w-full px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 border-b flex justify-between items-center"
-                      onClick={() => setShowCompletedTodos(!showCompletedTodos)}
-                    >
-                      <span>Completed - {completedTodos.length}</span>
-                      {showCompletedTodos ? 
-                        <ChevronDown className="h-4 w-4" /> : 
-                        <ChevronRight className="h-4 w-4" />
-                      }
-                    </button>
-                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
-                      {showCompletedTodos && completedTodos.length > 0 ? (
-                        completedTodos.map(renderTodoItem)
-                      ) : (
-                        <div className="p-4 text-center text-muted-foreground">
-                          {completedTodos.length === 0 ? "No completed tasks" : "Click to show completed tasks"}
-                        </div>
-                      )}
-                    </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="completed" className="mt-0">
+                <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                    {completedTodos.length > 0 ? (
+                      completedTodos.map(renderTodoItem)
+                    ) : (
+                      <div className="p-4 text-center text-muted-foreground">
+                        No completed tasks
+                      </div>
+                    )}
                   </div>
-                </CarouselItem>
-              </CarouselContent>
-              <CarouselPrevious className="left-2" />
-              <CarouselNext className="right-2" />
-            </Carousel>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </div>
