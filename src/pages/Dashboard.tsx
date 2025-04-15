@@ -1,9 +1,11 @@
+
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { useTodo } from "@/contexts/TodoContext";
+import { TodoProvider } from "@/contexts/TodoContext";
+import { TodoSummary } from "@/components/dashboard/TodoSummary";
 
 interface DashboardStats {
   totalArticles: number;
@@ -11,8 +13,6 @@ interface DashboardStats {
   totalLikes: number;
   totalFeedback: number;
   totalVisits: number;
-  totalTodos: number;
-  completedTodos: number;
 }
 
 const fetchArticlesStats = async (): Promise<{ totalArticles: number; totalViews: number; totalLikes: number }> => {
@@ -75,7 +75,6 @@ const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { state } = useTodo();
   
   const { data: articlesStats, isLoading: isLoadingArticles } = useQuery({
     queryKey: ["articlesStats"],
@@ -94,19 +93,12 @@ const Dashboard = () => {
   
   const isLoading = isLoadingArticles || isLoadingFeedback || isLoadingAnalytics;
   
-  const todoStats = {
-    totalTodos: state.todos.length,
-    completedTodos: state.todos.filter(todo => todo.completed).length
-  };
-  
   const stats: DashboardStats = {
     totalArticles: articlesStats?.totalArticles || 0,
     totalViews: articlesStats?.totalViews || 0,
     totalLikes: articlesStats?.totalLikes || 0,
     totalFeedback: feedbackStats?.totalFeedback || 0,
     totalVisits: analyticsStats?.totalVisits || 0,
-    totalTodos: todoStats.totalTodos,
-    completedTodos: todoStats.completedTodos
   };
 
   return (
@@ -188,35 +180,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Tasks</CardTitle>
-            <CardDescription>Manage your todo items</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500">Total Tasks</p>
-                <p className="text-2xl font-bold">
-                  {stats.totalTodos.toLocaleString()}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500">Completed</p>
-                <p className="text-2xl font-bold">
-                  {stats.completedTodos.toLocaleString()}
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              className="w-full flex justify-between items-center" 
-              onClick={() => navigate("/todo")}
-            >
-              View Tasks <ChevronRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Todo Card - Use wrapper component */}
+        <TodoProvider>
+          <TodoSummary navigate={navigate} />
+        </TodoProvider>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
