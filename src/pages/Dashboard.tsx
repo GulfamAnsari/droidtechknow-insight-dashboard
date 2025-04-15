@@ -1,20 +1,20 @@
-
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight } from "lucide-react";
+import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { useTodo } from "@/contexts/TodoContext";
 
-// Define interface for the stats data
 interface DashboardStats {
   totalArticles: number;
   totalViews: number;
   totalLikes: number;
   totalFeedback: number;
   totalVisits: number;
+  totalTodos: number;
+  completedTodos: number;
 }
 
-// Mock functions to fetch stats data
 const fetchArticlesStats = async (): Promise<{ totalArticles: number; totalViews: number; totalLikes: number }> => {
   try {
     const response = await fetch("https://droidtechknow.com/api/dashboard_fetch_all_results.php");
@@ -52,7 +52,6 @@ const fetchFeedbackStats = async (): Promise<{ totalFeedback: number }> => {
 };
 
 const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
-  // Use today's date for analytics
   const today = new Date();
   const dateString = today.toISOString().split('T')[0];
   
@@ -76,20 +75,18 @@ const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { state } = useTodo();
   
-  // Fetch article stats
   const { data: articlesStats, isLoading: isLoadingArticles } = useQuery({
     queryKey: ["articlesStats"],
     queryFn: fetchArticlesStats,
   });
   
-  // Fetch feedback stats
   const { data: feedbackStats, isLoading: isLoadingFeedback } = useQuery({
     queryKey: ["feedbackStats"],
     queryFn: fetchFeedbackStats,
   });
   
-  // Fetch analytics stats
   const { data: analyticsStats, isLoading: isLoadingAnalytics } = useQuery({
     queryKey: ["analyticsStats"],
     queryFn: fetchAnalyticsStats,
@@ -97,21 +94,26 @@ const Dashboard = () => {
   
   const isLoading = isLoadingArticles || isLoadingFeedback || isLoadingAnalytics;
   
-  // Combine stats data
+  const todoStats = {
+    totalTodos: state.todos.length,
+    completedTodos: state.todos.filter(todo => todo.completed).length
+  };
+  
   const stats: DashboardStats = {
     totalArticles: articlesStats?.totalArticles || 0,
     totalViews: articlesStats?.totalViews || 0,
     totalLikes: articlesStats?.totalLikes || 0,
     totalFeedback: feedbackStats?.totalFeedback || 0,
     totalVisits: analyticsStats?.totalVisits || 0,
+    totalTodos: todoStats.totalTodos,
+    completedTodos: todoStats.completedTodos
   };
 
   return (
     <div className="dashboard-container">
       <h1 className="text-3xl font-bold mb-8">Welcome to DroidTechKnow Insights</h1>
       
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">Content</CardTitle>
@@ -185,10 +187,39 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xl">Tasks</CardTitle>
+            <CardDescription>Manage your todo items</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Total Tasks</p>
+                <p className="text-2xl font-bold">
+                  {stats.totalTodos.toLocaleString()}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Completed</p>
+                <p className="text-2xl font-bold">
+                  {stats.completedTodos.toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              className="w-full flex justify-between items-center" 
+              onClick={() => navigate("/todo")}
+            >
+              View Tasks <ChevronRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
       </div>
       
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Button 
           variant="default" 
           size="lg" 
@@ -212,6 +243,14 @@ const Dashboard = () => {
           onClick={() => navigate("/analytics")}
         >
           <BarChart3 className="h-5 w-5" /> Check Analytics
+        </Button>
+        <Button 
+          variant="default" 
+          size="lg" 
+          className="flex justify-center items-center gap-2"
+          onClick={() => navigate("/todo")}
+        >
+          <ListTodo className="h-5 w-5" /> Manage Tasks
         </Button>
       </div>
     </div>

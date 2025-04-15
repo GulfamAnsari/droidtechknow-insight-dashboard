@@ -12,13 +12,9 @@ import {
   StarOff,
   Calendar,
   Bell,
-  Plus,
   Search,
   Menu,
-  Filter,
-  ListTodo,
-  ChevronDown,
-  ChevronRight
+  Filter
 } from "lucide-react";
 import TodoStepsList from "./TodoStepsList";
 import {
@@ -27,6 +23,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface TodoMainProps {
   selectedTodoId: string | null;
@@ -44,31 +54,15 @@ const TodoMain = ({
   isMobile 
 }: TodoMainProps) => {
   const { state, dispatch, filteredTodos, getListById } = useTodo();
-  const [newTodoTitle, setNewTodoTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
   const [showCompletedTodos, setShowCompletedTodos] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
   
   const activeList = state.activeListId ? getListById(state.activeListId) : null;
   
   // Separate todos into completed and non-completed
   const incompleteTodos = filteredTodos.filter(todo => !todo.completed);
   const completedTodos = filteredTodos.filter(todo => todo.completed);
-  
-  const handleAddTodo = () => {
-    if (newTodoTitle.trim()) {
-      dispatch({
-        type: "ADD_TODO",
-        payload: {
-          title: newTodoTitle.trim(),
-          completed: false,
-          important: false,
-          listId: state.activeListId || "tasks",
-        }
-      });
-      setNewTodoTitle("");
-    }
-  };
   
   const handleToggleCompleted = (todoId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -212,6 +206,26 @@ const TodoMain = ({
       </div>
     );
   };
+
+  const renderEmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+      <p className="text-muted-foreground mb-2">No tasks found</p>
+      {searchTerm && (
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            setSearchTerm("");
+            dispatch({
+              type: "SET_FILTER",
+              payload: { ...state.filter, searchTerm: "" }
+            });
+          }}
+        >
+          Clear search
+        </Button>
+      )}
+    </div>
+  );
   
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full">
@@ -266,85 +280,79 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Add new todo - Improved UI */}
-      <div className="px-4 py-3 border-b bg-muted/30">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0 h-5 w-5 rounded-full border border-primary flex items-center justify-center bg-primary/10">
-              <Plus className="h-3 w-3 text-primary" />
-            </div>
-            <Input
-              value={newTodoTitle}
-              onChange={(e) => setNewTodoTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
-              placeholder="Add a task"
-              className="flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
-            />
+      {/* Task Views - Tabs for mobile, Side by Side for desktop */}
+      {isMobile ? (
+        <Tabs defaultValue="active" className="flex-1 flex flex-col">
+          <div className="px-2 pt-2 border-b">
+            <TabsList className="w-full">
+              <TabsTrigger value="active" className="flex-1">Active Tasks</TabsTrigger>
+              <TabsTrigger value="completed" className="flex-1">Completed</TabsTrigger>
+            </TabsList>
           </div>
-          {newTodoTitle.trim() && (
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleAddTodo} 
-                className="bg-primary/90 hover:bg-primary transition-colors"
-              >
-                Add task
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Todo list */}
-      <div className="flex-1 overflow-y-auto">
-        {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <p className="text-muted-foreground mb-2">No tasks found</p>
-            {searchTerm && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  dispatch({
-                    type: "SET_FILTER",
-                    payload: { ...state.filter, searchTerm: "" }
-                  });
-                }}
-              >
-                Clear search
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div>
-            {/* Incomplete todos section */}
-            {incompleteTodos.length > 0 && (
+          
+          <TabsContent value="active" className="flex-1 overflow-y-auto m-0 p-0">
+            {incompleteTodos.length === 0 ? renderEmptyState() : (
               <div>
-                <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
-                  Tasks - {incompleteTodos.length}
-                </div>
                 {incompleteTodos.map(renderTodoItem)}
               </div>
             )}
-            
-            {/* Completed todos section */}
-            {completedTodos.length > 0 && (
+          </TabsContent>
+          
+          <TabsContent value="completed" className="flex-1 overflow-y-auto m-0 p-0">
+            {completedTodos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                <p className="text-muted-foreground">No completed tasks</p>
+              </div>
+            ) : (
               <div>
-                <button 
-                  className="w-full px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50 flex justify-between items-center"
-                  onClick={() => setShowCompletedTodos(!showCompletedTodos)}
-                >
-                  <span>Completed - {completedTodos.length}</span>
-                  {showCompletedTodos ? 
-                    <ChevronDown className="h-4 w-4" /> : 
-                    <ChevronRight className="h-4 w-4" />
-                  }
-                </button>
-                {showCompletedTodos && completedTodos.map(renderTodoItem)}
+                {completedTodos.map(renderTodoItem)}
               </div>
             )}
-          </div>
-        )}
-      </div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="flex-1">
+          <Carousel className="h-full">
+            <CarouselContent className="h-full">
+              <CarouselItem className="basis-1/2 h-full">
+                <div className="h-full flex flex-col">
+                  <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                    Active Tasks - {incompleteTodos.length}
+                  </div>
+                  <ScrollArea className="flex-1">
+                    {incompleteTodos.length === 0 ? renderEmptyState() : (
+                      <div>
+                        {incompleteTodos.map(renderTodoItem)}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </CarouselItem>
+              
+              <CarouselItem className="basis-1/2 h-full">
+                <div className="h-full flex flex-col">
+                  <div className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted/50">
+                    Completed Tasks - {completedTodos.length}
+                  </div>
+                  <ScrollArea className="flex-1">
+                    {completedTodos.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                        <p className="text-muted-foreground">No completed tasks</p>
+                      </div>
+                    ) : (
+                      <div>
+                        {completedTodos.map(renderTodoItem)}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </CarouselItem>
+            </CarouselContent>
+            <CarouselPrevious className="absolute left-1 top-1/2" />
+            <CarouselNext className="absolute right-1 top-1/2" />
+          </Carousel>
+        </div>
+      )}
     </div>
   );
 };
