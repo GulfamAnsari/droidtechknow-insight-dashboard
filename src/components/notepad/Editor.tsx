@@ -1,29 +1,39 @@
 
-import React, { useRef, useState } from 'react';
-import { Editor as TinyMCEEditor } from '@tinymce/tinymce-react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/use-theme";
 
 interface EditorProps {
-  content?: string;
+  content: string;
   onChange: (content: string) => void;
   readOnly?: boolean;
   placeholder?: string;
 }
 
 const Editor: React.FC<EditorProps> = ({ 
-  content = '', 
+  content, 
   onChange, 
   readOnly = false,
   placeholder = 'Start writing your note here...'
 }) => {
-  const editorRef = useRef<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { theme } = useTheme();
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
+
+  // Auto-resize textarea as content grows
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [content]);
 
   return (
     <div className={cn(
@@ -41,32 +51,20 @@ const Editor: React.FC<EditorProps> = ({
         </Button>
       </div>
       
-      <div className="flex-grow">
-        <TinyMCEEditor
-          onInit={(evt, editor) => editorRef.current = editor}
-          initialValue={content}
-          onEditorChange={(newContent) => {
-            onChange(newContent);
-          }}
+      <div className="flex-grow p-2">
+        <textarea
+          ref={textareaRef}
+          className={cn(
+            "w-full h-full p-3 resize-none focus:outline-none bg-transparent",
+            isFullscreen ? "h-[calc(100vh-120px)]" : "min-h-[250px]",
+            theme === "dark" ? "text-foreground" : "text-foreground"
+          )}
+          value={content}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
           disabled={readOnly}
-          init={{
-            height: isFullscreen ? 'calc(100vh - 120px)' : 300,
-            menubar: false,
-            plugins: [
-              'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-              'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-              'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount', 'autoresize'
-            ],
-            toolbar: 'undo redo | blocks | ' +
-              'bold italic forecolor | alignleft aligncenter ' +
-              'alignright alignjustify | bullist numlist outdent indent | ' +
-              'removeformat | help',
-            content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-            placeholder: placeholder,
-            autoresize_bottom_margin: 16,
-            resize: false,
-            branding: false,
-            statusbar: false,
+          style={{ 
+            lineHeight: '1.5'
           }}
         />
       </div>
