@@ -1,6 +1,4 @@
-
 import { useState, useEffect } from "react";
-import EditorJS, { OutputData } from "@editorjs/editorjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -19,7 +17,7 @@ const Notepad = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [noteTitle, setNoteTitle] = useState("");
-  const [noteContent, setNoteContent] = useState<OutputData | null>(null);
+  const [noteContent, setNoteContent] = useState<string>("");
   const [showSidebar, setShowSidebar] = useState(true);
   const isMobile = useIsMobile();
   
@@ -48,49 +46,18 @@ const Notepad = () => {
   useEffect(() => {
     if (activeNote) {
       setNoteTitle(activeNote.title);
-      try {
-        // Try to parse the content as JSON first (for EditorJS data)
-        const parsedContent = JSON.parse(activeNote.content);
-        setNoteContent(parsedContent);
-      } catch (e) {
-        // If parsing fails, create a new EditorJS data structure with the content as HTML
-        setNoteContent({
-          time: new Date().getTime(),
-          version: "2.22.2",
-          blocks: [
-            {
-              type: "paragraph",
-              data: {
-                text: activeNote.content
-              }
-            }
-          ]
-        });
-      }
+      setNoteContent(activeNote.content);
     } else {
       setNoteTitle("");
-      setNoteContent(null);
+      setNoteContent("");
     }
   }, [activeNoteId, activeNote]);
   
   const createNewNote = () => {
-    const defaultContent: OutputData = {
-      time: new Date().getTime(),
-      version: "2.22.2",
-      blocks: [
-        {
-          type: "paragraph",
-          data: {
-            text: ""
-          }
-        }
-      ]
-    };
-    
     const newNote: Note = {
       id: Date.now().toString(),
       title: noteTitle || 'Untitled Note',
-      content: JSON.stringify(defaultContent),
+      content: noteContent || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       starred: false
@@ -98,7 +65,6 @@ const Notepad = () => {
     
     setNotes([...notes, newNote]);
     setActiveNoteId(newNote.id);
-    setNoteContent(defaultContent);
   };
   
   const updateNoteTitle = (id: string, title: string) => {
@@ -116,15 +82,18 @@ const Notepad = () => {
     }
   };
   
-  const updateNoteContent = (data: OutputData) => {
-    if (!activeNoteId) return;
+  const updateNoteContent = (content: string) => {
+    if (!activeNoteId) {
+      setNoteContent(content);
+      return;
+    }
     
-    setNoteContent(data);
+    setNoteContent(content);
     setNotes(notes.map(note => 
       note.id === activeNoteId 
         ? { 
             ...note, 
-            content: JSON.stringify(data), 
+            content, 
             updatedAt: new Date().toISOString() 
           } 
         : note
@@ -153,7 +122,7 @@ const Notepad = () => {
   const handleStartNewNote = () => {
     setActiveNoteId(null);
     setNoteTitle("");
-    setNoteContent(null);
+    setNoteContent("");
   };
   
   return (
@@ -227,16 +196,10 @@ const Notepad = () => {
               </div>
               
               <div className="flex-1 overflow-auto p-4">
-                {noteContent ? (
-                  <Editor 
-                    data={noteContent} 
-                    onChange={updateNoteContent} 
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground">
-                    Start typing to create content...
-                  </div>
-                )}
+                <Editor 
+                  content={noteContent} 
+                  onChange={updateNoteContent}
+                />
               </div>
               
               <div className="p-3 border-t flex justify-between items-center bg-muted/30">

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { 
   FileText,
@@ -23,6 +22,13 @@ export interface Note {
   updatedAt: string;
   starred?: boolean;
 }
+
+// Helper function to strip HTML tags for preview
+const stripHtml = (html: string) => {
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
 
 interface NoteSidebarProps {
   notes: Note[];
@@ -187,7 +193,7 @@ const NoteSidebar: React.FC<NoteSidebarProps> = ({
                       {formatDate(note.updatedAt)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {note.content.replace(/<[^>]*>/g, ' ')}
+                      {stripHtml(note.content)}
                     </p>
                   </button>
                 )}
