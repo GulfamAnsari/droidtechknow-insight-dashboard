@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -19,6 +18,7 @@ import {
   Trash2,
   Plus
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Note {
   id: string;
@@ -34,7 +34,6 @@ const Notepad = () => {
   const [noteTitle, setNoteTitle] = useState("");
   const [showNewNote, setShowNewNote] = useState(false);
   
-  // Load notes from localStorage
   useEffect(() => {
     const savedNotes = localStorage.getItem('notes');
     if (savedNotes) {
@@ -42,15 +41,12 @@ const Notepad = () => {
     }
   }, []);
   
-  // Save notes to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('notes', JSON.stringify(notes));
   }, [notes]);
   
-  // Find the active note
   const activeNote = notes.find(note => note.id === activeNoteId) || null;
   
-  // Initialize editor with content from active note
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -63,7 +59,6 @@ const Notepad = () => {
     },
   });
   
-  // Update editor content when active note changes
   useEffect(() => {
     if (editor && activeNote) {
       editor.commands.setContent(activeNote.content);
@@ -74,7 +69,6 @@ const Notepad = () => {
     }
   }, [activeNoteId, activeNote, editor]);
   
-  // Create a new note
   const createNewNote = () => {
     const newNote: Note = {
       id: Date.now().toString(),
@@ -89,7 +83,6 @@ const Notepad = () => {
     setShowNewNote(false);
   };
   
-  // Update note title
   const updateNoteTitle = (id: string, title: string) => {
     setNotes(notes.map(note => 
       note.id === id 
@@ -102,7 +95,6 @@ const Notepad = () => {
     ));
   };
   
-  // Update note content
   const updateNoteContent = (id: string, content: string) => {
     setNotes(notes.map(note => 
       note.id === id 
@@ -115,7 +107,6 @@ const Notepad = () => {
     ));
   };
   
-  // Delete note
   const deleteNote = (id: string) => {
     setNotes(notes.filter(note => note.id !== id));
     if (activeNoteId === id) {
@@ -123,7 +114,6 @@ const Notepad = () => {
     }
   };
   
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -140,7 +130,6 @@ const Notepad = () => {
       <h1 className="text-3xl font-bold mb-6">Notepad</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-        {/* Note List Section */}
         <div className="md:col-span-1 border rounded-lg bg-background overflow-hidden flex flex-col">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="font-semibold">Notes ({notes.length})</h2>
@@ -197,7 +186,6 @@ const Notepad = () => {
           </div>
         </div>
         
-        {/* Editor Section */}
         <div className="md:col-span-2 border rounded-lg overflow-hidden flex flex-col bg-background">
           {showNewNote || activeNoteId ? (
             <>
