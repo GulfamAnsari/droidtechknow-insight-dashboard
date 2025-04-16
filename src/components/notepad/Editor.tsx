@@ -30,6 +30,7 @@ const Editor: React.FC<EditorProps> = ({
 
     const editor = new EditorJS({
       holder: holderRef.current,
+      // @ts-ignore - EditorJS types in our definition file are incomplete
       tools: {
         header: {
           class: Header,
@@ -81,7 +82,8 @@ const Editor: React.FC<EditorProps> = ({
   // Update editor data when prop changes
   useEffect(() => {
     if (editorRef.current && isReady && data) {
-      // Only render if the content is different to avoid loops
+      // Only update the data if different to avoid loops
+      // @ts-ignore - The render method exists in EditorJS but is missing in our type definitions
       editorRef.current.render(data);
     }
   }, [data, isReady]);

@@ -1,4 +1,3 @@
-
 declare module '@editorjs/editorjs' {
   export interface OutputData {
     time: number;
@@ -24,16 +23,21 @@ declare module '@editorjs/editorjs' {
     data?: OutputData;
 
     /**
-     * Editor configuration
+     * Available Tools
      */
-    config?: {
-      tools?: {
-        [toolName: string]: any;
-      };
-      placeholder?: string;
-      readOnly?: boolean;
-      autofocus?: boolean;
+    tools?: {
+      [toolName: string]: any;
     };
+
+    /**
+     * Placeholder for empty editor
+     */
+    placeholder?: string;
+
+    /**
+     * Read-only mode
+     */
+    readOnly?: boolean;
 
     /**
      * This callback will be called after Editor.js is ready to work
@@ -43,7 +47,12 @@ declare module '@editorjs/editorjs' {
     /**
      * This callback will be called after content has been changed
      */
-    onChange?: (api: API, event: CustomEvent) => void;
+    onChange?: () => void;
+
+    /**
+     * Autofocus on load
+     */
+    autofocus?: boolean;
   }
 
   export interface API {
@@ -86,6 +95,9 @@ declare module '@editorjs/editorjs' {
     
     /** Sets Editor to read-only mode */
     readOnly(): void;
+
+    /** Renders the data in the editor */
+    render(data: OutputData): Promise<void>;
   }
 }
 
