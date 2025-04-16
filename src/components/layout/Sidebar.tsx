@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, Menu, X, CheckSquare } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, Menu, X, CheckSquare, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -38,6 +38,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       href: "/todo",
       icon: CheckSquare,
     },
+    {
+      name: "Notepad",
+      href: "/notepad",
+      icon: BookOpen,
+    }
   ];
 
   return (

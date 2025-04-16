@@ -1,86 +1,104 @@
+
 import { useState, useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import EditorJS, { OutputData } from "@editorjs/editorjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Undo, 
-  Redo, 
-  FileText,
   Save,
-  Trash2,
-  Plus
+  Menu,
+  FileText,
+  X,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { useIsMobile } from "@/hooks/use-mobile";
+import NoteSidebar, { Note } from "@/components/notepad/NoteSidebar";
+import Editor from "@/components/notepad/Editor";
 
 const Notepad = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [noteTitle, setNoteTitle] = useState("");
-  const [showNewNote, setShowNewNote] = useState(false);
+  const [noteContent, setNoteContent] = useState<OutputData | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const isMobile = useIsMobile();
   
+  // Load notes from localStorage
   useEffect(() => {
     const savedNotes = localStorage.getItem('notes');
     if (savedNotes) {
-      setNotes(JSON.parse(savedNotes));
+      try {
+        setNotes(JSON.parse(savedNotes));
+      } catch (error) {
+        console.error('Error parsing notes from localStorage:', error);
+        setNotes([]);
+      }
     }
   }, []);
   
+  // Save notes to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('notes', JSON.stringify(notes));
   }, [notes]);
   
+  // Find the active note
   const activeNote = notes.find(note => note.id === activeNoteId) || null;
   
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-    ],
-    content: activeNote?.content || '',
-    onUpdate: ({ editor }) => {
-      if (activeNoteId) {
-        updateNoteContent(activeNoteId, editor.getHTML());
-      }
-    },
-  });
-  
+  // Update editor content when active note changes
   useEffect(() => {
-    if (editor && activeNote) {
-      editor.commands.setContent(activeNote.content);
+    if (activeNote) {
       setNoteTitle(activeNote.title);
-    } else if (editor && !activeNote) {
-      editor.commands.setContent('');
-      setNoteTitle('');
+      try {
+        // Try to parse the content as JSON first (for EditorJS data)
+        const parsedContent = JSON.parse(activeNote.content);
+        setNoteContent(parsedContent);
+      } catch (e) {
+        // If parsing fails, create a new EditorJS data structure with the content as HTML
+        setNoteContent({
+          time: new Date().getTime(),
+          version: "2.22.2",
+          blocks: [
+            {
+              type: "paragraph",
+              data: {
+                text: activeNote.content
+              }
+            }
+          ]
+        });
+      }
+    } else {
+      setNoteTitle("");
+      setNoteContent(null);
     }
-  }, [activeNoteId, activeNote, editor]);
+  }, [activeNoteId, activeNote]);
   
   const createNewNote = () => {
+    const defaultContent: OutputData = {
+      time: new Date().getTime(),
+      version: "2.22.2",
+      blocks: [
+        {
+          type: "paragraph",
+          data: {
+            text: ""
+          }
+        }
+      ]
+    };
+    
     const newNote: Note = {
       id: Date.now().toString(),
       title: noteTitle || 'Untitled Note',
-      content: editor ? editor.getHTML() : '',
+      content: JSON.stringify(defaultContent),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      starred: false
     };
     
     setNotes([...notes, newNote]);
     setActiveNoteId(newNote.id);
-    setShowNewNote(false);
+    setNoteContent(defaultContent);
   };
   
   const updateNoteTitle = (id: string, title: string) => {
@@ -93,14 +111,20 @@ const Notepad = () => {
           } 
         : note
     ));
+    if (id === activeNoteId) {
+      setNoteTitle(title);
+    }
   };
   
-  const updateNoteContent = (id: string, content: string) => {
+  const updateNoteContent = (data: OutputData) => {
+    if (!activeNoteId) return;
+    
+    setNoteContent(data);
     setNotes(notes.map(note => 
-      note.id === id 
+      note.id === activeNoteId 
         ? { 
             ...note, 
-            content, 
+            content: JSON.stringify(data), 
             updatedAt: new Date().toISOString() 
           } 
         : note
@@ -114,80 +138,79 @@ const Notepad = () => {
     }
   };
   
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const toggleNoteStar = (id: string) => {
+    setNotes(notes.map(note => 
+      note.id === id 
+        ? { 
+            ...note, 
+            starred: !note.starred,
+            updatedAt: new Date().toISOString() 
+          } 
+        : note
+    ));
+  };
+  
+  const handleStartNewNote = () => {
+    setActiveNoteId(null);
+    setNoteTitle("");
+    setNoteContent(null);
   };
   
   return (
-    <div className="container mx-auto p-4 h-[calc(100vh-8rem)]">
-      <h1 className="text-3xl font-bold mb-6">Notepad</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
-        <div className="md:col-span-1 border rounded-lg bg-background overflow-hidden flex flex-col">
-          <div className="p-4 border-b flex justify-between items-center">
-            <h2 className="font-semibold">Notes ({notes.length})</h2>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setActiveNoteId(null);
-                setNoteTitle('');
-                if (editor) editor.commands.setContent('');
-                setShowNewNote(true);
-              }}
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSidebar(true)}
+              className="mr-2"
             >
-              <Plus className="h-4 w-4 mr-1" /> New
+              <Menu className="h-5 w-5" />
             </Button>
-          </div>
-          
-          <div className="overflow-y-auto flex-1">
-            {notes.length === 0 && !showNewNote ? (
-              <div className="p-6 text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>No notes yet.</p>
-                <Button 
-                  className="mt-4" 
-                  variant="outline"
-                  onClick={() => setShowNewNote(true)}
-                >
-                  Create your first note
-                </Button>
-              </div>
-            ) : (
-              <ul className="divide-y">
-                {notes.map(note => (
-                  <li key={note.id}>
-                    <button
-                      className={cn(
-                        "w-full text-left p-3 hover:bg-accent transition-colors",
-                        activeNoteId === note.id ? "bg-accent" : ""
-                      )}
-                      onClick={() => setActiveNoteId(note.id)}
-                    >
-                      <h3 className="font-medium truncate">{note.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDate(note.updatedAt)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {note.content.replace(/<[^>]*>/g, ' ')}
-                      </p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
+          <h1 className="text-2xl font-bold flex items-center">
+            <BookOpen className="mr-2 h-6 w-6" />
+            Notepad
+          </h1>
         </div>
+        <div className="flex gap-2">
+          {!isMobile && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSidebar(!showSidebar)}
+            >
+              {showSidebar ? <X className="mr-1 h-4 w-4" /> : <FileText className="mr-1 h-4 w-4" />}
+              {showSidebar ? "Hide Sidebar" : "Show Sidebar"}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleStartNewNote}
+          >
+            New Note
+          </Button>
+        </div>
+      </div>
+      
+      <div className="flex flex-1 overflow-hidden">
+        <NoteSidebar
+          notes={notes}
+          activeNoteId={activeNoteId}
+          onSelectNote={setActiveNoteId}
+          onCreateNote={createNewNote}
+          onDeleteNote={deleteNote}
+          onUpdateNoteTitle={updateNoteTitle}
+          onToggleStar={toggleNoteStar}
+          isOpen={showSidebar}
+          onClose={() => setShowSidebar(false)}
+        />
         
-        <div className="md:col-span-2 border rounded-lg overflow-hidden flex flex-col bg-background">
-          {showNewNote || activeNoteId ? (
+        <div className="flex-1 overflow-auto flex flex-col">
+          {activeNoteId || noteTitle ? (
             <>
               <div className="p-4 border-b">
                 <Input
@@ -203,98 +226,36 @@ const Notepad = () => {
                 />
               </div>
               
-              <div className="p-2 border-b bg-muted/30 flex flex-wrap gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                  className={editor?.isActive('bold') ? 'bg-accent' : ''}
-                >
-                  <Bold className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                  className={editor?.isActive('italic') ? 'bg-accent' : ''}
-                >
-                  <Italic className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                  className={editor?.isActive('bulletList') ? 'bg-accent' : ''}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-                  className={editor?.isActive('orderedList') ? 'bg-accent' : ''}
-                >
-                  <ListOrdered className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-                  className={editor?.isActive('blockquote') ? 'bg-accent' : ''}
-                >
-                  <Quote className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().undo().run()}
-                >
-                  <Undo className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => editor?.chain().focus().redo().run()}
-                >
-                  <Redo className="h-4 w-4" />
-                </Button>
-              </div>
-              
               <div className="flex-1 overflow-auto p-4">
-                <EditorContent editor={editor} className="prose max-w-none min-h-[30rem]" />
+                {noteContent ? (
+                  <Editor 
+                    data={noteContent} 
+                    onChange={updateNoteContent} 
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    Start typing to create content...
+                  </div>
+                )}
               </div>
               
               <div className="p-3 border-t flex justify-between items-center bg-muted/30">
                 {activeNoteId ? (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      Last edited: {activeNote ? formatDate(activeNote.updatedAt) : ''}
-                    </p>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteNote(activeNoteId)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" /> Delete
-                    </Button>
-                  </>
+                  <p className="text-xs text-muted-foreground">
+                    Last edited: {activeNote ? new Date(activeNote.updatedAt).toLocaleString() : ''}
+                  </p>
                 ) : (
-                  <>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowNewNote(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={createNewNote}
-                      disabled={!noteTitle.trim()}
-                      size="sm"
-                    >
-                      <Save className="h-4 w-4 mr-1" /> Save Note
-                    </Button>
-                  </>
+                  <span></span>
+                )}
+                
+                {!activeNoteId && (
+                  <Button
+                    onClick={createNewNote}
+                    disabled={!noteTitle.trim()}
+                    size="sm"
+                  >
+                    <Save className="h-4 w-4 mr-1" /> Save Note
+                  </Button>
                 )}
               </div>
             </>
@@ -303,12 +264,12 @@ const Notepad = () => {
               <div>
                 <FileText className="h-16 w-16 mx-auto mb-4 opacity-20" />
                 <h3 className="text-lg font-medium mb-2">No Note Selected</h3>
-                <p className="mb-4">Select a note from the list or create a new one</p>
+                <p className="mb-4">Select a note from the sidebar or create a new one</p>
                 <Button 
-                  onClick={() => setShowNewNote(true)}
+                  onClick={handleStartNewNote}
                   variant="outline"
                 >
-                  <Plus className="h-4 w-4 mr-1" /> Create New Note
+                  Create New Note
                 </Button>
               </div>
             </div>
