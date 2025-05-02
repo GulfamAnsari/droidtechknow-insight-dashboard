@@ -41,11 +41,12 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     let successCount = 0;
     let errorCount = 0;
     
+    // Loop through files and make individual API calls
     for (let i = 0; i < totalFiles; i++) {
       try {
         const file = files[i];
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('photo0', file); // Changed from 'file' to 'photo0' as requested
         
         const response = await fetch('https://droidtechknow.com/admin/upload.php', {
           method: 'POST',
@@ -70,9 +71,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     setFiles([]);
     
     if (errorCount > 0) {
-      toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
+      toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
     } else {
-      toast.success(`Successfully uploaded ${successCount} files`);
+      toast.success(`Successfully uploaded ${successCount} photos`);
     }
     
     onUploadSuccess();
@@ -157,7 +158,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                 disabled={uploading || files.length === 0} 
                 className="w-full"
               >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Photo' : 'Photos'}`}
               </Button>
             </div>
             
