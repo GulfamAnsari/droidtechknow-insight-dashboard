@@ -1,0 +1,177 @@
+
+import { useState, useCallback } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
+import { Upload, Image } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { useDropzone } from "react-dropzone";
+
+interface UploadAreaProps {
+  onUploadSuccess: () => void;
+}
+
+const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [files, setFiles] = useState<File[]>([]);
+  
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setFiles(prev => [...prev, ...acceptedFiles]);
+  }, []);
+  
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+    },
+    multiple: true
+  });
+  
+  const uploadFiles = async () => {
+    if (files.length === 0) {
+      toast.error("Please select at least one file to upload");
+      return;
+    }
+    
+    setUploading(true);
+    setProgress(0);
+    
+    const totalFiles = files.length;
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (let i = 0; i < totalFiles; i++) {
+      try {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('https://droidtechknow.com/admin/upload.php', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        
+        successCount++;
+      } catch (error) {
+        console.error("Upload error:", error);
+        errorCount++;
+      }
+      
+      // Update progress
+      setProgress(Math.round(((i + 1) / totalFiles) * 100));
+    }
+    
+    setUploading(false);
+    setFiles([]);
+    
+    if (errorCount > 0) {
+      toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
+    } else {
+      toast.success(`Successfully uploaded ${successCount} files`);
+    }
+    
+    onUploadSuccess();
+  };
+  
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+  };
+  
+  return (
+    <div className="p-6 space-y-6">
+      <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
+        <div 
+          {...getRootProps()}
+          className="h-48 flex flex-col items-center justify-center cursor-pointer"
+        >
+          <input {...getInputProps()} />
+          <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
+          <p className="mt-4 text-center">
+            {isDragActive 
+              ? "Drop your photos here..." 
+              : "Drag and drop photos here or click to select"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Supports: JPG, PNG, GIF, WebP
+          </p>
+        </div>
+      </Card>
+      
+      {files.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-medium">Selected Files ({files.length})</h3>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setFiles([])}
+                disabled={uploading}
+              >
+                Clear All
+              </Button>
+            </div>
+            
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {files.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-2 border rounded-md">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
+                      {file.type.startsWith('image/') ? (
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt={file.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Image size={24} className="text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="truncate max-w-[200px]">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => removeFile(index)}
+                    disabled={uploading}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-4">
+              <Button 
+                onClick={uploadFiles} 
+                disabled={uploading || files.length === 0} 
+                className="w-full"
+              >
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
+              </Button>
+            </div>
+            
+            {uploading && (
+              <div className="mt-4 space-y-2">
+                <Progress value={progress} />
+                <p className="text-sm text-center">{progress}% Complete</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default UploadArea;

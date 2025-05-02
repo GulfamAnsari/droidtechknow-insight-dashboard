@@ -12,6 +12,7 @@ import Feedback from "./pages/Feedback";
 import Analytics from "./pages/Analytics";
 import Todo from "./pages/Todo";
 import Notepad from "./pages/Notepad";
+import PhotoGallery from "./pages/PhotoGallery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="analytics" element={<Analytics />} />
               <Route path="todo" element={<Todo />} />
               <Route path="notepad" element={<Notepad />} />
+              <Route path="gallery" element={<PhotoGallery />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -2,7 +2,7 @@
 import { Navigate, Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, ListChecks, CheckSquare, FileText } from "lucide-react";
+import { CalendarClock, ListChecks, CheckSquare, FileText, Image } from "lucide-react";
 import { useTodo } from "@/contexts/TodoContext";
 
 const Index = () => {
@@ -86,6 +86,38 @@ const Index = () => {
           <CardFooter>
             <Button asChild className="w-full">
               <Link to="/notepad">Open Notepad</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5 text-primary" />
+              Photo Gallery
+            </CardTitle>
+            <CardDescription>Manage your photo collection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Upload, organize, and view your photos in a Google Photos-like interface.
+                Sort photos by date and view them in a clean gallery layout.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Drag and drop uploading</li>
+                <li>Date-based organization</li>
+                <li>Photo previews</li>
+                <li>Responsive grid layout</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/gallery">Open Photo Gallery</Link>
             </Button>
           </CardFooter>
         </Card>
