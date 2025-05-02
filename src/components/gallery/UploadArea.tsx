@@ -2,7 +2,7 @@
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Upload, Image } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
