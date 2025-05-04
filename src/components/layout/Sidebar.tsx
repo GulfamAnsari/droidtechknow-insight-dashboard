@@ -137,7 +137,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   return (
     <>
       {/* Icon-only sidebar for desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4`}>
+      <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
         <div className="flex-1 w-full">
           <ul className="space-y-6 mt-8">
             {navItems.map((item, index) => (

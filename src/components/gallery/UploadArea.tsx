@@ -1,9 +1,8 @@
-
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Upload, Image, Trash } from "lucide-react";
+import { Upload, Image as ImageIcon, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 
@@ -42,7 +41,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const img = new Image();
+          const img = document.createElement('img');
           img.onload = () => {
             // Add dimensions
             metadata.width = img.width;
@@ -181,7 +180,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Image size={24} className="text-muted-foreground" />
+                        <ImageIcon size={24} className="text-muted-foreground" />
                       )}
                     </div>
                     <div className="truncate max-w-[200px]">

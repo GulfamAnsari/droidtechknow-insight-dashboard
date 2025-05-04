@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -544,7 +543,7 @@ const PhotoGallery = () => {
             </div>
             
             {/* Photo info panel */}
-            <Sheet open={showPhotoInfo} onOpenChange={setShowPhotoInfo} side="right">
+            <Sheet open={showPhotoInfo} onOpenChange={setShowPhotoInfo}>
               <SheetContent className="w-[350px] sm:w-[540px]">
                 <SheetHeader>
                   <SheetTitle>Image Information</SheetTitle>
