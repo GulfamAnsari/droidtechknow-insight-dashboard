@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+
+import React, { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Upload, Image as ImageIcon, Trash } from "lucide-react";
+import { Upload as UploadIcon, Image as ImageIcon, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 
@@ -28,16 +29,16 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   });
   
   const getImageMetadata = async (file: File) => {
-    return new Promise<Record<string, any>>((resolve) => {
+    return new Promise<Record<string, number | string>>((resolve) => {
       // Extract basic metadata from the File object
-      const metadata: Record<string, any> = {
-        name: file.name,
+      const metadata: Record<string, number | string> = {
+        title: file.name,
         size: file.size,
         type: file.type,
         lastModified: new Date(file.lastModified).toISOString()
       };
       
-      // For image files, extract EXIF data if available
+      // For image files, extract dimensions if available
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -47,7 +48,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
             metadata.width = img.width;
             metadata.height = img.height;
             
-            // If we wanted to extract more EXIF data, we would need a library like exif-js
             resolve(metadata);
           };
           
@@ -91,9 +91,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
         const formData = new FormData();
         formData.append('photo0', file); // Using photo0 as the key
         
-        // Append metadata fields to the form data
+        // Append metadata fields to the form data directly (not nested)
         Object.entries(metadata).forEach(([key, value]) => {
-          formData.append(`metadata[${key}]`, String(value));
+          formData.append(key, String(value));
         });
         
         const response = await fetch('https://droidtechknow.com/admin/upload.php', {
@@ -119,9 +119,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     setFiles([]);
     
     if (errorCount > 0) {
-      toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
+      toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
     } else {
-      toast.success(`Successfully uploaded ${successCount} photos`);
+      toast.success(`Successfully uploaded ${successCount} files`);
     }
     
     onUploadSuccess();
@@ -133,7 +133,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-xl font-semibold">Upload Images</h2>
+      <h2 className="text-xl font-semibold">Upload Files</h2>
       
       <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
@@ -141,14 +141,14 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
           className="h-40 flex flex-col items-center justify-center cursor-pointer"
         >
           <input {...getInputProps()} />
-          <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
+          <UploadIcon size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
           <p className="mt-4 text-center">
             {isDragActive 
-              ? "Drop your images here..." 
-              : "Drag and drop images here or click to select"}
+              ? "Drop your files here..." 
+              : "Drag and drop files here or click to select"}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Supports: JPG, PNG, GIF, WebP
+            Supports: Images, Documents, Videos
           </p>
         </div>
       </Card>
@@ -208,7 +208,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                 disabled={uploading || files.length === 0} 
                 className="w-full"
               >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Image' : 'Images'}`}
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
               </Button>
             </div>
             
