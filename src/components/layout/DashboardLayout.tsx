@@ -31,10 +31,10 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col">
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <main className="flex-1 flex flex-col w-full h-screen overflow-hidden pl-16"> {/* Fixed pl-16 to accommodate the icon sidebar */}
+      <main className="flex-1 flex flex-col w-full h-screen overflow-hidden pl-16"> {/* Added pl-16 to accommodate the fixed sidebar */}
         <div className="absolute top-4 right-4 z-30">
           <Button 
             variant="outline" 

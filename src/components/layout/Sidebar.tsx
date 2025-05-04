@@ -1,16 +1,12 @@
-import React, { useState } from "react";
+
 import { NavLink } from "react-router-dom";
-import { 
-  BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, 
-  Image, AlignLeft, Upload, Home, Clock, FolderRoot, Video, 
-  FileAudio, FilePlus, Star, Trash
-} from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Image, AlignLeft, File } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface SidebarProps {
   open: boolean;
@@ -22,61 +18,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   
   const navItems = [
-    {
-      name: "Overview",
-      href: "/",
-      icon: Home,
-    },
-    {
-      name: "Recents",
-      href: "/recents",
-      icon: Clock,
-    },
-    {
-      name: "My Drives",
-      href: "/my-drives", 
-      icon: FolderRoot,
-    },
-    {
-      name: "Videos",
-      href: "/videos",
-      icon: Video,
-    },
-    {
-      name: "Images",
-      href: "/gallery", // Keep the existing route for images
-      icon: Image,
-    },
-    {
-      name: "Audios",
-      href: "/audios",
-      icon: FileAudio,
-    },
-    {
-      name: "Documents",
-      href: "/documents",
-      icon: FileText,
-      badge: "New"
-    },
-    {
-      name: "Shared Files",
-      href: "/shared-files",
-      icon: FilePlus,
-    },
-    {
-      name: "Starred",
-      href: "/starred",
-      icon: Star,
-    },
-    {
-      name: "Trash",
-      href: "/trash",
-      icon: Trash,
-    }
-  ];
-
-  // Keep the original items for desktop and mobile compatibility
-  const appNavItems = [
     {
       name: "Dashboard",
       href: "/",
@@ -106,6 +47,17 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       name: "Notepad",
       href: "/notepad",
       icon: BookOpen,
+    },
+    {
+      name: "Photo Gallery",
+      href: "/gallery",
+      icon: Image,
+    },
+    {
+      name: "Documents",
+      href: "/documents",
+      icon: File,
+      badge: "New"
     }
   ];
 
@@ -115,7 +67,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <div className="flex items-center">
           <span className="text-xl font-bold text-sidebar-foreground">
-            My Files
+            DTK Dashboard
           </span>
         </div>
         <button
@@ -185,16 +137,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   return (
     <>
       {/* Icon-only sidebar for desktop */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-blue-600 transition-all duration-300 flex flex-col items-center py-4">
-        <div className="mb-8 w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden">
-          <Avatar>
-            <AvatarImage src="/lovable-uploads/1bcc1d13-5922-4206-b940-07fe90110d87.png" />
-            <AvatarFallback className="bg-blue-700 text-white">MF</AvatarFallback>
-          </Avatar>
-        </div>
-        
+      <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
         <div className="flex-1 w-full">
-          <ul className="space-y-6">
+          <ul className="space-y-6 mt-8">
             {navItems.map((item, index) => (
               <li 
                 key={item.name} 
@@ -206,10 +151,10 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                   to={item.href}
                   className={({ isActive }) =>
                     cn(
-                      "flex justify-center items-center w-10 h-10 mx-auto rounded-full transition-all",
+                      "flex justify-center items-center w-12 h-12 mx-auto rounded-full transition-all",
                       isActive
-                        ? "bg-white text-blue-600"
-                        : "text-white hover:bg-blue-500"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )
                   }
                 >
@@ -224,9 +169,9 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                 {/* Expandable tooltip/label on hover */}
                 {hoveredItem === index && (
                   <div 
-                    className="absolute left-16 top-0 z-50 bg-white shadow-lg rounded-md px-4 py-2 min-w-40 whitespace-nowrap animate-fade-in"
+                    className="absolute left-16 top-0 z-50 bg-popover shadow-lg rounded-md px-4 py-2 min-w-40 whitespace-nowrap animate-fade-in"
                   >
-                    <div className="font-medium text-gray-800">{item.name}</div>
+                    <div className="font-medium">{item.name}</div>
                     {item.badge && (
                       <Badge variant="blue" className="mt-1">
                         {item.badge}
@@ -248,7 +193,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             onClick={() => setOpen(false)}
           />
           <aside
-            className="fixed inset-y-0 left-16 z-50 w-64 bg-white transform transition-transform duration-300 ease-in-out"
+            className="fixed inset-y-0 left-16 z-50 w-64 bg-sidebar transform transition-transform duration-300 ease-in-out"
           >
             <SidebarContent />
           </aside>
