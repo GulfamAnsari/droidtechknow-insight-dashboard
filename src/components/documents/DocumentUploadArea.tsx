@@ -3,15 +3,24 @@ import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Upload, Image, Trash } from "lucide-react";
+import { Upload, File, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 
-interface UploadAreaProps {
-  onUploadSuccess: () => void;
+interface Document {
+  id: string;
+  filename: string;
+  type: string;
+  size: number;
+  lastModified: string;
+  url: string;
 }
 
-const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
+interface DocumentUploadAreaProps {
+  onUploadSuccess: (documents: Document[]) => void;
+}
+
+const DocumentUploadArea: React.FC<DocumentUploadAreaProps> = ({ onUploadSuccess }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
@@ -23,49 +32,21 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/plain': ['.txt'],
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
     },
     multiple: true
   });
   
-  const getImageMetadata = async (file: File) => {
-    return new Promise<Record<string, any>>((resolve) => {
-      // Extract basic metadata from the File object
-      const metadata: Record<string, any> = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: new Date(file.lastModified).toISOString()
-      };
-      
-      // For image files, extract EXIF data if available
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            // Add dimensions
-            metadata.width = img.width;
-            metadata.height = img.height;
-            
-            // If we wanted to extract more EXIF data, we would need a library like exif-js
-            resolve(metadata);
-          };
-          
-          img.onerror = () => {
-            // If we can't load the image, just return basic metadata
-            resolve(metadata);
-          };
-          
-          img.src = e.target?.result as string;
-        };
-        
-        reader.onerror = () => resolve(metadata);
-        reader.readAsDataURL(file);
-      } else {
-        resolve(metadata);
-      }
-    });
+  const getFileType = (file: File): string => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    return extension;
   };
   
   const uploadFiles = async () => {
@@ -80,32 +61,26 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     const totalFiles = files.length;
     let successCount = 0;
     let errorCount = 0;
+    const uploadedDocs: Document[] = [];
     
     // Loop through files and make individual API calls
     for (let i = 0; i < totalFiles; i++) {
       try {
         const file = files[i];
+        // In a real implementation, you would upload to a server
+        // For now, we'll simulate a successful upload
         
-        // Get metadata from the file
-        const metadata = await getImageMetadata(file);
+        // Create a document object
+        const doc: Document = {
+          id: `doc-${Date.now()}-${i}`,
+          filename: file.name,
+          type: getFileType(file),
+          size: file.size,
+          lastModified: file.lastModified ? new Date(file.lastModified).toISOString() : new Date().toISOString(),
+          url: URL.createObjectURL(file) // In a real app, this would be the URL from the server
+        };
         
-        const formData = new FormData();
-        formData.append('photo0', file); // Using photo0 as the key
-        
-        // Append metadata fields to the form data
-        Object.entries(metadata).forEach(([key, value]) => {
-          formData.append(`metadata[${key}]`, String(value));
-        });
-        
-        const response = await fetch('https://droidtechknow.com/admin/upload.php', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-        
+        uploadedDocs.push(doc);
         successCount++;
       } catch (error) {
         console.error("Upload error:", error);
@@ -120,21 +95,41 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     setFiles([]);
     
     if (errorCount > 0) {
-      toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
+      toast.warning(`Uploaded ${successCount} documents, but ${errorCount} failed`);
     } else {
-      toast.success(`Successfully uploaded ${successCount} photos`);
+      toast.success(`Successfully uploaded ${successCount} documents`);
     }
     
-    onUploadSuccess();
+    onUploadSuccess(uploadedDocs);
   };
   
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
   };
   
+  const getFileIcon = (file: File) => {
+    const type = getFileType(file);
+    
+    switch(type) {
+      case 'pdf':
+        return <File className="h-8 w-8 text-red-500" />;
+      case 'doc':
+      case 'docx':
+        return <File className="h-8 w-8 text-blue-500" />;
+      case 'xls':
+      case 'xlsx':
+        return <File className="h-8 w-8 text-green-500" />;
+      case 'ppt':
+      case 'pptx':
+        return <File className="h-8 w-8 text-orange-500" />;
+      default:
+        return <File className="h-8 w-8 text-gray-500" />;
+    }
+  };
+  
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-xl font-semibold">Upload Images</h2>
+      <h2 className="text-xl font-semibold">Upload Documents</h2>
       
       <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
@@ -145,11 +140,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
           <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
           <p className="mt-4 text-center">
             {isDragActive 
-              ? "Drop your images here..." 
-              : "Drag and drop images here or click to select"}
+              ? "Drop your documents here..." 
+              : "Drag and drop documents here or click to select"}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Supports: JPG, PNG, GIF, WebP
+            Supports: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT
           </p>
         </div>
       </Card>
@@ -173,16 +168,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
               {files.map((file, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
-                      {file.type.startsWith('image/') ? (
-                        <img 
-                          src={URL.createObjectURL(file)} 
-                          alt={file.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Image size={24} className="text-muted-foreground" />
-                      )}
+                    <div className="flex items-center justify-center">
+                      {getFileIcon(file)}
                     </div>
                     <div className="truncate max-w-[200px]">
                       <p className="text-sm font-medium truncate">{file.name}</p>
@@ -209,7 +196,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                 disabled={uploading || files.length === 0} 
                 className="w-full"
               >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Image' : 'Images'}`}
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Document' : 'Documents'}`}
               </Button>
             </div>
             
@@ -226,4 +213,4 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   );
 };
 
-export default UploadArea;
+export default DocumentUploadArea;

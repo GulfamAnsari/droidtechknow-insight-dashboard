@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import PhotoGrid from "@/components/gallery/PhotoGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Photo {
@@ -20,6 +21,7 @@ interface Photo {
   upload_date: string;
   faces?: string[];
   album?: string;
+  metadata?: Record<string, any>;
 }
 
 interface Category {
@@ -54,6 +56,8 @@ const PhotoGallery = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<Photo | null>(null);
+  const [showPhotoInfo, setShowPhotoInfo] = useState(false);
   
   // Load initial data from localStorage
   useEffect(() => {
@@ -92,7 +96,8 @@ const PhotoGallery = () => {
           filename: photo.filename || photo.name || 'Unnamed',
           upload_date: photo.upload_date || new Date().toISOString().split('T')[0],
           faces: photo.faces || [],
-          album: photo.album || null
+          album: photo.album || null,
+          metadata: photo.metadata || {}
         }));
       } catch (error) {
         console.error("Error fetching photos:", error);
@@ -194,6 +199,27 @@ const PhotoGallery = () => {
   // Group by date for display
   const photosByDate = groupPhotosByDate(displayPhotos);
   const dates = Object.keys(photosByDate).sort().reverse(); // Most recent first
+  
+  // Fullscreen modal navigation
+  const handlePhotoClick = (photo: Photo) => {
+    setActivePhoto(photo);
+  };
+  
+  const navigatePhotos = (direction: 'next' | 'prev') => {
+    if (!activePhoto) return;
+    
+    const currentIndex = displayPhotos.findIndex(p => p.id === activePhoto.id);
+    if (currentIndex === -1) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = currentIndex === displayPhotos.length - 1 ? 0 : currentIndex + 1;
+    } else {
+      newIndex = currentIndex === 0 ? displayPhotos.length - 1 : currentIndex - 1;
+    }
+    
+    setActivePhoto(displayPhotos[newIndex]);
+  };
   
   if (isLoading) {
     return (
@@ -383,7 +409,7 @@ const PhotoGallery = () => {
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {photosByDate[date].map((photo) => (
-                      <Card key={photo.id} className="overflow-hidden group">
+                      <Card key={photo.id} className="overflow-hidden group cursor-pointer" onClick={() => handlePhotoClick(photo)}>
                         <div className="aspect-square bg-muted relative overflow-hidden">
                           <img 
                             src={photo.url} 
@@ -420,7 +446,11 @@ const PhotoGallery = () => {
                 </thead>
                 <tbody>
                   {displayPhotos.map((photo) => (
-                    <tr key={photo.id} className="hover:bg-muted/50">
+                    <tr 
+                      key={photo.id} 
+                      className="hover:bg-muted/50 cursor-pointer" 
+                      onClick={() => handlePhotoClick(photo)}
+                    >
                       <td className="p-2">
                         <div className="flex items-center space-x-3">
                           <div className="h-10 w-10 bg-muted rounded overflow-hidden">
@@ -458,6 +488,162 @@ const PhotoGallery = () => {
           )}
         </div>
       </div>
+
+      {/* Fullscreen photo modal */}
+      <Dialog open={!!activePhoto} onOpenChange={(open) => !open && setActivePhoto(null)}>
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 overflow-hidden">
+          <div className="relative h-full w-full flex flex-col">
+            {/* Photo view area */}
+            <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+              {activePhoto && (
+                <img
+                  src={activePhoto.url}
+                  alt={activePhoto.filename}
+                  className="max-h-full max-w-full object-contain"
+                />
+              )}
+              
+              {/* Navigation buttons */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                onClick={() => navigatePhotos('prev')}
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                onClick={() => navigatePhotos('next')}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+              
+              {/* Close button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full h-8 w-8"
+                onClick={() => setActivePhoto(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              
+              {/* Info button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-4 right-16 bg-black/50 hover:bg-black/70 text-white rounded-full h-8 w-8"
+                onClick={() => setShowPhotoInfo(!showPhotoInfo)}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Photo info panel */}
+            <Sheet open={showPhotoInfo} onOpenChange={setShowPhotoInfo} side="right">
+              <SheetContent className="w-[350px] sm:w-[540px]">
+                <SheetHeader>
+                  <SheetTitle>Image Information</SheetTitle>
+                </SheetHeader>
+                
+                {activePhoto && (
+                  <div className="py-4">
+                    <Tabs defaultValue="details">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="details">Details</TabsTrigger>
+                        <TabsTrigger value="metadata">Metadata</TabsTrigger>
+                        <TabsTrigger value="tags">Tags</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="details" className="space-y-4 mt-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="font-medium">Filename</div>
+                          <div>{activePhoto.filename}</div>
+                          
+                          <div className="font-medium">Date</div>
+                          <div>{new Date(activePhoto.upload_date).toLocaleString()}</div>
+                          
+                          <div className="font-medium">Album</div>
+                          <div>{activePhoto.album || 'Not assigned'}</div>
+                          
+                          <div className="font-medium">People</div>
+                          <div>
+                            {activePhoto.faces && activePhoto.faces.length > 0 
+                              ? activePhoto.faces.join(', ') 
+                              : 'No people tagged'}
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="metadata" className="space-y-4 mt-4">
+                        {activePhoto.metadata && Object.keys(activePhoto.metadata).length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(activePhoto.metadata).map(([key, value]) => (
+                              <React.Fragment key={key}>
+                                <div className="font-medium">{key}</div>
+                                <div>{String(value)}</div>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No metadata available</p>
+                        )}
+                      </TabsContent>
+                      
+                      <TabsContent value="tags" className="mt-4">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Album</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {['Family', 'Vacation', 'Work', 'Nature', 'Events'].map(album => (
+                                <Badge 
+                                  key={album}
+                                  variant={activePhoto.album === album ? 'blue' : 'gray'} 
+                                  className="cursor-pointer"
+                                  onClick={() => handleAddToAlbum(activePhoto, album)}
+                                >
+                                  {album}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">People</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {['John', 'Mary', 'David', 'Sarah', 'Michael'].map(face => {
+                                const isTagged = activePhoto.faces?.includes(face);
+                                return (
+                                  <Badge 
+                                    key={face}
+                                    variant={isTagged ? 'blue' : 'gray'} 
+                                    className="cursor-pointer"
+                                    onClick={() => !isTagged && handleTagFace(activePhoto, face)}
+                                  >
+                                    {face}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+                
+                <SheetFooter>
+                  <Button variant="ghost" onClick={() => setShowPhotoInfo(false)}>Close</Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
