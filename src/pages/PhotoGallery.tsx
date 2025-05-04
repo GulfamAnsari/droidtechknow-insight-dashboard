@@ -162,14 +162,14 @@ const PhotoGallery = () => {
     ...Array.from(new Set(filteredPhotos.filter(p => p.album).map(p => p.album as string)))
       .map(album => ({ 
         id: `album-${album}`, 
-        name: album, 
+        name: album as string, // Cast album to string explicitly
         count: filteredPhotos.filter(p => p.album === album).length,
         type: 'album' as const
       })),
     ...Array.from(new Set(filteredPhotos.flatMap(p => p.faces || [])))
       .map(face => ({ 
         id: `face-${face}`, 
-        name: face, 
+        name: face as string, // Cast face to string explicitly
         count: filteredPhotos.filter(p => p.faces?.includes(face)).length,
         type: 'tag' as const
       }))
