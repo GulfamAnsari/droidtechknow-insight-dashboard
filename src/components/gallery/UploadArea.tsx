@@ -89,7 +89,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
         const metadata = await getImageMetadata(file);
         
         const formData = new FormData();
-        formData.append('photo0', file); // Using photo0 as the key
+        formData.append('file', file); // Using photo0 as the key
         
         // Append metadata fields to the form data
         Object.entries(metadata).forEach(([key, value]) => {
