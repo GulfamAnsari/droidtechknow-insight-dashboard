@@ -1,15 +1,17 @@
 
 import { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import PhotoGrid from "@/components/gallery/PhotoGrid";
-import { Loader2, User, LibrarySquare, CalendarRange } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Photo {
   id: string;
@@ -20,45 +22,17 @@ interface Photo {
   album?: string;
 }
 
-interface PhotosByDate {
-  [date: string]: Photo[];
+interface Category {
+  id: string;
+  name: string;
+  count: number;
+  type: 'folder' | 'album' | 'tag';
+  icon?: React.ReactNode;
 }
-
-interface PhotosByAlbum {
-  [album: string]: Photo[];
-}
-
-interface PhotosByFace {
-  [face: string]: Photo[];
-}
-
-const fetchPhotos = async (): Promise<Photo[]> => {
-  try {
-    const response = await fetch("https://droidtechknow.com/admin/get_images.php");
-    if (!response.ok) {
-      throw new Error("Failed to fetch images");
-    }
-    const data = await response.json();
-    
-    // Transform the data to our Photo interface
-    return data.map((photo: any) => ({
-      id: photo.id || String(Math.random()),
-      url: photo.url || photo.path, // Handle different response formats
-      filename: photo.filename || photo.name || 'Unnamed',
-      upload_date: photo.upload_date || new Date().toISOString().split('T')[0],
-      faces: photo.faces || [],
-      album: photo.album || null
-    }));
-  } catch (error) {
-    console.error("Error fetching photos:", error);
-    throw error;
-  }
-};
 
 // Group photos by date
-const groupPhotosByDate = (photos: Photo[]): PhotosByDate => {
-  return photos.reduce((groups: PhotosByDate, photo) => {
-    // Format date as YYYY-MM-DD
+const groupPhotosByDate = (photos: Photo[]) => {
+  return photos.reduce((groups: { [date: string]: Photo[] }, photo) => {
     const date = new Date(photo.upload_date).toISOString().split('T')[0];
     
     if (!groups[date]) {
@@ -70,44 +44,16 @@ const groupPhotosByDate = (photos: Photo[]): PhotosByDate => {
   }, {});
 };
 
-// Group photos by album
-const groupPhotosByAlbum = (photos: Photo[]): PhotosByAlbum => {
-  return photos.reduce((groups: PhotosByAlbum, photo) => {
-    if (photo.album) {
-      if (!groups[photo.album]) {
-        groups[photo.album] = [];
-      }
-      groups[photo.album].push(photo);
-    }
-    return groups;
-  }, {});
-};
-
-// Group photos by face
-const groupPhotosByFace = (photos: Photo[]): PhotosByFace => {
-  const faceGroups: PhotosByFace = {};
-  
-  photos.forEach(photo => {
-    if (photo.faces && photo.faces.length > 0) {
-      photo.faces.forEach(face => {
-        if (!faceGroups[face]) {
-          faceGroups[face] = [];
-        }
-        faceGroups[face].push(photo);
-      });
-    }
-  });
-  
-  return faceGroups;
-};
-
 // Get localStorage key for photos
 const LOCAL_STORAGE_KEY = 'photo-gallery-data';
 
 const PhotoGallery = () => {
   const { refreshData, isRefreshing } = useDashboard();
-  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [localPhotos, setLocalPhotos] = useState<Photo[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   
   // Load initial data from localStorage
   useEffect(() => {
@@ -131,15 +77,43 @@ const PhotoGallery = () => {
   
   const { data: apiPhotos, isLoading, error, refetch } = useQuery({
     queryKey: ["photos"],
-    queryFn: fetchPhotos,
+    queryFn: async () => {
+      try {
+        const response = await fetch("https://droidtechknow.com/admin/get_images.php");
+        if (!response.ok) {
+          throw new Error("Failed to fetch images");
+        }
+        const data = await response.json();
+        
+        // Transform the data to our Photo interface
+        return data.map((photo: any) => ({
+          id: photo.id || String(Math.random()),
+          url: photo.url || photo.path, // Handle different response formats
+          filename: photo.filename || photo.name || 'Unnamed',
+          upload_date: photo.upload_date || new Date().toISOString().split('T')[0],
+          faces: photo.faces || [],
+          album: photo.album || null
+        }));
+      } catch (error) {
+        console.error("Error fetching photos:", error);
+        throw error;
+      }
+    }
   });
 
   // Combine API photos with local modifications
-  const photos = apiPhotos ? apiPhotos.map(apiPhoto => {
+  const allPhotos = apiPhotos ? apiPhotos.map(apiPhoto => {
     const localPhoto = localPhotos.find(local => local.id === apiPhoto.id);
     return localPhoto ? { ...apiPhoto, ...localPhoto } : apiPhoto;
   }) : [];
 
+  // Filter photos by search query
+  const filteredPhotos = allPhotos.filter(photo => 
+    photo.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (photo.album && photo.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (photo.faces && photo.faces.some(face => face.toLowerCase().includes(searchQuery.toLowerCase())))
+  );
+  
   const handleRefresh = () => {
     refreshData();
     refetch();
@@ -149,6 +123,7 @@ const PhotoGallery = () => {
   const handleUploadSuccess = () => {
     refetch();
     toast.success("Photos uploaded successfully!");
+    setIsUploadOpen(false);
   };
 
   const handleAddToAlbum = (photo: Photo, album: string) => {
@@ -174,6 +149,51 @@ const PhotoGallery = () => {
       }
     });
   };
+
+  // Create categories based on the data
+  const categories: Category[] = [
+    { id: 'all', name: 'All Images', count: filteredPhotos.length, type: 'folder', icon: <LayoutGrid className="h-4 w-4 mr-2" /> },
+    { id: 'recent', name: 'Recent', count: filteredPhotos.filter(p => {
+      const uploadDate = new Date(p.upload_date);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      return uploadDate > oneWeekAgo;
+    }).length, type: 'folder' },
+    ...Array.from(new Set(filteredPhotos.filter(p => p.album).map(p => p.album as string)))
+      .map(album => ({ 
+        id: `album-${album}`, 
+        name: album, 
+        count: filteredPhotos.filter(p => p.album === album).length,
+        type: 'album' as const
+      })),
+    ...Array.from(new Set(filteredPhotos.flatMap(p => p.faces || [])))
+      .map(face => ({ 
+        id: `face-${face}`, 
+        name: face, 
+        count: filteredPhotos.filter(p => p.faces?.includes(face)).length,
+        type: 'tag' as const
+      }))
+  ];
+  
+  // Get photos for the selected category
+  let displayPhotos = filteredPhotos;
+  if (selectedCategory) {
+    if (selectedCategory === 'recent') {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      displayPhotos = filteredPhotos.filter(p => new Date(p.upload_date) > oneWeekAgo);
+    } else if (selectedCategory.startsWith('album-')) {
+      const albumName = selectedCategory.replace('album-', '');
+      displayPhotos = filteredPhotos.filter(p => p.album === albumName);
+    } else if (selectedCategory.startsWith('face-')) {
+      const faceName = selectedCategory.replace('face-', '');
+      displayPhotos = filteredPhotos.filter(p => p.faces?.includes(faceName));
+    }
+  }
+
+  // Group by date for display
+  const photosByDate = groupPhotosByDate(displayPhotos);
+  const dates = Object.keys(photosByDate).sort().reverse(); // Most recent first
   
   if (isLoading) {
     return (
@@ -199,160 +219,245 @@ const PhotoGallery = () => {
     );
   }
   
-  const photosByDate = photos ? groupPhotosByDate(photos) : {};
-  const photosByAlbum = photos ? groupPhotosByAlbum(photos) : {};
-  const photosByFace = photos ? groupPhotosByFace(photos) : {};
-  
-  const dates = Object.keys(photosByDate).sort().reverse(); // Most recent first
-  const albums = Object.keys(photosByAlbum).sort();
-  const faces = Object.keys(photosByFace).sort();
-  
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-3xl font-bold">Photo Gallery</h1>
-      </div>
-      
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-            <div className="border-b px-6 py-3 overflow-x-auto">
-              <TabsList className="flex gap-2">
-                <TabsTrigger value="all" className="flex items-center gap-2">
-                  <CalendarRange className="h-4 w-4" />
-                  All Photos
-                </TabsTrigger>
-                <TabsTrigger value="upload" className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M7 10v12"/><path d="M15 10v12"/><path d="M3 6h18"/><path d="M3 22h18"/><path d="M14 2H8a2 2 0 0 0-2 2v2h12V4a2 2 0 0 0-2-2Z"/></svg>
-                  Upload Photos
-                </TabsTrigger>
-                <TabsTrigger value="albums" className="flex items-center gap-2">
-                  <LibrarySquare className="h-4 w-4" />
-                  Albums {albums.length > 0 && <Badge variant="secondary" className="ml-1">{albums.length}</Badge>}
-                </TabsTrigger>
-                <TabsTrigger value="faces" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  People {faces.length > 0 && <Badge variant="secondary" className="ml-1">{faces.length}</Badge>}
-                </TabsTrigger>
-              </TabsList>
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-64 bg-muted/30 border-r flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b">
+          <h2 className="font-semibold text-lg">Assets</h2>
+          <p className="text-xs text-muted-foreground">Upload and manage images</p>
+        </div>
+        
+        <div className="flex-1 overflow-auto">
+          <div className="pt-4 px-2">
+            <div className="mb-4">
+              <div className="flex items-center px-3 mb-2">
+                <h3 className="font-medium text-sm">Categories</h3>
+              </div>
+              <ul className="space-y-1">
+                {categories.filter(c => c.type === 'folder').map((category) => (
+                  <li key={category.id}>
+                    <button
+                      onClick={() => setSelectedCategory(category.id === 'all' ? null : category.id)}
+                      className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
+                        (category.id === 'all' && !selectedCategory) || selectedCategory === category.id 
+                          ? 'bg-accent text-accent-foreground' 
+                          : 'hover:bg-accent/50'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        {category.icon || <LayoutGrid className="h-4 w-4 mr-2" />}
+                        {category.name}
+                      </div>
+                      <Badge variant="gray">{category.count}</Badge>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
             
-            <TabsContent value="all" className="p-4 focus-visible:outline-none focus-visible:ring-0">
-              {dates.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">No photos yet</p>
-                  <Button onClick={() => setActiveTab("upload")}>Upload photos</Button>
-                </div>
-              ) : (
-                dates.map((date) => (
-                  <div key={date} className="mb-8">
-                    <h3 className="text-lg font-semibold sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10">
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'long',
-                        month: 'long', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </h3>
-                    <PhotoGrid 
-                      photos={photosByDate[date]} 
-                      onAddToAlbum={handleAddToAlbum}
-                      onTagFace={handleTagFace}
-                    />
-                  </div>
-                ))
-              )}
-            </TabsContent>
+            <div className="mb-4">
+              <div className="flex items-center justify-between px-3 mb-2">
+                <h3 className="font-medium text-sm">Albums</h3>
+                <button className="text-xs text-primary hover:underline">
+                  <FolderPlus className="h-3 w-3" />
+                </button>
+              </div>
+              <ul className="space-y-1">
+                {categories.filter(c => c.type === 'album').length ? (
+                  categories.filter(c => c.type === 'album').map((category) => (
+                    <li key={category.id}>
+                      <button
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
+                          selectedCategory === category.id 
+                            ? 'bg-accent text-accent-foreground' 
+                            : 'hover:bg-accent/50'
+                        }`}
+                      >
+                        <span>{category.name}</span>
+                        <Badge variant="gray">{category.count}</Badge>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-3 py-2 text-xs text-muted-foreground">No albums yet</li>
+                )}
+              </ul>
+            </div>
             
-            <TabsContent value="upload" className="focus-visible:outline-none focus-visible:ring-0">
+            <div className="mb-4">
+              <div className="flex items-center px-3 mb-2">
+                <h3 className="font-medium text-sm">People</h3>
+              </div>
+              <ul className="space-y-1">
+                {categories.filter(c => c.type === 'tag').length ? (
+                  categories.filter(c => c.type === 'tag').map((category) => (
+                    <li key={category.id}>
+                      <button
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
+                          selectedCategory === category.id 
+                            ? 'bg-accent text-accent-foreground' 
+                            : 'hover:bg-accent/50'
+                        }`}
+                      >
+                        <span>{category.name}</span>
+                        <Badge variant="gray">{category.count}</Badge>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-3 py-2 text-xs text-muted-foreground">No people tagged yet</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Main content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="border-b p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2 flex-1">
+            <div className="relative w-80">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search images..." 
+                className="pl-8" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-1 border rounded-md p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          
+          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogTrigger asChild>
+              <Button className="ml-auto">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload File
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
               <UploadArea onUploadSuccess={handleUploadSuccess} />
-            </TabsContent>
-            
-            <TabsContent value="albums" className="p-4 focus-visible:outline-none focus-visible:ring-0">
-              {albums.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">No albums yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Add photos to albums by selecting a photo and clicking "Add to Album"
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {albums.map((album) => (
-                    <Card key={album} className="overflow-hidden">
-                      <div className="aspect-[4/3] overflow-hidden bg-muted relative">
-                        {photosByAlbum[album][0] && (
+            </DialogContent>
+          </Dialog>
+        </div>
+        
+        {/* Main content */}
+        <div className="flex-1 overflow-auto p-6">
+          {displayPhotos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <p className="text-muted-foreground mb-4">No images found</p>
+              <Button onClick={() => setIsUploadOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload your first image
+              </Button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            // Grid view - organized by date
+            <div className="space-y-8">
+              {dates.map((date) => (
+                <div key={date} className="space-y-3">
+                  <h3 className="font-medium">
+                    {new Date(date).toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {photosByDate[date].map((photo) => (
+                      <Card key={photo.id} className="overflow-hidden group">
+                        <div className="aspect-square bg-muted relative overflow-hidden">
                           <img 
-                            src={photosByAlbum[album][0].url} 
-                            alt={album}
-                            className="h-full w-full object-cover"
+                            src={photo.url} 
+                            alt={photo.filename}
+                            className="h-full w-full object-cover transition-all group-hover:scale-105"
+                            loading="lazy"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src = 'https://placehold.co/600x400?text=Error';
+                            }}
                           />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
-                          <div className="p-4 text-white">
-                            <h3 className="font-medium text-lg">{album}</h3>
-                            <p className="text-sm opacity-80">{photosByAlbum[album].length} photos</p>
-                          </div>
                         </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <PhotoGrid 
-                          photos={photosByAlbum[album]} 
-                          onAddToAlbum={handleAddToAlbum}
-                          onTagFace={handleTagFace}
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="faces" className="p-4 focus-visible:outline-none focus-visible:ring-0">
-              {faces.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">No tagged people yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Tag people in photos by selecting a photo and clicking "Tag Face"
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {faces.map((face) => (
-                    <Card key={face} className="overflow-hidden">
-                      <div className="aspect-square overflow-hidden bg-muted relative">
-                        {photosByFace[face][0] && (
-                          <img 
-                            src={photosByFace[face][0].url} 
-                            alt={face}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
-                          <div className="p-4 text-white">
-                            <div className="flex items-center gap-2">
-                              <User className="h-5 w-5" />
-                              <h3 className="font-medium text-lg">{face}</h3>
-                            </div>
-                            <p className="text-sm opacity-80">{photosByFace[face].length} photos</p>
-                          </div>
+                        <div className="p-2 truncate text-xs">
+                          {photo.filename}
                         </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <PhotoGrid 
-                          photos={photosByFace[face]} 
-                          onAddToAlbum={handleAddToAlbum}
-                          onTagFace={handleTagFace}
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          ) : (
+            // List view
+            <div className="space-y-2">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left font-medium text-sm p-2">Name</th>
+                    <th className="text-left font-medium text-sm p-2">Date</th>
+                    <th className="text-left font-medium text-sm p-2">Album</th>
+                    <th className="text-left font-medium text-sm p-2">Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayPhotos.map((photo) => (
+                    <tr key={photo.id} className="hover:bg-muted/50">
+                      <td className="p-2">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-10 w-10 bg-muted rounded overflow-hidden">
+                            <img 
+                              src={photo.url} 
+                              alt={photo.filename}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <span className="text-sm">{photo.filename}</span>
+                        </div>
+                      </td>
+                      <td className="p-2 text-sm">
+                        {new Date(photo.upload_date).toLocaleDateString()}
+                      </td>
+                      <td className="p-2 text-sm">
+                        {photo.album ? (
+                          <Badge variant="blue">{photo.album}</Badge>
+                        ) : "-"}
+                      </td>
+                      <td className="p-2">
+                        {photo.faces && photo.faces.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {photo.faces.map((face, i) => (
+                              <Badge key={i} variant="gray">{face}</Badge>
+                            ))}
+                          </div>
+                        ) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

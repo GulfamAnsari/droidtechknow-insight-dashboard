@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Upload, Image } from "lucide-react";
+import { Upload, Image, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 
@@ -46,7 +46,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
       try {
         const file = files[i];
         const formData = new FormData();
-        formData.append('photo0', file); // Changed from 'file' to 'photo0' as requested
+        formData.append('photo0', file); // Using photo0 as the key
         
         const response = await fetch('https://droidtechknow.com/admin/upload.php', {
           method: 'POST',
@@ -84,18 +84,20 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   };
   
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-6">
+      <h2 className="text-xl font-semibold">Upload Images</h2>
+      
       <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
           {...getRootProps()}
-          className="h-48 flex flex-col items-center justify-center cursor-pointer"
+          className="h-40 flex flex-col items-center justify-center cursor-pointer"
         >
           <input {...getInputProps()} />
           <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
           <p className="mt-4 text-center">
             {isDragActive 
-              ? "Drop your photos here..." 
-              : "Drag and drop photos here or click to select"}
+              ? "Drop your images here..." 
+              : "Drag and drop images here or click to select"}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Supports: JPG, PNG, GIF, WebP
@@ -146,7 +148,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                     onClick={() => removeFile(index)}
                     disabled={uploading}
                   >
-                    Remove
+                    <Trash className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               ))}
@@ -158,7 +160,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                 disabled={uploading || files.length === 0} 
                 className="w-full"
               >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Photo' : 'Photos'}`}
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Image' : 'Images'}`}
               </Button>
             </div>
             
