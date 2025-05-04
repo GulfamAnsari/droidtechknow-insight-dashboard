@@ -96,7 +96,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         const { width, height } = await getImageDimensions(file);
         
         const formData = new FormData();
-        formData.append('photo0', file);
+        formData.append('file', file);
         formData.append('title', file.name);
         formData.append('size', String(file.size));
         formData.append('type', file.type);
