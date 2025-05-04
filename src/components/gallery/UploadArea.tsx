@@ -68,64 +68,70 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   };
   
   const uploadFiles = async () => {
-    if (files.length === 0) {
-      toast.error("Please select at least one file to upload");
-      return;
-    }
-    
-    setUploading(true);
-    setProgress(0);
-    
-    const totalFiles = files.length;
-    let successCount = 0;
-    let errorCount = 0;
-    
-    // Loop through files and make individual API calls
-    for (let i = 0; i < totalFiles; i++) {
-      try {
-        const file = files[i];
-        
-        // Get metadata from the file
-        const metadata = await getImageMetadata(file);
-        
-        const formData = new FormData();
-        formData.append('file', file); // Using photo0 as the key
-        
-        // Append metadata fields to the form data
-        Object.entries(metadata).forEach(([key, value]) => {
-          formData.append(`metadata[${key}]`, String(value));
-        });
-        
-        const response = await fetch('https://droidtechknow.com/admin/upload.php', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-        
-        successCount++;
-      } catch (error) {
-        console.error("Upload error:", error);
-        errorCount++;
-      }
+  // Check if no files are selected
+  if (files.length === 0) {
+    toast.error("Please select at least one file to upload");
+    return;
+  }
+
+  setUploading(true);
+  setProgress(0); // Reset progress
+  
+  const totalFiles = files.length;
+  let successCount = 0;
+  let errorCount = 0;
+
+  // Loop through files and upload each one
+  for (let i = 0; i < totalFiles; i++) {
+    try {
+      const file = files[i];
       
-      // Update progress
-      setProgress(Math.round(((i + 1) / totalFiles) * 100));
+      // Assuming getImageMetadata is implemented correctly for image files, adjust as needed for non-image files
+      const metadata = await getImageMetadata(file);
+
+      const formData = new FormData();
+      formData.append('file', file); // Add the file to the form data with key 'file'
+      
+      // Add metadata to the form data
+      Object.entries(metadata).forEach(([key, value]) => {
+        formData.append(`metadata[${key}]`, String(value)); // For example: metadata[width], metadata[height], etc.
+      });
+
+      // Upload the file
+      const response = await fetch('https://droidtechknow.com/admin/upload.php', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+
+      successCount++;
+    } catch (error) {
+      console.error("Upload error:", error);
+      errorCount++;
     }
-    
-    setUploading(false);
-    setFiles([]);
-    
-    if (errorCount > 0) {
-      toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
-    } else {
-      toast.success(`Successfully uploaded ${successCount} photos`);
-    }
-    
-    onUploadSuccess();
-  };
+
+    // Update the progress after each file upload
+    setProgress(Math.round(((i + 1) / totalFiles) * 100));
+  }
+
+  // Reset the uploading state and clear the selected files
+  setUploading(false);
+  setFiles([]);
+
+  // Show success or failure message depending on results
+  if (errorCount > 0) {
+    toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
+  } else {
+    toast.success(`Successfully uploaded ${successCount} photos`);
+  }
+
+  // Trigger any callback on success
+  onUploadSuccess();
+};
+
   
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
