@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Info, User, Tag, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, Tag, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFileIcon, getFileType, getFileTypeLabel } from "./FileUtils";
 
 interface FileMetadata {
@@ -71,11 +71,12 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
   
   const renderFilePreview = (file: FileItem) => {
     const fileType = file.fileType || getFileType(file.title, file.metadata?.format || '');
+    const fileUrl = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
     
     if (fileType === 'photo') {
       return (
         <img 
-          src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+          src={fileUrl} 
           alt={file.title}
           className="max-h-full max-w-full object-contain"
         />
@@ -83,12 +84,27 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
     } else if (fileType === 'video') {
       return (
         <video 
-          src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`}
+          src={fileUrl}
           controls
           className="max-h-full max-w-full"
         >
           Your browser does not support the video tag.
         </video>
+      );
+    } else if (fileType === 'document' && file.metadata?.format?.includes('pdf')) {
+      return (
+        <div className="h-full w-full flex flex-col items-center">
+          <iframe 
+            src={`${fileUrl}#view=FitH`}
+            className="w-full h-full border-0"
+            title={file.title}
+          />
+          <Button className="mt-4" asChild>
+            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
+              Download PDF
+            </a>
+          </Button>
+        </div>
       );
     } else {
       return (
@@ -98,7 +114,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
           </div>
           <p className="text-lg text-center">{file.title}</p>
           <Button className="mt-4" asChild>
-            <a href={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} download={file.title} target="_blank" rel="noopener noreferrer">
+            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
               Download File
             </a>
           </Button>
@@ -204,7 +220,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
                 <p className="text-sm text-muted-foreground">
                   {getFileTypeLabel(selectedFile.fileType)} • 
                   {selectedFile.metadata?.size ? ` ${(selectedFile.metadata.size / 1024 / 1024).toFixed(2)} MB • ` : ' '}
-                  Uploaded on {new Date(selectedFile.createdAt).toLocaleDateString()}
+                  Uploaded on {new Date(parseInt(selectedFile.lastModified)).toLocaleDateString()}
                 </p>
               </div>
             </div>

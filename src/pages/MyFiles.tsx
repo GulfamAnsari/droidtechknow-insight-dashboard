@@ -3,16 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import UploadArea from "@/components/gallery/UploadArea";
+import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate } from "@/components/files/FileUtils";
+import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel } from "@/components/files/FileUtils";
 
 interface FileMetadata {
   format?: string;
@@ -156,6 +155,7 @@ const MyFiles = () => {
     videos: allFiles.filter(file => file.fileType === 'video').reduce((total, file) => total + (file.metadata?.size || 0), 0),
     documents: allFiles.filter(file => file.fileType === 'document').reduce((total, file) => total + (file.metadata?.size || 0), 0),
     audio: allFiles.filter(file => file.fileType === 'audio').reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    other: allFiles.filter(file => file.fileType === 'other').reduce((total, file) => total + (file.metadata?.size || 0), 0)
   };
   
   // Count files by type
@@ -215,6 +215,13 @@ const MyFiles = () => {
       type: 'filetype',
       icon: <FileAudio className="h-4 w-4 mr-2" />
     },
+    { 
+      id: 'filetype-other', 
+      name: 'Other', 
+      count: fileTypeCounts.other, 
+      type: 'filetype',
+      icon: <File className="h-4 w-4 mr-2" />
+    },
     ...Array.from(new Set(filteredFiles.filter(p => p.album).map(p => p.album as string)))
       .map(album => ({ 
         id: `album-${album}`, 
@@ -244,6 +251,8 @@ const MyFiles = () => {
         displayFiles = filteredFiles.filter(p => p.fileType === 'audio');
       } else if (fileType === 'documents') {
         displayFiles = filteredFiles.filter(p => p.fileType === 'document');
+      } else if (fileType === 'other') {
+        displayFiles = filteredFiles.filter(p => !['photo', 'video', 'audio', 'document'].includes(p.fileType));
       }
     }
   }
@@ -430,7 +439,7 @@ const MyFiles = () => {
         {/* Main content */}
         <div className="flex-1 overflow-auto p-6">
           {/* File type cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
               <CardContent className="p-4 flex items-center space-x-4">
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -475,6 +484,18 @@ const MyFiles = () => {
                 <div>
                   <p className="font-medium">Audio</p>
                   <p className="text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-other')}>
+              <CardContent className="p-4 flex items-center space-x-4">
+                <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <File className="h-8 w-8 text-gray-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Other</p>
+                  <p className="text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
                 </div>
               </CardContent>
             </Card>
@@ -539,7 +560,7 @@ const MyFiles = () => {
                         {getFileTypeLabel(file.fileType)}
                       </td>
                       <td className="p-2 text-sm">
-                        {formatDate(file.lastModified)}
+                        {new Date(parseInt(file.lastModified)).toLocaleDateString()}
                       </td>
                       <td className="p-2 text-sm">
                         {file.metadata?.size ? formatFileSize(file.metadata.size) : 'Unknown'}

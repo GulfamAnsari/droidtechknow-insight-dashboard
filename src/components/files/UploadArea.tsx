@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Upload, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
-import { getFileIcon } from "@/components/files/FileUtils";
+import { getFileIcon, getFileType } from "@/components/files/FileUtils";
 
 interface UploadAreaProps {
   onUploadSuccess: () => void;
@@ -96,7 +96,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         const { width, height } = await getImageDimensions(file);
         
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', file); // Changed from 'photo0' to 'file'
         formData.append('title', file.name);
         formData.append('size', String(file.size));
         formData.append('type', file.type);
@@ -185,7 +185,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
                 <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
-                      {getFileIcon(file)}
+                      {getFileIcon(getFileType(file.name, file.type), file.type)}
                     </div>
                     <div className="truncate max-w-[200px]">
                       <p className="text-sm font-medium truncate">{file.name}</p>

@@ -33,7 +33,7 @@ export const getFileType = (filename: string, mimeType: string): string => {
     if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf'].includes(extension)) return 'document';
   }
   
-  return 'unknown';
+  return 'other'; // Changed from 'unknown' to 'other'
 };
 
 export const getFileIcon = (fileType: string, mimeType: string) => {
@@ -67,6 +67,7 @@ export const getFileTypeLabel = (type: string): string => {
     case 'video': return 'Video';
     case 'audio': return 'Audio';
     case 'document': return 'Document';
+    case 'other': return 'Other';
     default: return 'Other';
   }
 };
