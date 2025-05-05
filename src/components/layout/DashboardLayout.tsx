@@ -30,23 +30,28 @@ const DashboardLayout = () => {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  // Define pages where refresh button should be hidden
+  const hideRefreshButton = ['/todo', '/myfiles', '/notepad', '/articles'].includes(location.pathname);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
       <main className="flex-1 flex flex-col w-full h-screen overflow-hidden pl-16"> {/* Added pl-16 to accommodate the fixed sidebar */}
-        <div className="absolute top-4 right-4 z-30">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={refreshData}
-            disabled={isRefreshing}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        {!hideRefreshButton && (
+          <div className="absolute top-4 right-4 z-30">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshData}
+              disabled={isRefreshing}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        )}
         <div className="flex-1 overflow-x-hidden overflow-y-auto">
           <Outlet context={{ refreshData, isRefreshing }} />
         </div>

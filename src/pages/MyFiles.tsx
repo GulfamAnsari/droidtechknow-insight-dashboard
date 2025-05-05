@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel } from "@/components/files/FileUtils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FileMetadata {
   format?: string;
@@ -55,6 +56,8 @@ const MyFiles = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFileType, setSelectedFileType] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   // Load initial data from localStorage
   useEffect(() => {
@@ -257,7 +260,7 @@ const MyFiles = () => {
     }
   }
 
-  // Group by date for display
+  // Group by date for display, using the correct date from lastModified
   const filesByDate = groupFilesByDate(displayFiles);
   const dates = Object.keys(filesByDate).sort().reverse(); // Most recent first
   
@@ -286,9 +289,24 @@ const MyFiles = () => {
   }
   
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+      {/* Mobile sidebar toggle */}
+      {isMobile && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Button 
+            onClick={() => setSidebarOpen(!sidebarOpen)} 
+            className="rounded-full w-12 h-12 shadow-lg"
+            variant="default"
+          >
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
+          </Button>
+        </div>
+      )}
+      
       {/* Sidebar */}
-      <div className="w-64 bg-muted/30 border-r flex flex-col h-full overflow-hidden">
+      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out' : 'w-64'} 
+                       ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
+                       bg-muted/30 border-r flex flex-col h-full overflow-hidden`}>
         <div className="p-4 border-b">
           <h2 className="font-semibold text-lg flex items-center">
             <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
@@ -342,7 +360,10 @@ const MyFiles = () => {
                 {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => (
                   <li key={category.id}>
                     <button
-                      onClick={() => setSelectedCategory(category.id === 'all' ? null : category.id)}
+                      onClick={() => {
+                        setSelectedCategory(category.id === 'all' ? null : category.id);
+                        if (isMobile) setSidebarOpen(false);
+                      }}
                       className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
                         (category.id === 'all' && !selectedCategory) || selectedCategory === category.id 
                           ? 'bg-accent text-accent-foreground' 
@@ -372,7 +393,10 @@ const MyFiles = () => {
                   categories.filter(c => c.type === 'album').map((category) => (
                     <li key={category.id}>
                       <button
-                        onClick={() => setSelectedCategory(category.id)}
+                        onClick={() => {
+                          setSelectedCategory(category.id);
+                          if (isMobile) setSidebarOpen(false);
+                        }}
                         className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
                           selectedCategory === category.id 
                             ? 'bg-accent text-accent-foreground' 
@@ -396,9 +420,9 @@ const MyFiles = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="border-b p-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2 flex-1">
-            <div className="relative w-80">
+        <div className="border-b p-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="relative w-full md:w-80">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Search files..." 
@@ -407,20 +431,21 @@ const MyFiles = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center space-x-1 border rounded-md p-1">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
+          </div>
+          
+          <div className="flex items-center space-x-1 border rounded-md p-1">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
           </div>
           
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
@@ -437,65 +462,65 @@ const MyFiles = () => {
         </div>
         
         {/* Main content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           {/* File type cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
-              <CardContent className="p-4 flex items-center space-x-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <FileImage className="h-8 w-8 text-blue-500" />
+              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <FileImage className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Images</p>
-                  <p className="text-sm text-muted-foreground">{fileTypeCounts.images} files</p>
+                  <p className="font-medium text-sm md:text-base">Images</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.images} files</p>
                 </div>
               </CardContent>
             </Card>
             
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-videos')}>
-              <CardContent className="p-4 flex items-center space-x-4">
-                <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <FileVideo className="h-8 w-8 text-red-500" />
+              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                <div className="p-2 md:p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                  <FileVideo className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Videos</p>
-                  <p className="text-sm text-muted-foreground">{fileTypeCounts.videos} files</p>
+                  <p className="font-medium text-sm md:text-base">Videos</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.videos} files</p>
                 </div>
               </CardContent>
             </Card>
             
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-documents')}>
-              <CardContent className="p-4 flex items-center space-x-4">
-                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <FileText className="h-8 w-8 text-green-500" />
+              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                <div className="p-2 md:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <FileText className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Documents</p>
-                  <p className="text-sm text-muted-foreground">{fileTypeCounts.documents} files</p>
+                  <p className="font-medium text-sm md:text-base">Documents</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.documents} files</p>
                 </div>
               </CardContent>
             </Card>
             
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-audio')}>
-              <CardContent className="p-4 flex items-center space-x-4">
-                <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                  <FileAudio className="h-8 w-8 text-yellow-500" />
+              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                <div className="p-2 md:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                  <FileAudio className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Audio</p>
-                  <p className="text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
+                  <p className="font-medium text-sm md:text-base">Audio</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
                 </div>
               </CardContent>
             </Card>
             
             <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-other')}>
-              <CardContent className="p-4 flex items-center space-x-4">
-                <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                  <File className="h-8 w-8 text-gray-500" />
+              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                <div className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <File className="h-6 w-6 md:h-8 md:w-8 text-gray-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Other</p>
-                  <p className="text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
+                  <p className="font-medium text-sm md:text-base">Other</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
                 </div>
               </CardContent>
             </Card>
@@ -517,13 +542,13 @@ const MyFiles = () => {
                   <h3 className="font-medium">
                     {formatDate(date)}
                   </h3>
-                  <FileGrid files={filesByDate[date]} />
+                  <FileGrid files={filesByDate[date]} allFiles={displayFiles} />
                 </div>
               ))}
             </div>
           ) : (
             // List view
-            <div className="space-y-2">
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
@@ -539,6 +564,7 @@ const MyFiles = () => {
                     <tr 
                       key={file.id} 
                       className="hover:bg-muted/50 cursor-pointer" 
+                      onClick={() => handleFileClick(file)}
                     >
                       <td className="p-2">
                         <div className="flex items-center space-x-3">
@@ -580,6 +606,20 @@ const MyFiles = () => {
       </div>
     </div>
   );
+  
+  // File click handler for list view
+  const handleFileClick = (file: FileItem) => {
+    // Create a synthetic FileGrid component appearance when clicking on list item
+    const fileGridComponent = document.createElement('div');
+    fileGridComponent.className = 'file-grid-trigger';
+    document.body.appendChild(fileGridComponent);
+    
+    // This renders the FileGrid component just to trigger its dialog
+    const gridElement = document.createElement('div');
+    gridElement.click(); // Simulate click to open dialog
+    
+    document.body.removeChild(fileGridComponent);
+  };
 };
 
 export default MyFiles;

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Info, Tag, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, Tag, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { getFileIcon, getFileType, getFileTypeLabel } from "./FileUtils";
 
 interface FileMetadata {
@@ -32,11 +32,13 @@ interface FileItem {
 
 interface FileGridProps {
   files: FileItem[];
+  allFiles?: FileItem[]; // All files for navigation through complete list
   onViewFile?: (file: FileItem) => void;
 }
 
-const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
+const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const navigableFiles = allFiles || files;
   
   if (!files || files.length === 0) {
     return (
@@ -56,17 +58,21 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
   const navigateFiles = (direction: 'next' | 'prev') => {
     if (!selectedFile) return;
     
-    const currentIndex = files.findIndex(f => f.id === selectedFile.id);
+    const currentIndex = navigableFiles.findIndex(f => f.id === selectedFile.id);
     if (currentIndex === -1) return;
     
     let newIndex;
     if (direction === 'next') {
-      newIndex = currentIndex === files.length - 1 ? 0 : currentIndex + 1;
+      newIndex = currentIndex === navigableFiles.length - 1 ? 0 : currentIndex + 1;
     } else {
-      newIndex = currentIndex === 0 ? files.length - 1 : currentIndex - 1;
+      newIndex = currentIndex === 0 ? navigableFiles.length - 1 : currentIndex - 1;
     }
     
-    setSelectedFile(files[newIndex]);
+    setSelectedFile(navigableFiles[newIndex]);
+  };
+  
+  const getDownloadLink = (file: FileItem) => {
+    return file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
   };
   
   const renderFilePreview = (file: FileItem) => {
@@ -75,33 +81,64 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
     
     if (fileType === 'photo') {
       return (
-        <img 
-          src={fileUrl} 
-          alt={file.title}
-          className="max-h-full max-w-full object-contain"
-        />
+        <div className="flex flex-col items-center">
+          <img 
+            src={fileUrl} 
+            alt={file.title}
+            className="max-h-[70vh] max-w-full object-contain"
+          />
+          <Button className="mt-4" asChild>
+            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
+              <Download className="mr-2 h-4 w-4" /> Download Image
+            </a>
+          </Button>
+        </div>
       );
     } else if (fileType === 'video') {
       return (
-        <video 
-          src={fileUrl}
-          controls
-          className="max-h-full max-w-full"
-        >
-          Your browser does not support the video tag.
-        </video>
+        <div className="flex flex-col items-center">
+          <video 
+            src={fileUrl}
+            controls
+            className="max-h-[70vh] max-w-full"
+          >
+            Your browser does not support the video tag.
+          </video>
+          <Button className="mt-4" asChild>
+            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
+              <Download className="mr-2 h-4 w-4" /> Download Video
+            </a>
+          </Button>
+        </div>
+      );
+    } else if (fileType === 'audio') {
+      return (
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="h-32 w-32 flex items-center justify-center mb-4">
+            {getFileIcon(fileType, file.metadata?.format || '')}
+          </div>
+          <audio controls className="w-full max-w-md">
+            <source src={fileUrl} type={file.metadata?.format || 'audio/mpeg'} />
+            Your browser does not support the audio element.
+          </audio>
+          <Button className="mt-4" asChild>
+            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
+              <Download className="mr-2 h-4 w-4" /> Download Audio
+            </a>
+          </Button>
+        </div>
       );
     } else if (fileType === 'document' && file.metadata?.format?.includes('pdf')) {
       return (
         <div className="h-full w-full flex flex-col items-center">
           <iframe 
             src={`${fileUrl}#view=FitH`}
-            className="w-full h-full border-0"
+            className="w-full h-[70vh] border-0"
             title={file.title}
           />
           <Button className="mt-4" asChild>
             <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              Download PDF
+              <Download className="mr-2 h-4 w-4" /> Download PDF
             </a>
           </Button>
         </div>
@@ -110,12 +147,12 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
       return (
         <div className="flex flex-col items-center justify-center p-8">
           <div className="h-32 w-32 flex items-center justify-center mb-4">
-            {getFileIcon(file.fileType, file.metadata?.format || '')}
+            {getFileIcon(fileType, file.metadata?.format || '')}
           </div>
           <p className="text-lg text-center">{file.title}</p>
           <Button className="mt-4" asChild>
             <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              Download File
+              <Download className="mr-2 h-4 w-4" /> Download File
             </a>
           </Button>
         </div>
@@ -125,7 +162,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {files.map((file) => (
           <Card 
             key={file.id}

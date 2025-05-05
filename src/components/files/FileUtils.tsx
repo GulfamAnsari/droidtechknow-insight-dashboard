@@ -45,13 +45,13 @@ export const getFileIcon = (fileType: string, mimeType: string) => {
     case 'audio':
       return <FileAudio className="h-8 w-8 text-yellow-500" />;
     case 'document':
-      if (mimeType.includes('pdf')) {
+      if (mimeType && mimeType.includes('pdf')) {
         return <FileText className="h-8 w-8 text-red-500" />;
-      } else if (mimeType.includes('word') || mimeType.includes('document')) {
+      } else if (mimeType && (mimeType.includes('word') || mimeType.includes('document'))) {
         return <FileText className="h-8 w-8 text-blue-500" />;
-      } else if (mimeType.includes('sheet') || mimeType.includes('excel')) {
+      } else if (mimeType && (mimeType.includes('sheet') || mimeType.includes('excel'))) {
         return <FileText className="h-8 w-8 text-green-500" />;
-      } else if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) {
+      } else if (mimeType && (mimeType.includes('presentation') || mimeType.includes('powerpoint'))) {
         return <FileText className="h-8 w-8 text-orange-500" />;
       } else {
         return <FileText className="h-8 w-8 text-gray-500" />;
