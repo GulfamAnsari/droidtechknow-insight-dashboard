@@ -7,16 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Info, User, Tag, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { getFileIcon, getFileType, getFileTypeLabel } from "./FileUtils";
 
+interface FileMetadata {
+  format?: string;
+  extension?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  documentType?: string;
+}
+
 interface FileItem {
   id: string;
   url: string;
-  filename: string;
-  upload_date: string;
-  type: string;
-  size?: number;
-  faces?: string[];
-  album?: string;
-  metadata?: Record<string, any>;
+  title: string;
+  description?: string | null;
+  createdAt: string;
+  lastModified: string;
+  location?: string | null;
+  album?: string | null;
+  favorite?: boolean;
+  fileType: string;
+  metadata: FileMetadata;
 }
 
 interface FileGridProps {
@@ -59,20 +70,20 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
   };
   
   const renderFilePreview = (file: FileItem) => {
-    const fileType = file.type || getFileType(new File([], file.filename));
+    const fileType = file.fileType || getFileType(file.title, file.metadata?.format || '');
     
-    if (fileType === 'image') {
+    if (fileType === 'photo') {
       return (
         <img 
-          src={file.url} 
-          alt={file.filename}
+          src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+          alt={file.title}
           className="max-h-full max-w-full object-contain"
         />
       );
     } else if (fileType === 'video') {
       return (
         <video 
-          src={file.url}
+          src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`}
           controls
           className="max-h-full max-w-full"
         >
@@ -83,11 +94,11 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
       return (
         <div className="flex flex-col items-center justify-center p-8">
           <div className="h-32 w-32 flex items-center justify-center mb-4">
-            {React.createElement(getFileIcon, { file: new File([], file.filename, { type: file.type }) })}
+            {getFileIcon(file.fileType, file.metadata?.format || '')}
           </div>
-          <p className="text-lg text-center">{file.filename}</p>
+          <p className="text-lg text-center">{file.title}</p>
           <Button className="mt-4" asChild>
-            <a href={file.url} download={file.filename} target="_blank" rel="noopener noreferrer">
+            <a href={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} download={file.title} target="_blank" rel="noopener noreferrer">
               Download File
             </a>
           </Button>
@@ -106,10 +117,10 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
             onClick={() => handleFileClick(file)}
           >
             <div className="aspect-square overflow-hidden bg-muted relative">
-              {file.type?.startsWith('image/') ? (
+              {file.fileType === 'photo' ? (
                 <img 
-                  src={file.url} 
-                  alt={file.filename}
+                  src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                  alt={file.title}
                   className="h-full w-full object-cover transition-all group-hover:scale-105"
                   loading="lazy"
                   onError={(e) => {
@@ -120,7 +131,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
                 />
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
-                  {getFileIcon(new File([], file.filename, { type: file.type }))}
+                  {getFileIcon(file.fileType, file.metadata?.format || '')}
                 </div>
               )}
               {file.album && (
@@ -128,14 +139,9 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
                   <Tag className="mr-1 h-3 w-3" /> {file.album}
                 </Badge>
               )}
-              {file.faces && file.faces.length > 0 && (
-                <Badge variant="gray" className="absolute bottom-2 right-2 bg-background/70">
-                  <User className="mr-1 h-3 w-3" /> {file.faces.length}
-                </Badge>
-              )}
             </div>
             <div className="p-2 text-xs truncate">
-              {file.filename}
+              {file.title}
             </div>
           </Card>
         ))}
@@ -194,11 +200,11 @@ const FileGrid: React.FC<FileGridProps> = ({ files, onViewFile }) => {
               </div>
               
               <div className="p-4 bg-background border-t">
-                <h2 className="font-medium text-lg">{selectedFile.filename}</h2>
+                <h2 className="font-medium text-lg">{selectedFile.title}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {getFileTypeLabel(getFileType(new File([], selectedFile.filename, { type: selectedFile.type })))} • 
-                  {selectedFile.size ? ` ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB • ` : ' '}
-                  Uploaded on {new Date(selectedFile.upload_date).toLocaleDateString()}
+                  {getFileTypeLabel(selectedFile.fileType)} • 
+                  {selectedFile.metadata?.size ? ` ${(selectedFile.metadata.size / 1024 / 1024).toFixed(2)} MB • ` : ' '}
+                  Uploaded on {new Date(selectedFile.createdAt).toLocaleDateString()}
                 </p>
               </div>
             </div>

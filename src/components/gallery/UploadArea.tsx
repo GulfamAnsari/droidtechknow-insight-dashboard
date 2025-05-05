@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,14 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+      'video/*': ['.mp4', '.webm', '.mov', '.avi'],
+      'audio/*': ['.mp3', '.wav', '.ogg', '.aac'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc', '.docx'],
+      'application/vnd.ms-excel': ['.xls', '.xlsx'],
+      'application/vnd.ms-powerpoint': ['.ppt', '.pptx'],
+      'text/plain': ['.txt']
     },
     multiple: true
   });
@@ -31,13 +39,12 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     return new Promise<Record<string, any>>((resolve) => {
       // Extract basic metadata from the File object
       const metadata: Record<string, any> = {
-        name: file.name,
+        format: file.type,
+        extension: file.name.split('.').pop()?.toLowerCase(),
         size: file.size,
-        type: file.type,
-        lastModified: new Date(file.lastModified).toISOString()
       };
       
-      // For image files, extract EXIF data if available
+      // For image files, extract dimensions
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -47,7 +54,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
             metadata.width = img.width;
             metadata.height = img.height;
             
-            // If we wanted to extract more EXIF data, we would need a library like exif-js
             resolve(metadata);
           };
           
@@ -86,16 +92,34 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
     try {
       const file = files[i];
       
-      // Assuming getImageMetadata is implemented correctly for image files, adjust as needed for non-image files
+      // Get metadata for the file
       const metadata = await getImageMetadata(file);
 
+      // Determine file type for API
+      let fileType = 'unknown';
+      if (file.type.startsWith('image/')) {
+        fileType = 'photo';
+      } else if (file.type.startsWith('video/')) {
+        fileType = 'video';
+      } else if (file.type.startsWith('audio/')) {
+        fileType = 'audio';
+      } else if (file.type.startsWith('application/') || file.type.startsWith('text/')) {
+        fileType = 'document';
+      }
+
       const formData = new FormData();
-      formData.append('file', file); // Add the file to the form data with key 'file'
+      formData.append('photo0', file); // Upload with photo0 key
+      formData.append('title', file.name); // Use filename as title
+      formData.append('size', String(file.size)); // File size
+      formData.append('type', file.type); // File MIME type
+      formData.append('lastModified', String(file.lastModified)); // Last modified timestamp
       
-      // Add metadata to the form data
-      Object.entries(metadata).forEach(([key, value]) => {
-        formData.append(`metadata[${key}]`, String(value)); // For example: metadata[width], metadata[height], etc.
-      });
+      // Add width and height for images
+      if (metadata.width) formData.append('width', String(metadata.width));
+      if (metadata.height) formData.append('height', String(metadata.height));
+      
+      // Add fileType for API
+      formData.append('fileType', fileType);
 
       // Upload the file
       const response = await fetch('https://droidtechknow.com/admin/upload.php', {
@@ -123,9 +147,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
 
   // Show success or failure message depending on results
   if (errorCount > 0) {
-    toast.warning(`Uploaded ${successCount} photos, but ${errorCount} failed`);
+    toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
   } else {
-    toast.success(`Successfully uploaded ${successCount} photos`);
+    toast.success(`Successfully uploaded ${successCount} files`);
   }
 
   // Trigger any callback on success
@@ -139,7 +163,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
   
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-xl font-semibold">Upload Images</h2>
+      <h2 className="text-xl font-semibold">Upload Files</h2>
       
       <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
@@ -150,11 +174,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
           <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
           <p className="mt-4 text-center">
             {isDragActive 
-              ? "Drop your images here..." 
-              : "Drag and drop images here or click to select"}
+              ? "Drop your files here..." 
+              : "Drag and drop files here or click to select"}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Supports: JPG, PNG, GIF, WebP
+            Supports: Images, Videos, Audio, Documents & more
           </p>
         </div>
       </Card>
@@ -214,7 +238,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
                 disabled={uploading || files.length === 0} 
                 className="w-full"
               >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'Image' : 'Images'}`}
+                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
               </Button>
             </div>
             

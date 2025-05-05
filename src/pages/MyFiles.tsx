@@ -3,27 +3,38 @@ import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import UploadArea from "@/components/files/UploadArea";
+import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Files, FileImage, FileVideo, FileText, FileAudio } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getFileType, formatFileSize } from "@/components/files/FileUtils";
+import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate } from "@/components/files/FileUtils";
+
+interface FileMetadata {
+  format?: string;
+  extension?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  documentType?: string;
+}
 
 interface FileItem {
   id: string;
   url: string;
-  filename: string;
-  upload_date: string;
-  type: string;
-  size?: number;
-  faces?: string[];
-  album?: string;
-  metadata?: Record<string, any>;
+  title: string;
+  description?: string | null;
+  createdAt: string;
+  lastModified: string;
+  location?: string | null;
+  album?: string | null;
+  favorite?: boolean;
+  fileType: string;
+  metadata: FileMetadata;
 }
 
 interface Category {
@@ -33,20 +44,6 @@ interface Category {
   type: 'folder' | 'album' | 'tag' | 'filetype';
   icon?: React.ReactNode;
 }
-
-// Group files by date
-const groupFilesByDate = (files: FileItem[]) => {
-  return files.reduce((groups: { [date: string]: FileItem[] }, file) => {
-    const date = new Date(file.upload_date).toISOString().split('T')[0];
-    
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    
-    groups[date].push(file);
-    return groups;
-  }, {});
-};
 
 // Get localStorage key for files
 const LOCAL_STORAGE_KEY = 'my-files-data';
@@ -90,16 +87,17 @@ const MyFiles = () => {
         }
         const data = await response.json();
         
-        // Transform the data to our FileItem interface
         return data.map((file: any) => ({
           id: file.id || String(Math.random()),
-          url: file.url || file.path, // Handle different response formats
-          filename: file.filename || file.name || 'Unnamed',
-          type: file.type || (file.url?.match(/\.(jpg|jpeg|png|gif)$/i) ? 'image/jpeg' : 'application/octet-stream'),
-          upload_date: file.upload_date || new Date().toISOString().split('T')[0],
-          size: file.size,
-          faces: file.faces || [],
-          album: file.album || null,
+          url: file.url,
+          title: file.title || 'Unnamed',
+          description: file.description,
+          createdAt: file.createdAt,
+          lastModified: file.lastModified || Date.now().toString(),
+          location: file.location,
+          album: file.album,
+          favorite: file.favorite || false,
+          fileType: file.fileType || getFileType(file.title, file.metadata?.format || ''),
           metadata: file.metadata || {}
         }));
       } catch (error) {
@@ -117,9 +115,9 @@ const MyFiles = () => {
 
   // Filter files by search query
   const filteredFiles = allFiles.filter(file => 
-    file.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    file.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (file.album && file.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (file.faces && file.faces.some(face => face.toLowerCase().includes(searchQuery.toLowerCase())))
+    (file.description && file.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
   const handleRefresh = () => {
@@ -140,13 +138,6 @@ const MyFiles = () => {
     toast.success(`Added to album: ${album}`);
   };
 
-  const handleTagFace = (file: FileItem, face: string) => {
-    const faces = file.faces ? [...file.faces, face] : [face];
-    const updatedFile = { ...file, faces };
-    updateLocalFile(updatedFile);
-    toast.success(`Tagged face: ${face}`);
-  };
-
   const updateLocalFile = (file: FileItem) => {
     setLocalFiles(current => {
       const exists = current.findIndex(p => p.id === file.id);
@@ -160,28 +151,20 @@ const MyFiles = () => {
 
   // Calculate storage statistics
   const storageStats = {
-    total: allFiles.reduce((total, file) => total + (file.size || 0), 0),
-    images: allFiles.filter(file => file.type?.startsWith('image/')).reduce((total, file) => total + (file.size || 0), 0),
-    videos: allFiles.filter(file => file.type?.startsWith('video/')).reduce((total, file) => total + (file.size || 0), 0),
-    documents: allFiles.filter(file => !file.type?.startsWith('image/') && !file.type?.startsWith('video/')).reduce((total, file) => total + (file.size || 0), 0),
+    total: allFiles.reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    images: allFiles.filter(file => file.fileType === 'photo').reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    videos: allFiles.filter(file => file.fileType === 'video').reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    documents: allFiles.filter(file => file.fileType === 'document').reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    audio: allFiles.filter(file => file.fileType === 'audio').reduce((total, file) => total + (file.metadata?.size || 0), 0),
   };
   
   // Count files by type
   const fileTypeCounts = {
-    images: allFiles.filter(file => file.type?.startsWith('image/')).length,
-    videos: allFiles.filter(file => file.type?.startsWith('video/')).length,
-    audio: allFiles.filter(file => file.type?.startsWith('audio/')).length,
-    documents: allFiles.filter(file => 
-      file.type?.startsWith('application/pdf') || 
-      file.type?.startsWith('application/msword') || 
-      file.type?.startsWith('application/vnd.openxmlformats')).length,
-    other: allFiles.filter(file => 
-      !file.type?.startsWith('image/') && 
-      !file.type?.startsWith('video/') && 
-      !file.type?.startsWith('audio/') &&
-      !file.type?.startsWith('application/pdf') &&
-      !file.type?.startsWith('application/msword') &&
-      !file.type?.startsWith('application/vnd.openxmlformats')).length,
+    images: allFiles.filter(file => file.fileType === 'photo').length,
+    videos: allFiles.filter(file => file.fileType === 'video').length,
+    audio: allFiles.filter(file => file.fileType === 'audio').length,
+    documents: allFiles.filter(file => file.fileType === 'document').length,
+    other: allFiles.filter(file => !['photo', 'video', 'audio', 'document'].includes(file.fileType)).length,
   };
 
   // Create categories based on the data
@@ -191,13 +174,13 @@ const MyFiles = () => {
       name: 'All Files', 
       count: filteredFiles.length, 
       type: 'folder', 
-      icon: <Files className="h-4 w-4 mr-2" /> 
+      icon: <Cloud className="h-4 w-4 mr-2" /> 
     },
     { 
       id: 'recent', 
       name: 'Recent', 
       count: filteredFiles.filter(p => {
-        const uploadDate = new Date(p.upload_date);
+        const uploadDate = new Date(parseInt(p.lastModified));
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         return uploadDate > oneWeekAgo;
@@ -239,13 +222,6 @@ const MyFiles = () => {
         count: filteredFiles.filter(p => p.album === album).length,
         type: 'album' as const
       })),
-    ...Array.from(new Set(filteredFiles.flatMap(p => p.faces || [])))
-      .map(face => ({ 
-        id: `face-${face}`, 
-        name: face as string,
-        count: filteredFiles.filter(p => p.faces?.includes(face)).length,
-        type: 'tag' as const
-      }))
   ];
   
   // Get files for the selected category
@@ -254,26 +230,20 @@ const MyFiles = () => {
     if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      displayFiles = filteredFiles.filter(p => new Date(p.upload_date) > oneWeekAgo);
+      displayFiles = filteredFiles.filter(p => new Date(parseInt(p.lastModified)) > oneWeekAgo);
     } else if (selectedCategory.startsWith('album-')) {
       const albumName = selectedCategory.replace('album-', '');
       displayFiles = filteredFiles.filter(p => p.album === albumName);
-    } else if (selectedCategory.startsWith('face-')) {
-      const faceName = selectedCategory.replace('face-', '');
-      displayFiles = filteredFiles.filter(p => p.faces?.includes(faceName));
     } else if (selectedCategory.startsWith('filetype-')) {
       const fileType = selectedCategory.replace('filetype-', '');
       if (fileType === 'images') {
-        displayFiles = filteredFiles.filter(p => p.type?.startsWith('image/'));
+        displayFiles = filteredFiles.filter(p => p.fileType === 'photo');
       } else if (fileType === 'videos') {
-        displayFiles = filteredFiles.filter(p => p.type?.startsWith('video/'));
+        displayFiles = filteredFiles.filter(p => p.fileType === 'video');
       } else if (fileType === 'audio') {
-        displayFiles = filteredFiles.filter(p => p.type?.startsWith('audio/'));
+        displayFiles = filteredFiles.filter(p => p.fileType === 'audio');
       } else if (fileType === 'documents') {
-        displayFiles = filteredFiles.filter(p => 
-          p.type?.startsWith('application/pdf') || 
-          p.type?.startsWith('application/msword') || 
-          p.type?.startsWith('application/vnd.openxmlformats'));
+        displayFiles = filteredFiles.filter(p => p.fileType === 'document');
       }
     }
   }
@@ -311,7 +281,9 @@ const MyFiles = () => {
       {/* Sidebar */}
       <div className="w-64 bg-muted/30 border-r flex flex-col h-full overflow-hidden">
         <div className="p-4 border-b">
-          <h2 className="font-semibold text-lg">My Files</h2>
+          <h2 className="font-semibold text-lg flex items-center">
+            <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
+          </h2>
           <p className="text-xs text-muted-foreground">Manage your files and documents</p>
         </div>
         
@@ -369,7 +341,7 @@ const MyFiles = () => {
                       }`}
                     >
                       <div className="flex items-center">
-                        {category.icon || <Files className="h-4 w-4 mr-2" />}
+                        {category.icon || <Cloud className="h-4 w-4 mr-2" />}
                         {category.name}
                       </div>
                       <Badge variant="gray">{category.count}</Badge>
@@ -405,33 +377,6 @@ const MyFiles = () => {
                   ))
                 ) : (
                   <li className="px-3 py-2 text-xs text-muted-foreground">No albums yet</li>
-                )}
-              </ul>
-            </div>
-            
-            <div className="mb-4">
-              <div className="flex items-center px-3 mb-2">
-                <h3 className="font-medium text-sm">People</h3>
-              </div>
-              <ul className="space-y-1">
-                {categories.filter(c => c.type === 'tag').length ? (
-                  categories.filter(c => c.type === 'tag').map((category) => (
-                    <li key={category.id}>
-                      <button
-                        onClick={() => setSelectedCategory(category.id)}
-                        className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
-                          selectedCategory === category.id 
-                            ? 'bg-accent text-accent-foreground' 
-                            : 'hover:bg-accent/50'
-                        }`}
-                      >
-                        <span>{category.name}</span>
-                        <Badge variant="gray">{category.count}</Badge>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-3 py-2 text-xs text-muted-foreground">No people tagged yet</li>
                 )}
               </ul>
             </div>
@@ -549,11 +494,7 @@ const MyFiles = () => {
               {dates.map((date) => (
                 <div key={date} className="space-y-3">
                   <h3 className="font-medium">
-                    {new Date(date).toLocaleDateString('en-US', { 
-                      month: 'long', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {formatDate(date)}
                   </h3>
                   <FileGrid files={filesByDate[date]} />
                 </div>
@@ -581,27 +522,27 @@ const MyFiles = () => {
                       <td className="p-2">
                         <div className="flex items-center space-x-3">
                           <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
-                            {file.type?.startsWith('image/') ? (
+                            {file.fileType === 'photo' ? (
                               <img 
-                                src={file.url} 
-                                alt={file.filename}
+                                src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                                alt={file.title}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              React.createElement(getFileIcon, { file: new File([], file.filename, { type: file.type }) })
+                              getFileIcon(file.fileType, file.metadata?.format || '')
                             )}
                           </div>
-                          <span className="text-sm">{file.filename}</span>
+                          <span className="text-sm">{file.title}</span>
                         </div>
                       </td>
                       <td className="p-2 text-sm">
-                        {file.type?.split('/')[0] || 'Unknown'}
+                        {getFileTypeLabel(file.fileType)}
                       </td>
                       <td className="p-2 text-sm">
-                        {new Date(file.upload_date).toLocaleDateString()}
+                        {formatDate(file.lastModified)}
                       </td>
                       <td className="p-2 text-sm">
-                        {file.size ? formatFileSize(file.size) : 'Unknown'}
+                        {file.metadata?.size ? formatFileSize(file.metadata.size) : 'Unknown'}
                       </td>
                       <td className="p-2 text-sm">
                         {file.album ? (
