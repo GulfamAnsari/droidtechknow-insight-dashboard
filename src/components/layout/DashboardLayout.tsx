@@ -18,10 +18,12 @@ const DashboardLayout = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
 
-  // Close sidebar by default
+  // Close sidebar by default on navigation when on mobile
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   const refreshData = () => {
     setIsRefreshing(true);

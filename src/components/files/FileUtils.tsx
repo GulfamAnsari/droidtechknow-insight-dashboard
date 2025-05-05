@@ -83,7 +83,14 @@ export const formatFileSize = (bytes: number): string => {
 };
 
 export const formatDate = (timestamp: string): string => {
+  // Ensure timestamp is treated as a number for date creation
   const date = new Date(parseInt(timestamp));
+  
+  // Check if the date is valid (not 1970-01-01)
+  if (date.getFullYear() === 1970 && date.getMonth() === 0 && date.getDate() === 1) {
+    return "Unknown Date";
+  }
+  
   return date.toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'long', 
@@ -94,13 +101,16 @@ export const formatDate = (timestamp: string): string => {
 export const groupFilesByDate = (files: any[]): { [date: string]: any[] } => {
   return files.reduce((groups: { [date: string]: any[] }, file) => {
     // Convert lastModified from epoch string to date string for grouping
-    const date = new Date(parseInt(file.lastModified)).toISOString().split('T')[0];
+    const date = new Date(parseInt(file.lastModified));
     
-    if (!groups[date]) {
-      groups[date] = [];
+    // Format date as YYYY-MM-DD for grouping
+    const dateKey = date.toISOString().split('T')[0];
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
     }
     
-    groups[date].push(file);
+    groups[dateKey].push(file);
     return groups;
   }, {});
 };

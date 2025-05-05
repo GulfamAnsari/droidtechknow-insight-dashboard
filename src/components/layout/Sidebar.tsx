@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, AlignLeft, File } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, AlignLeft, File, Home, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -21,7 +21,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     {
       name: "Dashboard",
       href: "/",
-      icon: BarChart3,
+      icon: Home,
     },
     {
       name: "Articles",
@@ -121,7 +121,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             className="h-12 w-12 rounded-full shadow-lg bg-background border-primary"
             onClick={() => setOpen(true)}
           >
-            <AlignLeft className="h-6 w-6" />
+            <Menu className="h-6 w-6" />
           </Button>
         </div>
         <Drawer open={open} onOpenChange={setOpen}>
@@ -138,8 +138,13 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     <>
       {/* Icon-only sidebar for desktop */}
       <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
+        <div className="mb-6">
+          <NavLink to="/" className="flex justify-center">
+            <Home className="h-6 w-6 text-primary" />
+          </NavLink>
+        </div>
         <div className="flex-1 w-full">
-          <ul className="space-y-6 mt-8">
+          <ul className="space-y-6 mt-2">
             {navItems.map((item, index) => (
               <li 
                 key={item.name} 
@@ -200,8 +205,8 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         </>
       )}
 
-      {/* Sidebar toggle button */}
-      <div className="fixed left-4 top-4 z-50">
+      {/* Sidebar toggle button - hidden on desktop */}
+      <div className="fixed left-4 top-4 z-50 md:hidden">
         <Button 
           variant="outline" 
           size="icon" 

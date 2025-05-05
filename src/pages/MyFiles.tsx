@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ const MyFiles = () => {
   const [selectedFileType, setSelectedFileType] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const isMobile = useIsMobile();
   
   // Load initial data from localStorage
@@ -264,6 +266,131 @@ const MyFiles = () => {
   const filesByDate = groupFilesByDate(displayFiles);
   const dates = Object.keys(filesByDate).sort().reverse(); // Most recent first
   
+  // Handle file click to show preview
+  const handleFileClick = (file: FileItem) => {
+    setSelectedFile(file);
+    setIsPreviewOpen(true);
+  };
+
+  // Function to download the current file
+  const downloadFile = (file: FileItem) => {
+    try {
+      const link = document.createElement('a');
+      link.href = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
+      link.download = file.title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast.error("Failed to download file");
+    }
+  };
+
+  // Function to navigate to next/prev file
+  const navigateFile = (direction: 'next' | 'prev') => {
+    if (!selectedFile || displayFiles.length <= 1) return;
+    
+    const currentIndex = displayFiles.findIndex(file => file.id === selectedFile.id);
+    let newIndex;
+    
+    if (direction === 'next') {
+      newIndex = currentIndex === displayFiles.length - 1 ? 0 : currentIndex + 1;
+    } else {
+      newIndex = currentIndex === 0 ? displayFiles.length - 1 : currentIndex - 1;
+    }
+    
+    setSelectedFile(displayFiles[newIndex]);
+  };
+
+  // File Preview Dialog
+  const FilePreviewDialog = () => {
+    if (!selectedFile) return null;
+    
+    const fileUrl = selectedFile.url.startsWith('http') 
+      ? selectedFile.url 
+      : `https://droidtechknow.com/admin/${selectedFile.url}`;
+    
+    return (
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{selectedFile.title}</h3>
+              <Button variant="outline" size="sm" onClick={() => downloadFile(selectedFile)}>
+                Download
+              </Button>
+            </div>
+            
+            <div className="relative flex-1 min-h-[400px] bg-black/5 rounded-lg overflow-hidden flex items-center justify-center">
+              {/* Navigation buttons */}
+              <button 
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFile('prev')}
+              >
+                &lt;
+              </button>
+              
+              {/* File preview based on type */}
+              {selectedFile.fileType === 'photo' ? (
+                <img 
+                  src={fileUrl} 
+                  alt={selectedFile.title} 
+                  className="max-h-full max-w-full object-contain" 
+                />
+              ) : selectedFile.fileType === 'video' ? (
+                <video 
+                  src={fileUrl} 
+                  controls 
+                  className="max-h-full max-w-full" 
+                />
+              ) : selectedFile.fileType === 'audio' ? (
+                <div className="p-8">
+                  <audio src={fileUrl} controls className="w-full" />
+                  <div className="mt-4 flex justify-center">
+                    {getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                </div>
+              ) : selectedFile.fileType === 'document' && selectedFile.metadata?.format === 'application/pdf' ? (
+                <iframe 
+                  src={`${fileUrl}#toolbar=0`} 
+                  className="w-full h-full min-h-[500px]" 
+                  title={selectedFile.title}
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <div className="flex justify-center mb-4">
+                    {getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                  <p>Preview not available for this file type</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {getFileTypeLabel(selectedFile.fileType)} - {formatFileSize(selectedFile.metadata.size || 0)}
+                  </p>
+                </div>
+              )}
+              
+              <button 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFile('next')}
+              >
+                &gt;
+              </button>
+            </div>
+            
+            <div className="mt-4 text-sm">
+              <p><span className="font-medium">Type:</span> {getFileTypeLabel(selectedFile.fileType)}</p>
+              <p><span className="font-medium">Size:</span> {formatFileSize(selectedFile.metadata?.size || 0)}</p>
+              <p><span className="font-medium">Modified:</span> {formatDate(selectedFile.lastModified)}</p>
+              {selectedFile.description && (
+                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -277,7 +404,7 @@ const MyFiles = () => {
     toast.error("Failed to load files. Please try again.");
     return (
       <div className="text-center p-6">
-        <p className="text-destructive mb-2">Failed to load files</p>
+        <p className="text-destructive mb-4">Failed to load files</p>
         <button 
           onClick={() => refetch()} 
           className="text-primary hover:underline"
@@ -298,7 +425,7 @@ const MyFiles = () => {
             className="rounded-full w-12 h-12 shadow-lg"
             variant="default"
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
+            <Menu className="h-5 w-5" />
           </Button>
         </div>
       )}
@@ -540,9 +667,13 @@ const MyFiles = () => {
               {dates.map((date) => (
                 <div key={date} className="space-y-3">
                   <h3 className="font-medium">
-                    {formatDate(date)}
+                    {formatDate(filesByDate[date][0].lastModified)}
                   </h3>
-                  <FileGrid files={filesByDate[date]} allFiles={displayFiles} />
+                  <FileGrid 
+                    files={filesByDate[date]} 
+                    allFiles={displayFiles} 
+                    onFileClick={handleFileClick}
+                  />
                 </div>
               ))}
             </div>
@@ -604,22 +735,11 @@ const MyFiles = () => {
           )}
         </div>
       </div>
+      
+      {/* File Preview Dialog */}
+      <FilePreviewDialog />
     </div>
   );
-  
-  // File click handler for list view
-  const handleFileClick = (file: FileItem) => {
-    // Create a synthetic FileGrid component appearance when clicking on list item
-    const fileGridComponent = document.createElement('div');
-    fileGridComponent.className = 'file-grid-trigger';
-    document.body.appendChild(fileGridComponent);
-    
-    // This renders the FileGrid component just to trigger its dialog
-    const gridElement = document.createElement('div');
-    gridElement.click(); // Simulate click to open dialog
-    
-    document.body.removeChild(fileGridComponent);
-  };
 };
 
 export default MyFiles;
