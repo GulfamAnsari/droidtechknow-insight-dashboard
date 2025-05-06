@@ -59,11 +59,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     <div className="h-full flex flex-col">
       {/* Sidebar header - removed Home icon here */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-        <div className="flex items-center">
-          <span className="text-xl font-bold text-sidebar-foreground">
-            DTK Dashboard
-          </span>
-        </div>
         <button
           onClick={() => setOpen(false)}
           className="text-sidebar-foreground hover:text-white"
@@ -128,7 +123,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   return (
     <>
       {/* Icon-only sidebar for desktop - don't take visible space */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
+      <aside className="fixed inset-y-0 top-14 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
         <div className="mb-6">
           <NavLink to="/" className="flex justify-center">
             <Home className="h-6 w-6 text-primary" />

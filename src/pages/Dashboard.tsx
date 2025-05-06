@@ -143,10 +143,6 @@ const Dashboard = () => {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Feedback</CardTitle>
-            <CardDescription>Review user feedback</CardDescription>
-          </CardHeader>
           <CardContent>
             <div className="space-y-1 mb-4">
               <p className="text-sm text-gray-500">Total Feedback</p>

@@ -54,59 +54,9 @@ const Notepad = () => {
   };
   
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center">
-          <h1 className="text-2xl font-bold flex items-center">
-            <BookOpen className="mr-2 h-6 w-6" />
-            Notepad
-          </h1>
-        </div>
-        
-        <div className="flex gap-2 items-center">
-          <div className="mr-4">
-            <RadioGroup 
-              value={theme} 
-              onValueChange={(value) => setTheme(value as "light" | "dark" | "system")}
-              className="flex space-x-2"
-            >
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="light" id="theme-light" />
-                <label htmlFor="theme-light" className="flex items-center">
-                  <Sun className="h-4 w-4" />
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-1">
-                <RadioGroupItem value="dark" id="theme-dark" />
-                <label htmlFor="theme-dark" className="flex items-center">
-                  <Moon className="h-4 w-4" />
-                </label>
-              </div>
-            </RadioGroup>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={saveNote}
-          >
-            <Save className="h-4 w-4 mr-1" /> Save
-          </Button>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-auto flex flex-col">
-        <div className="p-4 border-b">
-          <Input
-            placeholder="Note title"
-            value={noteTitle}
-            onChange={(e) => setNoteTitle(e.target.value)}
-            className="text-lg font-medium"
-          />
-        </div>
-        
-        <div className="flex-1 overflow-auto p-4">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex-1 overflow-auto flex flex-col w-full">
+        <div className="flex-1 overflow-auto p-4 w-full">
           <Editor 
             content={noteContent} 
             onChange={updateNoteContent}

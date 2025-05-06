@@ -49,15 +49,13 @@ const DashboardLayout = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       
       {/* Global Header */}
-      <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
-        <div className="flex items-center">
-          <h2 className="text-lg font-semibold">DTK Dashboard</h2>
-        </div>
+      <header className="h-14 border-b flex items-center justify-end px-4 bg-background">
         
         <div className="flex items-center">
           {!hideRefreshButton && (
@@ -76,7 +74,7 @@ const DashboardLayout = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
-                <UserCircle className="h-6 w-6" />
+                <UserCircle />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -112,7 +110,7 @@ const DashboardLayout = () => {
       <div className="flex-1 flex overflow-hidden">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className="flex-1 flex flex-col w-full h-[calc(100vh-3.5rem)] overflow-hidden">
-          <div className="flex-1 overflow-x-hidden overflow-y-auto">
+          <div className={!isMobile ? "ml-16 flex-1 overflow-x-hidden overflow-y-auto":  "flex-1 overflow-x-hidden overflow-y-auto"} >
             <Outlet context={{ refreshData, isRefreshing }} />
           </div>
         </main>

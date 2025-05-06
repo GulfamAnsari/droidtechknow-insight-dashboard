@@ -39,7 +39,7 @@ const Editor: React.FC<EditorProps> = ({
     <div className={cn(
       "relative border rounded-md flex flex-col",
       isFullscreen ? "fixed inset-0 z-50 bg-background p-6" : "min-h-[300px]"
-    )}>
+    )} style={{ height: '100%'}}>
       <div className="flex justify-end p-2 border-b">
         <Button 
           variant="ghost" 

@@ -89,7 +89,8 @@
 
 @layer components {
   .dashboard-container {
-    @apply container px-4 py-6 mx-auto max-w-7xl transition-all duration-200;
+    @apply px-8 py-8 transition-all duration-200;
+
   }
   
   .stats-card {

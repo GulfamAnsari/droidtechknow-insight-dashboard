@@ -123,7 +123,6 @@ const Feedback = () => {
 
   return (
     <div className="dashboard-container">
-      <h1 className="text-2xl font-bold mb-6">User Feedback</h1>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

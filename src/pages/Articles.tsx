@@ -322,7 +322,6 @@ const Articles = () => {
 
   return (
     <div className="dashboard-container">
-      <h1 className="text-2xl font-bold mb-6">Articles Management</h1>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

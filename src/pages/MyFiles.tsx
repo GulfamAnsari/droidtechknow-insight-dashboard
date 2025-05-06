@@ -598,25 +598,7 @@ const MyFiles = () => {
             </div>
           )}
           
-          {/* Grid size selector for grid view */}
-          {viewMode === "grid" && (
-            <div className="flex mb-4 items-center">
-              <span className="text-sm text-muted-foreground mr-2">Grid size:</span>
-              <div className="flex space-x-1">
-                {gridSizeOptions.map(option => (
-                  <Button 
-                    key={option.name}
-                    variant={gridSize === option.size ? "secondary" : "outline"}
-                    size="sm"
-                    onClick={() => setGridSize(option.size)}
-                    className="text-xs"
-                  >
-                    {option.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+       
           
           {displayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
@@ -630,20 +612,21 @@ const MyFiles = () => {
             // Grid view - organized by date
             <div className="space-y-8">
               {dates.map((date) => (
-                <div key={date} className="space-y-3">
+                <div key={date} className="space-y-3" style={{ margin: '0 0 4rem 0'}}>
                   <h3 className="font-medium">
                     {formatDate(filesByDate[date][0].lastModified)}
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div style={{ display: 'flex', flexWrap: 'wrap'}} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {filesByDate[date].map((file) => (
                       <div 
                         key={file.id}
-                        className="group relative cursor-pointer"
+                        className="group relative cursor-pointer mb-14"
                         onClick={() => handleFileClick(file)}
+                        style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                       >
                         <div 
                           className="bg-muted rounded-md overflow-hidden flex items-center justify-center border hover:border-primary transition-all"
-                          style={{ height: `${gridSize}px`, width: '100%' }}
+                          style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                         >
                           {file.fileType === 'photo' ? (
                             <img 
@@ -698,10 +681,10 @@ const MyFiles = () => {
                             </Button>
                           </div>
                         </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <div>
-                            <p className="text-xs truncate">{file.title}</p>
-                            <p className="text-[10px] text-muted-foreground">
+                        <div className="mt-2 flex justify-between items-center w-full">
+                          <div className='w-full'>
+                            <p style={{ whiteSpace: 'wrap '}} className="text-xs truncate">{file.title}</p>
+                            <p style={{ whiteSpace: 'wrap '}} className="text-[10px] text-muted-foreground">
                               {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
                             </p>
                           </div>
@@ -801,7 +784,7 @@ const MyFiles = () => {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 mr-8">
                 <Button variant="outline" size="sm" onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
