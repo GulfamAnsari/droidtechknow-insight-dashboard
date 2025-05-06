@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,20 @@ const MyFiles = () => {
     });
   };
 
+  const handleDeleteFile = (fileId: string) => {
+    // In a real app, you would call an API to delete the file
+    // For now, we'll just remove it from local state
+    setLocalFiles(files => files.filter(file => file.id !== fileId));
+    
+    // If the deleted file is currently selected, close the preview
+    if (selectedFile?.id === fileId) {
+      setIsPreviewOpen(false);
+      setSelectedFile(null);
+    }
+    
+    toast.success("File deleted successfully");
+  };
+
   // Calculate storage statistics
   const storageStats = {
     total: allFiles.reduce((total, file) => total + (file.metadata?.size || 0), 0),
@@ -289,94 +304,13 @@ const MyFiles = () => {
     setSelectedFile(displayFiles[newIndex]);
   };
 
-  // File Preview Dialog
-  const FilePreviewDialog = () => {
-    if (!selectedFile) return null;
-    
-    const fileUrl = selectedFile.url.startsWith('http') 
-      ? selectedFile.url 
-      : `https://droidtechknow.com/admin/${selectedFile.url}`;
-    
-    return (
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{selectedFile.title}</h3>
-              <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
-            </div>
-            
-            <div className="relative flex-1 min-h-[400px] bg-black/5 rounded-lg overflow-hidden flex items-center justify-center">
-              {/* Navigation buttons */}
-              <button 
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
-                onClick={() => navigateFile('prev')}
-              >
-                &lt;
-              </button>
-              
-              {/* File preview based on type */}
-              {selectedFile.fileType === 'photo' ? (
-                <img 
-                  src={fileUrl} 
-                  alt={selectedFile.title} 
-                  className="max-h-full max-w-full object-contain" 
-                />
-              ) : selectedFile.fileType === 'video' ? (
-                <video 
-                  src={fileUrl} 
-                  controls 
-                  className="max-h-full max-w-full" 
-                />
-              ) : selectedFile.fileType === 'audio' ? (
-                <div className="p-8">
-                  <audio src={fileUrl} controls className="w-full" />
-                  <div className="mt-4 flex justify-center">
-                    {getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
-                  </div>
-                </div>
-              ) : selectedFile.fileType === 'document' && selectedFile.metadata?.format === 'application/pdf' ? (
-                <iframe 
-                  src={`${selectedFile.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
-                  className="w-full h-full min-h-[500px]" 
-                  title={selectedFile.title}
-                />
-              ) : (
-                <div className="text-center p-8">
-                  <div className="flex justify-center mb-4">
-                    {getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
-                  </div>
-                  <p>Preview not available for this file type</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {getFileTypeLabel(selectedFile.fileType)} - {formatFileSize(selectedFile.metadata.size || 0)}
-                  </p>
-                </div>
-              )}
-              
-              <button 
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
-                onClick={() => navigateFile('next')}
-              >
-                &gt;
-              </button>
-            </div>
-            
-            <div className="mt-4 text-sm">
-              <p><span className="font-medium">Type:</span> {getFileTypeLabel(selectedFile.fileType)}</p>
-              <p><span className="font-medium">Size:</span> {formatFileSize(selectedFile.metadata?.size || 0)}</p>
-              <p><span className="font-medium">Modified:</span> {formatDate(selectedFile.lastModified)}</p>
-              {selectedFile.description && (
-                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  };
+  // Define grid size options
+  const gridSizeOptions = [
+    { name: "Small", size: 120 },
+    { name: "Medium", size: 150 },
+    { name: "Large", size: 200 },
+    { name: "X-Large", size: 250 }
+  ];
   
   if (isLoading) {
     return (
@@ -403,13 +337,13 @@ const MyFiles = () => {
   }
   
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-      {/* Mobile sidebar toggle */}
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full">
+      {/* Mobile sidebar toggle - now positioned properly in top left */}
       {isMobile && (
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="icon" 
-          className="absolute left-4 top-4 z-50 h-10 w-10 rounded-full shadow-lg bg-background border-primary"
+          className="absolute left-4 top-4 z-50 h-10 w-10"
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
           <Menu className="h-5 w-5" />
@@ -419,8 +353,8 @@ const MyFiles = () => {
       {/* Sidebar */}
       <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out' : 'w-64'} 
                        ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
-                       bg-sidebar border-r flex flex-col h-full overflow-hidden`}>
-        <div className="p-4 border-b bg-sidebar">
+                       bg-background border-r flex flex-col h-full overflow-hidden`}>
+        <div className="p-4 border-b">
           <h2 className="font-semibold text-lg flex items-center">
             <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
           </h2>
@@ -428,7 +362,7 @@ const MyFiles = () => {
         </div>
         
         {/* Storage usage section */}
-        <div className="p-4 border-b bg-sidebar">
+        <div className="p-4 border-b">
           <h3 className="text-sm font-medium mb-2">Storage</h3>
           <div className="space-y-2">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -463,7 +397,7 @@ const MyFiles = () => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto bg-sidebar">
+        <div className="flex-1 overflow-auto">
           <div className="pt-4 px-2">
             <div className="mb-4">
               <div className="flex items-center px-3 mb-2">
@@ -531,15 +465,16 @@ const MyFiles = () => {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
         {/* Header */}
         <div className="border-b p-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            {/* Add proper spacing for mobile menu toggle */}
+            <div className={`relative w-full md:w-80 ${isMobile ? 'pl-12' : ''}`}>
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground ml-2" />
               <Input 
                 placeholder="Search files..." 
-                className="pl-8" 
+                className="pl-10" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -586,9 +521,8 @@ const MyFiles = () => {
           
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
-              <Button className="ml-auto">
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Files
+              <Button size="icon">
+                <Upload className="h-4 w-4" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
@@ -664,6 +598,26 @@ const MyFiles = () => {
             </div>
           )}
           
+          {/* Grid size selector for grid view */}
+          {viewMode === "grid" && (
+            <div className="flex mb-4 items-center">
+              <span className="text-sm text-muted-foreground mr-2">Grid size:</span>
+              <div className="flex space-x-1">
+                {gridSizeOptions.map(option => (
+                  <Button 
+                    key={option.name}
+                    variant={gridSize === option.size ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setGridSize(option.size)}
+                    className="text-xs"
+                  >
+                    {option.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           {displayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
               <p className="text-muted-foreground mb-4">No files found</p>
@@ -708,7 +662,40 @@ const MyFiles = () => {
                           )}
                           
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-start p-2 gap-1">
-                            <DownloadButton file={file} className="bg-black/30 text-white hover:bg-black/50" />
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFile(file);
+                                setIsPreviewOpen(true);
+                              }}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteFile(file.id);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadFile(file);
+                              }}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
                         <div className="mt-2 flex justify-between items-center">
@@ -718,7 +705,6 @@ const MyFiles = () => {
                               {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
                             </p>
                           </div>
-                          <DownloadButton file={file} className="opacity-0 group-hover:opacity-100" />
                         </div>
                       </div>
                     ))}
@@ -727,7 +713,7 @@ const MyFiles = () => {
               ))}
             </div>
           ) : (
-            // List view - now also has click functionality
+            // List view - updated to have same click functionality as grid
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -779,7 +765,25 @@ const MyFiles = () => {
                       </td>
                       <td className="p-2 text-sm" onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
-                          <DownloadButton file={file} />
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(file);
+                            setIsPreviewOpen(true);
+                          }}>
+                            <Info className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file.id);
+                          }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            downloadFile(file);
+                          }}>
+                            <Download className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -791,22 +795,28 @@ const MyFiles = () => {
         </div>
       </div>
       
-      {/* File Preview Dialog */}
+      {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
-              <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </div>
             </div>
             
-            <div className="relative flex-1 min-h-[400px] bg-black/5 rounded-lg overflow-hidden flex items-center justify-center">
+            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center">
               {/* Navigation buttons */}
               <button 
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
                 onClick={() => navigateFile('prev')}
               >
                 &lt;
@@ -835,7 +845,7 @@ const MyFiles = () => {
               ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
                 <iframe 
                   src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
-                  className="w-full h-full min-h-[500px]" 
+                  className="w-full h-full" 
                   title={selectedFile?.title}
                 />
               ) : (
@@ -851,14 +861,14 @@ const MyFiles = () => {
               )}
               
               <button 
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
                 onClick={() => navigateFile('next')}
               >
                 &gt;
               </button>
             </div>
             
-            <div className="mt-4 text-sm">
+            <div className="p-4 text-sm bg-background border-t">
               <p><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</p>
               <p><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</p>
               <p><span className="font-medium">Modified:</span> {selectedFile && formatDate(selectedFile.lastModified)}</p>

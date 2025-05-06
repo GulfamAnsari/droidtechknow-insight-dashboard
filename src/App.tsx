@@ -13,7 +13,6 @@ import Analytics from "./pages/Analytics";
 import Todo from "./pages/Todo";
 import Notepad from "./pages/Notepad";
 import MyFiles from "./pages/MyFiles";
-import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -41,7 +40,6 @@ const App = () => (
               <Route path="todo" element={<Todo />} />
               <Route path="notepad" element={<Notepad />} />
               <Route path="myfiles" element={<MyFiles />} />
-              <Route path="documents" element={<Documents />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

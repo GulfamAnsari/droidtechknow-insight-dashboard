@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, AlignLeft, File, Home, Menu } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";

@@ -35,9 +35,9 @@ const Todo = () => {
         {/* Mobile sidebar toggle button */}
         {isMobile && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            className="absolute left-4 top-4 z-30 h-10 w-10 rounded-full shadow-lg bg-background border-primary"
+            className="absolute left-4 top-4 z-30 h-10 w-10"
             onClick={() => setShowMobileSidebar(true)}
           >
             <Menu className="h-5 w-5" />

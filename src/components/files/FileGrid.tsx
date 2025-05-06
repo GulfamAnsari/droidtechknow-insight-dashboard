@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Info, Tag, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { getFileIcon, getFileType, getFileTypeLabel } from "./FileUtils";
+import { Info, Tag, X, ChevronLeft, ChevronRight, Download, Trash2, ZoomIn } from "lucide-react";
+import { getFileIcon, getFileType, getFileTypeLabel, formatFileSize, downloadFile } from "./FileUtils";
 
 interface FileMetadata {
   format?: string;
@@ -34,10 +34,13 @@ interface FileGridProps {
   files: FileItem[];
   allFiles?: FileItem[]; // All files for navigation through complete list
   onViewFile?: (file: FileItem) => void;
+  onDeleteFile?: (fileId: string) => void;
+  gridSize: number;
 }
 
-const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
+const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDeleteFile, gridSize }) => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const navigableFiles = allFiles || files;
   
   if (!files || files.length === 0) {
@@ -50,6 +53,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
 
   const handleFileClick = (file: FileItem) => {
     setSelectedFile(file);
+    setIsPreviewOpen(true);
     if (onViewFile) {
       onViewFile(file);
     }
@@ -71,110 +75,33 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
     setSelectedFile(navigableFiles[newIndex]);
   };
   
-  const getDownloadLink = (file: FileItem) => {
-    return file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
-  };
-  
-  const renderFilePreview = (file: FileItem) => {
-    const fileType = file.fileType || getFileType(file.title, file.metadata?.format || '');
-    const fileUrl = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
-    
-    if (fileType === 'photo') {
-      return (
-        <div className="flex flex-col items-center">
-          <img 
-            src={fileUrl} 
-            alt={file.title}
-            className="max-h-[70vh] max-w-full object-contain"
-          />
-          <Button className="mt-4" asChild>
-            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              <Download className="mr-2 h-4 w-4" /> Download Image
-            </a>
-          </Button>
-        </div>
-      );
-    } else if (fileType === 'video') {
-      return (
-        <div className="flex flex-col items-center">
-          <video 
-            src={fileUrl}
-            controls
-            className="max-h-[70vh] max-w-full"
-          >
-            Your browser does not support the video tag.
-          </video>
-          <Button className="mt-4" asChild>
-            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              <Download className="mr-2 h-4 w-4" /> Download Video
-            </a>
-          </Button>
-        </div>
-      );
-    } else if (fileType === 'audio') {
-      return (
-        <div className="flex flex-col items-center justify-center p-8">
-          <div className="h-32 w-32 flex items-center justify-center mb-4">
-            {getFileIcon(fileType, file.metadata?.format || '')}
-          </div>
-          <audio controls className="w-full max-w-md">
-            <source src={fileUrl} type={file.metadata?.format || 'audio/mpeg'} />
-            Your browser does not support the audio element.
-          </audio>
-          <Button className="mt-4" asChild>
-            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              <Download className="mr-2 h-4 w-4" /> Download Audio
-            </a>
-          </Button>
-        </div>
-      );
-    } else if (fileType === 'document' && file.metadata?.format?.includes('pdf')) {
-      return (
-        <div className="h-full w-full flex flex-col items-center">
-          <iframe 
-            src={`${fileUrl}#view=FitH`}
-            className="w-full h-[70vh] border-0"
-            title={file.title}
-          />
-          <Button className="mt-4" asChild>
-            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              <Download className="mr-2 h-4 w-4" /> Download PDF
-            </a>
-          </Button>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center justify-center p-8">
-          <div className="h-32 w-32 flex items-center justify-center mb-4">
-            {getFileIcon(fileType, file.metadata?.format || '')}
-          </div>
-          <p className="text-lg text-center">{file.title}</p>
-          <Button className="mt-4" asChild>
-            <a href={fileUrl} download={file.title} target="_blank" rel="noopener noreferrer">
-              <Download className="mr-2 h-4 w-4" /> Download File
-            </a>
-          </Button>
-        </div>
-      );
+  const handleDelete = (fileId: string) => {
+    if (onDeleteFile) {
+      onDeleteFile(fileId);
+      if (selectedFile?.id === fileId) {
+        setIsPreviewOpen(false);
+      }
     }
   };
-
+  
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {files.map((file) => (
-          <Card 
+          <div 
             key={file.id}
-            className="overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group"
+            className="group relative cursor-pointer"
             onClick={() => handleFileClick(file)}
           >
-            <div className="aspect-square overflow-hidden bg-muted relative">
+            <div 
+              className="bg-muted rounded-md overflow-hidden flex items-center justify-center border hover:border-primary transition-all"
+              style={{ height: `${gridSize}px`, width: '100%' }}
+            >
               {file.fileType === 'photo' ? (
                 <img 
                   src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
                   alt={file.title}
-                  className="h-full w-full object-cover transition-all group-hover:scale-105"
+                  className="h-full w-full object-cover"
                   loading="lazy"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -182,86 +109,146 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
                     target.src = 'https://placehold.co/600x400?text=Error';
                   }}
                 />
+              ) : file.fileType === 'video' ? (
+                <div className="relative h-full w-full bg-black flex items-center justify-center">
+                  <FileVideo className="h-10 w-10 text-red-500" />
+                </div>
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
                   {getFileIcon(file.fileType, file.metadata?.format || '')}
                 </div>
               )}
-              {file.album && (
-                <Badge variant="blue" className="absolute bottom-2 left-2 bg-background/70">
-                  <Tag className="mr-1 h-3 w-3" /> {file.album}
-                </Badge>
-              )}
-            </div>
-            <div className="p-2 text-xs truncate">
-              {file.title}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Dialog open={!!selectedFile} onOpenChange={(open) => !open && setSelectedFile(null)}>
-        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 overflow-hidden">
-          {selectedFile && (
-            <div className="relative h-full w-full flex flex-col">
-              <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
-                {renderFilePreview(selectedFile)}
-                
-                {/* Navigation buttons */}
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-start p-2 gap-1">
                 <Button 
-                  variant="ghost" 
                   size="icon" 
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                  variant="ghost" 
+                  className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigateFiles('prev');
+                    handleFileClick(file);
                   }}
                 >
-                  <ChevronLeft className="h-6 w-6" />
+                  <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                
                 <Button 
-                  variant="ghost" 
                   size="icon" 
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full h-10 w-10"
+                  variant="ghost" 
+                  className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigateFiles('next');
+                    handleDelete(file.id);
                   }}
                 >
-                  <ChevronRight className="h-6 w-6" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-                
-                {/* Close button */}
                 <Button 
-                  variant="ghost" 
                   size="icon" 
-                  className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full h-8 w-8"
-                  onClick={() => setSelectedFile(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                
-                {/* Info button */}
-                <Button 
                   variant="ghost" 
-                  size="icon" 
-                  className="absolute top-4 right-16 bg-black/50 hover:bg-black/70 text-white rounded-full h-8 w-8"
+                  className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadFile(file);
+                  }}
                 >
-                  <Info className="h-4 w-4" />
+                  <Download className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              
-              <div className="p-4 bg-background border-t">
-                <h2 className="font-medium text-lg">{selectedFile.title}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {getFileTypeLabel(selectedFile.fileType)} • 
-                  {selectedFile.metadata?.size ? ` ${(selectedFile.metadata.size / 1024 / 1024).toFixed(2)} MB • ` : ' '}
-                  Uploaded on {new Date(parseInt(selectedFile.lastModified)).toLocaleDateString()}
+            </div>
+            <div className="mt-2">
+              <div>
+                <p className="text-xs truncate">{file.title}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
                 </p>
               </div>
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+
+      {/* Full-screen File Preview Dialog */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={() => selectedFile && handleDelete(selectedFile.id)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </div>
+            </div>
+            
+            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center">
+              {/* Navigation buttons */}
+              <button 
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFiles('prev')}
+              >
+                &lt;
+              </button>
+              
+              {/* File preview based on type */}
+              {selectedFile?.fileType === 'photo' ? (
+                <img 
+                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                  alt={selectedFile?.title} 
+                  className="max-h-full max-w-full object-contain" 
+                />
+              ) : selectedFile?.fileType === 'video' ? (
+                <video 
+                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                  controls 
+                  className="max-h-full max-w-full" 
+                />
+              ) : selectedFile?.fileType === 'audio' ? (
+                <div className="p-8">
+                  <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
+                  <div className="mt-4 flex justify-center">
+                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                </div>
+              ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
+                <iframe 
+                  src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
+                  className="w-full h-full" 
+                  title={selectedFile?.title}
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <div className="flex justify-center mb-4">
+                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                  <p>Preview not available for this file type</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
+                  </p>
+                </div>
+              )}
+              
+              <button 
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFiles('next')}
+              >
+                &gt;
+              </button>
+            </div>
+            
+            <div className="p-4 text-sm bg-background border-t">
+              <p><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</p>
+              <p><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</p>
+              <p><span className="font-medium">Modified:</span> {selectedFile && new Date(parseInt(selectedFile.lastModified)).toLocaleDateString()}</p>
+              {selectedFile?.description && (
+                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
@@ -269,3 +256,23 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile }) => {
 };
 
 export default FileGrid;
+
+// Define FileVideo component since it's used in the code
+const FileVideo = ({ className }: { className?: string }) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="m10 11 5 3-5 3v-6Z" />
+    </svg>
+  );
+};
