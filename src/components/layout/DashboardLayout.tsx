@@ -39,7 +39,7 @@ const DashboardLayout = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-      <main className="flex-1 flex flex-col w-full h-screen overflow-hidden"> {/* Removed pl-16 to give full width */}
+      <main className="flex-1 flex flex-col w-full h-screen overflow-hidden">
         {!hideRefreshButton && (
           <div className="absolute top-4 right-4 z-30">
             <Button 

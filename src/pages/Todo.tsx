@@ -6,7 +6,7 @@ import TodoMain from "@/components/todo/TodoMain";
 import TodoDetails from "@/components/todo/TodoDetails";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useDashboard } from "@/components/layout/DashboardLayout";
-import { Maximize2, Minimize2, Plus } from "lucide-react";
+import { Maximize2, Minimize2, Plus, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AddTaskDialog from "@/components/todo/AddTaskDialog";
@@ -32,6 +32,18 @@ const Todo = () => {
           isFullScreen ? "fixed inset-0 z-50 bg-background" : "h-[calc(100vh-8rem)]"
         )}
       >
+        {/* Mobile sidebar toggle button */}
+        {isMobile && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute left-4 top-4 z-30 h-10 w-10 rounded-full shadow-lg bg-background border-primary"
+            onClick={() => setShowMobileSidebar(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+        
         <div className="flex-1 flex overflow-hidden rounded-lg shadow-sm border bg-background">
           {/* Todo app layout with responsive design */}
           <TodoSidebar 

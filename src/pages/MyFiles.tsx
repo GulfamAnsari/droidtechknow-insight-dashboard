@@ -1,17 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, DownloadButton } from "@/components/files/FileUtils";
+import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
 
@@ -304,7 +303,7 @@ const MyFiles = () => {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{selectedFile.title}</h3>
-              <Button variant="outline" size="sm" onClick={() => downloadFile(selectedFile)}>
+              <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
@@ -341,7 +340,7 @@ const MyFiles = () => {
                 </div>
               ) : selectedFile.fileType === 'document' && selectedFile.metadata?.format === 'application/pdf' ? (
                 <iframe 
-                  src={`${fileUrl}#toolbar=0`} 
+                  src={`${selectedFile.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
                   className="w-full h-full min-h-[500px]" 
                   title={selectedFile.title}
                 />
@@ -407,22 +406,21 @@ const MyFiles = () => {
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       {/* Mobile sidebar toggle */}
       {isMobile && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Button 
-            onClick={() => setSidebarOpen(!sidebarOpen)} 
-            className="rounded-full w-12 h-12 shadow-lg"
-            variant="default"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="absolute left-4 top-4 z-50 h-10 w-10 rounded-full shadow-lg bg-background border-primary"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
       )}
       
       {/* Sidebar */}
       <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out' : 'w-64'} 
                        ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
                        bg-sidebar border-r flex flex-col h-full overflow-hidden`}>
-        <div className="p-4 border-b">
+        <div className="p-4 border-b bg-sidebar">
           <h2 className="font-semibold text-lg flex items-center">
             <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
           </h2>
@@ -430,7 +428,7 @@ const MyFiles = () => {
         </div>
         
         {/* Storage usage section */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b bg-sidebar">
           <h3 className="text-sm font-medium mb-2">Storage</h3>
           <div className="space-y-2">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -465,7 +463,7 @@ const MyFiles = () => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-sidebar">
           <div className="pt-4 px-2">
             <div className="mb-4">
               <div className="flex items-center px-3 mb-2">
@@ -551,7 +549,10 @@ const MyFiles = () => {
           <div className="flex items-center space-x-2">
             {viewMode === "grid" && (
               <div className="flex items-center space-x-2 mr-2">
-                <ZoomOut className="h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col items-center mr-1">
+                  <ArrowUp className="h-3 w-3 text-muted-foreground mb-1" />
+                  <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                </div>
                 <Slider 
                   className="w-24" 
                   value={[gridSize]} 
@@ -560,7 +561,10 @@ const MyFiles = () => {
                   step={10}
                   onValueChange={(value) => setGridSize(value[0])}
                 />
-                <ZoomIn className="h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col items-center ml-1">
+                  <ZoomIn className="h-4 w-4 text-muted-foreground" />
+                  <ZoomOut className="h-4 w-4 text-muted-foreground mt-1" />
+                </div>
               </div>
             )}
             
@@ -685,7 +689,7 @@ const MyFiles = () => {
                       >
                         <div 
                           className="bg-muted rounded-md overflow-hidden flex items-center justify-center border hover:border-primary transition-all"
-                          style={{ height: `${gridSize}px` }}
+                          style={{ height: `${gridSize}px`, width: '100%' }}
                         >
                           {file.fileType === 'photo' ? (
                             <img 
@@ -707,11 +711,14 @@ const MyFiles = () => {
                             <DownloadButton file={file} className="bg-black/30 text-white hover:bg-black/50" />
                           </div>
                         </div>
-                        <div className="mt-2">
-                          <p className="text-xs truncate">{file.title}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
-                          </p>
+                        <div className="mt-2 flex justify-between items-center">
+                          <div>
+                            <p className="text-xs truncate">{file.title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
+                            </p>
+                          </div>
+                          <DownloadButton file={file} className="opacity-0 group-hover:opacity-100" />
                         </div>
                       </div>
                     ))}
@@ -720,7 +727,7 @@ const MyFiles = () => {
               ))}
             </div>
           ) : (
-            // List view
+            // List view - now also has click functionality
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -785,7 +792,83 @@ const MyFiles = () => {
       </div>
       
       {/* File Preview Dialog */}
-      <FilePreviewDialog />
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
+              <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+            </div>
+            
+            <div className="relative flex-1 min-h-[400px] bg-black/5 rounded-lg overflow-hidden flex items-center justify-center">
+              {/* Navigation buttons */}
+              <button 
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFile('prev')}
+              >
+                &lt;
+              </button>
+              
+              {/* File preview based on type */}
+              {selectedFile?.fileType === 'photo' ? (
+                <img 
+                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                  alt={selectedFile?.title} 
+                  className="max-h-full max-w-full object-contain" 
+                />
+              ) : selectedFile?.fileType === 'video' ? (
+                <video 
+                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                  controls 
+                  className="max-h-full max-w-full" 
+                />
+              ) : selectedFile?.fileType === 'audio' ? (
+                <div className="p-8">
+                  <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
+                  <div className="mt-4 flex justify-center">
+                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                </div>
+              ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
+                <iframe 
+                  src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
+                  className="w-full h-full min-h-[500px]" 
+                  title={selectedFile?.title}
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <div className="flex justify-center mb-4">
+                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                  </div>
+                  <p>Preview not available for this file type</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
+                  </p>
+                </div>
+              )}
+              
+              <button 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                onClick={() => navigateFile('next')}
+              >
+                &gt;
+              </button>
+            </div>
+            
+            <div className="mt-4 text-sm">
+              <p><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</p>
+              <p><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</p>
+              <p><span className="font-medium">Modified:</span> {selectedFile && formatDate(selectedFile.lastModified)}</p>
+              {selectedFile?.description && (
+                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

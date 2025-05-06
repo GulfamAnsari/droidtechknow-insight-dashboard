@@ -52,12 +52,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       name: "My Cloud",
       href: "/myfiles",
       icon: Cloud,
-    },
-    {
-      name: "Documents",
-      href: "/documents",
-      icon: File,
-      badge: "New"
     }
   ];
 
@@ -97,11 +91,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               >
                 <item.icon className="mr-3 h-5 w-5" />
                 {item.name}
-                {item.badge && (
-                  <Badge variant="blue" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
               </NavLink>
             </li>
           ))}
@@ -114,18 +103,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   if (isMobile) {
     return (
       <>
-        {/* Mobile hamburger button in top left */}
-        <div className="fixed left-4 top-4 z-50">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-10 w-10 rounded-full shadow-lg bg-background border-primary"
-            onClick={() => setOpen(true)}
-          >
-            <AlignLeft className="h-5 w-5" />
-          </Button>
-        </div>
-        
         {/* Side menu button in middle left */}
         <div className="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
           <Button 
@@ -159,7 +136,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         </div>
         <div className="flex-1 w-full">
           <ul className="space-y-6 mt-2">
-            {navItems.map((item, index) => (
+            {navItems.slice(1).map((item, index) => (
               <li 
                 key={item.name} 
                 className="relative"
@@ -178,11 +155,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                   }
                 >
                   <item.icon className="h-5 w-5" />
-                  {item.badge && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white">
-                      •
-                    </span>
-                  )}
                 </NavLink>
                 
                 {/* Expandable tooltip/label on hover */}
@@ -191,11 +163,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
                     className="absolute left-16 top-0 z-50 bg-popover shadow-lg rounded-md px-4 py-2 min-w-40 whitespace-nowrap animate-fade-in"
                   >
                     <div className="font-medium">{item.name}</div>
-                    {item.badge && (
-                      <Badge variant="blue" className="mt-1">
-                        {item.badge}
-                      </Badge>
-                    )}
                   </div>
                 )}
               </li>
