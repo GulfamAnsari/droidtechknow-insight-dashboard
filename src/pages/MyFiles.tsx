@@ -5,14 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel } from "@/components/files/FileUtils";
+import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Slider } from "@/components/ui/slider";
 
 interface FileMetadata {
   format?: string;
@@ -59,6 +60,7 @@ const MyFiles = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [gridSize, setGridSize] = useState<number>(150);
   const isMobile = useIsMobile();
   
   // Load initial data from localStorage
@@ -262,7 +264,7 @@ const MyFiles = () => {
     }
   }
 
-  // Group by date for display, using the correct date from lastModified
+  // Group by date for display, using the correct date from lastModified or createdAt
   const filesByDate = groupFilesByDate(displayFiles);
   const dates = Object.keys(filesByDate).sort().reverse(); // Most recent first
   
@@ -270,21 +272,6 @@ const MyFiles = () => {
   const handleFileClick = (file: FileItem) => {
     setSelectedFile(file);
     setIsPreviewOpen(true);
-  };
-
-  // Function to download the current file
-  const downloadFile = (file: FileItem) => {
-    try {
-      const link = document.createElement('a');
-      link.href = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
-      link.download = file.title;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      toast.error("Failed to download file");
-    }
   };
 
   // Function to navigate to next/prev file
@@ -318,6 +305,7 @@ const MyFiles = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{selectedFile.title}</h3>
               <Button variant="outline" size="sm" onClick={() => downloadFile(selectedFile)}>
+                <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
             </div>
@@ -433,7 +421,7 @@ const MyFiles = () => {
       {/* Sidebar */}
       <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out' : 'w-64'} 
                        ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
-                       bg-muted/30 border-r flex flex-col h-full overflow-hidden`}>
+                       bg-sidebar border-r flex flex-col h-full overflow-hidden`}>
         <div className="p-4 border-b">
           <h2 className="font-semibold text-lg flex items-center">
             <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
@@ -560,19 +548,36 @@ const MyFiles = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-1 border rounded-md p-1">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
+          <div className="flex items-center space-x-2">
+            {viewMode === "grid" && (
+              <div className="flex items-center space-x-2 mr-2">
+                <ZoomOut className="h-4 w-4 text-muted-foreground" />
+                <Slider 
+                  className="w-24" 
+                  value={[gridSize]} 
+                  min={100} 
+                  max={250} 
+                  step={10}
+                  onValueChange={(value) => setGridSize(value[0])}
+                />
+                <ZoomIn className="h-4 w-4 text-muted-foreground" />
+              </div>
+            )}
+            
+            <div className="flex items-center space-x-1 border rounded-md p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
@@ -590,68 +595,70 @@ const MyFiles = () => {
         
         {/* Main content */}
         <div className="flex-1 overflow-auto p-4 md:p-6">
-          {/* File type cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
-            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
-              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
-                <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <FileImage className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm md:text-base">Images</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.images} files</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-videos')}>
-              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
-                <div className="p-2 md:p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <FileVideo className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm md:text-base">Videos</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.videos} files</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-documents')}>
-              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
-                <div className="p-2 md:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <FileText className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm md:text-base">Documents</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.documents} files</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-audio')}>
-              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
-                <div className="p-2 md:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                  <FileAudio className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm md:text-base">Audio</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-other')}>
-              <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
-                <div className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                  <File className="h-6 w-6 md:h-8 md:w-8 text-gray-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm md:text-base">Other</p>
-                  <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* File type cards - hidden on mobile */}
+          {!isMobile && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
+              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
+                <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                  <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <FileImage className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm md:text-base">Images</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.images} files</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-videos')}>
+                <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                  <div className="p-2 md:p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                    <FileVideo className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm md:text-base">Videos</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.videos} files</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-documents')}>
+                <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                  <div className="p-2 md:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <FileText className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm md:text-base">Documents</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.documents} files</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-audio')}>
+                <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                  <div className="p-2 md:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                    <FileAudio className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm md:text-base">Audio</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-other')}>
+                <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
+                  <div className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <File className="h-6 w-6 md:h-8 md:w-8 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm md:text-base">Other</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {displayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
@@ -669,11 +676,46 @@ const MyFiles = () => {
                   <h3 className="font-medium">
                     {formatDate(filesByDate[date][0].lastModified)}
                   </h3>
-                  <FileGrid 
-                    files={filesByDate[date]} 
-                    allFiles={displayFiles} 
-                    onFileClick={handleFileClick}
-                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {filesByDate[date].map((file) => (
+                      <div 
+                        key={file.id}
+                        className="group relative cursor-pointer"
+                        onClick={() => handleFileClick(file)}
+                      >
+                        <div 
+                          className="bg-muted rounded-md overflow-hidden flex items-center justify-center border hover:border-primary transition-all"
+                          style={{ height: `${gridSize}px` }}
+                        >
+                          {file.fileType === 'photo' ? (
+                            <img 
+                              src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                              alt={file.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : file.fileType === 'video' ? (
+                            <div className="relative h-full w-full bg-black flex items-center justify-center">
+                              <FileVideo className="h-10 w-10 text-red-500" />
+                            </div>
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center">
+                              {getFileIcon(file.fileType, file.metadata?.format || '')}
+                            </div>
+                          )}
+                          
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-start p-2 gap-1">
+                            <DownloadButton file={file} className="bg-black/30 text-white hover:bg-black/50" />
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <p className="text-xs truncate">{file.title}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -688,6 +730,7 @@ const MyFiles = () => {
                     <th className="text-left font-medium text-sm p-2">Date</th>
                     <th className="text-left font-medium text-sm p-2">Size</th>
                     <th className="text-left font-medium text-sm p-2">Album</th>
+                    <th className="text-left font-medium text-sm p-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -726,6 +769,11 @@ const MyFiles = () => {
                         {file.album ? (
                           <Badge variant="blue">{file.album}</Badge>
                         ) : "-"}
+                      </td>
+                      <td className="p-2 text-sm" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <DownloadButton file={file} />
+                        </div>
                       </td>
                     </tr>
                   ))}

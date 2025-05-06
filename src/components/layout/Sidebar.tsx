@@ -63,7 +63,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
 
   const SidebarContent = () => (
     <div className="h-full flex flex-col">
-      {/* Sidebar header */}
+      {/* Sidebar header - removed Home icon here */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <div className="flex items-center">
           <span className="text-xl font-bold text-sidebar-foreground">
@@ -114,6 +114,19 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   if (isMobile) {
     return (
       <>
+        {/* Mobile hamburger button in top left */}
+        <div className="fixed left-4 top-4 z-50">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-10 w-10 rounded-full shadow-lg bg-background border-primary"
+            onClick={() => setOpen(true)}
+          >
+            <AlignLeft className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        {/* Side menu button in middle left */}
         <div className="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
           <Button 
             variant="outline" 
@@ -124,6 +137,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             <Menu className="h-6 w-6" />
           </Button>
         </div>
+        
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent className="h-[90vh] fixed inset-y-0 left-0 w-72">
             <SidebarContent />
@@ -136,7 +150,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   // For desktop devices - icon sidebar with hover expansion
   return (
     <>
-      {/* Icon-only sidebar for desktop */}
+      {/* Icon-only sidebar for desktop - don't take visible space */}
       <aside className="fixed inset-y-0 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
         <div className="mb-6">
           <NavLink to="/" className="flex justify-center">
@@ -204,18 +218,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
           </aside>
         </>
       )}
-
-      {/* Sidebar toggle button - hidden on desktop */}
-      <div className="fixed left-4 top-4 z-50 md:hidden">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-10 w-10 rounded-full shadow-lg bg-background border-primary"
-          onClick={() => setOpen(!open)}
-        >
-          <AlignLeft className="h-5 w-5" />
-        </Button>
-      </div>
     </>
   );
 };

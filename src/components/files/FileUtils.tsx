@@ -1,6 +1,7 @@
 
 import React from "react";
-import { FileImage, FileVideo, FileAudio, FileText, File } from "lucide-react";
+import { FileImage, FileVideo, FileAudio, FileText, File, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const getFileType = (filename: string, mimeType: string): string => {
   // First, try to determine by mime type if provided
@@ -101,10 +102,23 @@ export const formatDate = (timestamp: string): string => {
 export const groupFilesByDate = (files: any[]): { [date: string]: any[] } => {
   return files.reduce((groups: { [date: string]: any[] }, file) => {
     // Convert lastModified from epoch string to date string for grouping
-    const date = new Date(parseInt(file.lastModified));
+    const dateObj = new Date(parseInt(file.lastModified));
     
     // Format date as YYYY-MM-DD for grouping
-    const dateKey = date.toISOString().split('T')[0];
+    // Check if date is valid (not 1970-01-01)
+    let dateKey;
+    
+    if (dateObj.getFullYear() === 1970 && dateObj.getMonth() === 0 && dateObj.getDate() === 1) {
+      // Use createdAt as fallback if available, otherwise use current date
+      if (file.createdAt) {
+        const createdDate = new Date(file.createdAt);
+        dateKey = createdDate.toISOString().split('T')[0];
+      } else {
+        dateKey = new Date().toISOString().split('T')[0];
+      }
+    } else {
+      dateKey = dateObj.toISOString().split('T')[0];
+    }
     
     if (!groups[dateKey]) {
       groups[dateKey] = [];
@@ -113,4 +127,34 @@ export const groupFilesByDate = (files: any[]): { [date: string]: any[] } => {
     groups[dateKey].push(file);
     return groups;
   }, {});
+};
+
+export const downloadFile = (file: any) => {
+  try {
+    const link = document.createElement('a');
+    link.href = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
+    link.download = file.title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Error downloading file:", error);
+  }
+};
+
+export const DownloadButton = ({ file, className = "" }: { file: any; className?: string }) => {
+  return (
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      className={className}
+      onClick={(e) => {
+        e.stopPropagation();
+        downloadFile(file);
+      }} 
+      title="Download file"
+    >
+      <Download className="h-4 w-4" />
+    </Button>
+  );
 };
