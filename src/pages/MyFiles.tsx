@@ -470,7 +470,7 @@ const MyFiles = () => {
         <div className="border-b p-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex-1 min-w-0">
             {/* Add proper spacing for mobile menu toggle */}
-            <div className={`relative w-full md:w-80 ${isMobile ? 'pl-12' : ''}`}>
+            <div className={`relative w-full md:w-80`}>
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground ml-2" />
               <Input 
                 placeholder="Search files..." 
@@ -484,10 +484,6 @@ const MyFiles = () => {
           <div className="flex items-center space-x-2">
             {viewMode === "grid" && (
               <div className="flex items-center space-x-2 mr-2">
-                <div className="flex flex-col items-center mr-1">
-                  <ArrowUp className="h-3 w-3 text-muted-foreground mb-1" />
-                  <ArrowDown className="h-3 w-3 text-muted-foreground" />
-                </div>
                 <Slider 
                   className="w-24" 
                   value={[gridSize]} 
@@ -496,10 +492,6 @@ const MyFiles = () => {
                   step={10}
                   onValueChange={(value) => setGridSize(value[0])}
                 />
-                <div className="flex flex-col items-center ml-1">
-                  <ZoomIn className="h-4 w-4 text-muted-foreground" />
-                  <ZoomOut className="h-4 w-4 text-muted-foreground mt-1" />
-                </div>
               </div>
             )}
             
@@ -532,7 +524,7 @@ const MyFiles = () => {
         </div>
         
         {/* Main content */}
-        <div className="flex-1 overflow-auto p-4 md:p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6" style={{ "-ms-overflow-style": "none", "scrollbar-width": "none"}}>
           {/* File type cards - hidden on mobile */}
           {!isMobile && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">

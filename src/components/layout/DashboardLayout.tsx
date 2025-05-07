@@ -110,7 +110,7 @@ const DashboardLayout = () => {
       <div className="flex-1 flex overflow-hidden">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className="flex-1 flex flex-col w-full h-[calc(100vh-3.5rem)] overflow-hidden">
-          <div className={!isMobile ? "ml-16 flex-1 overflow-x-hidden overflow-y-auto":  "flex-1 overflow-x-hidden overflow-y-auto"} >
+          <div className={!isMobile ? "ml-16 flex-1 overflow-hidden ":  "flex-1 overflow-hidden "} >
             <Outlet context={{ refreshData, isRefreshing }} />
           </div>
         </main>
