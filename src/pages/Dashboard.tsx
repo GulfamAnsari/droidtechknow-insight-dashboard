@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,54 +10,71 @@ import {
   MessageSquare, 
   Image 
 } from "lucide-react";
-import { useTodo } from "@/contexts/TodoContext";
+import { TodoProvider } from "@/contexts/TodoContext";
+
+const DashboardTodoCard = () => {
+  const getTodoStats = () => {
+    // Get data from localStorage instead of context
+    let todos = [];
+    try {
+      const savedTodos = localStorage.getItem("todoItems");
+      if (savedTodos) {
+        todos = JSON.parse(savedTodos);
+      }
+    } catch (error) {
+      console.error("Error parsing todo items:", error);
+      return { total: 0, completed: 0, pending: 0 };
+    }
+    
+    // Count todos by status
+    const totalTodos = todos.length;
+    const completedTodos = todos.filter(todo => todo.completed).length;
+    const pendingTodos = totalTodos - completedTodos;
+    
+    return { total: totalTodos, completed: completedTodos, pending: pendingTodos };
+  };
+  
+  const todoStats = getTodoStats();
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CheckSquare className="h-5 w-5 text-primary" />
+          Todo App
+        </CardTitle>
+        <CardDescription>Manage your tasks efficiently</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Total Tasks</span>
+            <span className="font-semibold">{todoStats.total}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Pending</span>
+            <span className="font-semibold">{todoStats.pending}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Completed</span>
+            <span className="font-semibold">{todoStats.completed}</span>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button asChild className="w-full">
+          <Link to="/todo">Go to Todo App</Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
 
 const Dashboard = () => {
-  const { state } = useTodo();
-  
-  // Count todos by status
-  const totalTodos = state.todos.length;
-  const completedTodos = state.todos.filter(todo => todo.completed).length;
-  const pendingTodos = totalTodos - completedTodos;
-  
-  // Get number of lists
-  const customLists = state.lists.filter(list => 
-    !["my-day", "important", "planned", "all", "tasks"].includes(list.id)
-  ).length;
-
   return (
     <div className="container mx-auto p-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5 text-primary" />
-              Todo App
-            </CardTitle>
-            <CardDescription>Manage your tasks efficiently</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total Tasks</span>
-                <span className="font-semibold">{totalTodos}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pending</span>
-                <span className="font-semibold">{pendingTodos}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Completed</span>
-                <span className="font-semibold">{completedTodos}</span>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button asChild className="w-full">
-              <Link to="/todo">Go to Todo App</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+        <DashboardTodoCard />
 
         <Card>
           <CardHeader>
