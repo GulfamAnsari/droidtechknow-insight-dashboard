@@ -294,9 +294,6 @@ const MyFiles = () => {
   const handleFileClick = (file: FileItem) => {
     setSelectedFile(file);
     setIsPreviewOpen(true);
-    if (onViewFile) {
-      onViewFile(file);
-    }
   };
 
   // Function to navigate to next/prev file
