@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import UploadArea from "@/components/files/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
+import { useSwipeable } from "react-swipeable";
 
 interface FileMetadata {
   format?: string;
@@ -336,6 +336,19 @@ const MyFiles = () => {
     );
   }
   
+  // Fix the bulk selection callback
+  const handleBulkSelection = (selectedFiles: any[]) => {
+    // Handle bulk selection logic
+    console.log("Selected files for bulk action:", selectedFiles);
+  };
+  
+  // Add swipe handlers for mobile preview
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => selectedFile && navigateFile('next'),
+    onSwipedRight: () => selectedFile && navigateFile('prev'),
+    trackMouse: false
+  });
+  
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full">
       {/* Mobile sidebar toggle - now positioned properly in top left */}
@@ -524,7 +537,7 @@ const MyFiles = () => {
         </div>
         
         {/* Main content */}
-        <div className="flex-1 overflow-auto p-4 md:p-6" style={{ "-ms-overflow-style": "none", "scrollbar-width": "none"}}>
+        <div className="flex-1 overflow-auto p-4 md:p-6" style={{ scrollbarWidth: "none" }}>
           {/* File type cards - hidden on mobile */}
           {!isMobile && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
@@ -776,7 +789,7 @@ const MyFiles = () => {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
-              <div className="flex items-center space-x-2 mr-8">
+              <div className="flex items-center space-x-2">
                 <Button variant="outline" size="sm" onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -788,59 +801,71 @@ const MyFiles = () => {
               </div>
             </div>
             
-            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center">
-              {/* Navigation buttons */}
+            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...(isMobile ? swipeHandlers : {})}>
+              {/* Fixed position navigation buttons with consistent positioning */}
               <button 
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
                 onClick={() => navigateFile('prev')}
+                aria-label="Previous file"
               >
-                &lt;
+                <ChevronLeft className="h-5 w-5" />
               </button>
               
-              {/* File preview based on type */}
-              {selectedFile?.fileType === 'photo' ? (
-                <img 
-                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
-                  alt={selectedFile?.title} 
-                  className="max-h-full max-w-full object-contain" 
-                />
-              ) : selectedFile?.fileType === 'video' ? (
-                <video 
-                  src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
-                  controls 
-                  className="max-h-full max-w-full" 
-                />
-              ) : selectedFile?.fileType === 'audio' ? (
-                <div className="p-8">
-                  <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
-                  <div className="mt-4 flex justify-center">
-                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+              {/* File preview container with fixed max dimensions */}
+              <div className="w-full h-full flex items-center justify-center">
+                {selectedFile?.fileType === 'photo' ? (
+                  <img 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    alt={selectedFile?.title} 
+                    className="max-h-full max-w-full object-contain"
+                    style={{ maxHeight: 'calc(90vh - 140px)' }} // Ensure image fits within the container
+                  />
+                ) : selectedFile?.fileType === 'video' ? (
+                  <video 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    controls 
+                    className="max-h-full max-w-full" 
+                  />
+                ) : selectedFile?.fileType === 'audio' ? (
+                  <div className="p-8 w-full">
+                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
+                    <div className="mt-4 flex justify-center">
+                      {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                    </div>
                   </div>
-                </div>
-              ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
-                <iframe 
-                  src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
-                  className="w-full h-full" 
-                  title={selectedFile?.title}
-                />
-              ) : (
-                <div className="text-center p-8">
-                  <div className="flex justify-center mb-4">
-                    {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
+                  <iframe 
+                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
+                    className="w-full h-full" 
+                    title={selectedFile?.title}
+                  />
+                ) : (
+                  <div className="text-center p-8">
+                    <div className="flex justify-center mb-4">
+                      {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                    </div>
+                    <p>Preview not available for this file type</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
+                    </p>
                   </div>
-                  <p>Preview not available for this file type</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
-                  </p>
+                )}
+              </div>
+              
+              <button 
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
+                onClick={() => navigateFile('next')}
+                aria-label="Next file"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              {/* Mobile swipe hint - only shown on mobile */}
+              {isMobile && (
+                <div className="absolute bottom-4 left-0 right-0 text-center text-white text-sm bg-black/30 py-1">
+                  Swipe left or right to navigate
                 </div>
               )}
-              
-              <button 
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50"
-                onClick={() => navigateFile('next')}
-              >
-                &gt;
-              </button>
             </div>
             
             <div className="p-4 text-sm bg-background border-t">
