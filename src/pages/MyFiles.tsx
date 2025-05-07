@@ -353,7 +353,7 @@ const MyFiles = () => {
   };
   
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full inner-container">
       {/* Mobile sidebar toggle - now positioned properly in top left */}
       {isMobile && (
         <Button 

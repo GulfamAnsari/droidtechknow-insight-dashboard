@@ -54,7 +54,7 @@ const Notepad = () => {
   };
   
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-4rem)] flex flex-col inner-container">
       <div className="flex-1 overflow-auto flex flex-col w-full">
         <div className="flex-1 overflow-auto p-4 w-full">
           <Editor 

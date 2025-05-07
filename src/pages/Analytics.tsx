@@ -482,7 +482,7 @@ const Analytics = () => {
   }
   
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container inner-container">
       
       {/* Filters */}
       <Card className="mb-6">

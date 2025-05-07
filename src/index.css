@@ -124,3 +124,10 @@
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+
+.inner-container {
+  overflow-y: scroll;
+  height: calc(100vh - 56px);
+  scrollbar-width: none;
+}

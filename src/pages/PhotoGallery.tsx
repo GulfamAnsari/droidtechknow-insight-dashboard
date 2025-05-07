@@ -245,7 +245,7 @@ const PhotoGallery = () => {
   }
   
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden inner-container">
       {/* Sidebar */}
       <div className="w-64 bg-muted/30 border-r flex flex-col h-full overflow-hidden">
         <div className="p-4 border-b">

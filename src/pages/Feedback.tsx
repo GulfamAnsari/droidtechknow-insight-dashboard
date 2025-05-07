@@ -122,7 +122,7 @@ const Feedback = () => {
     : 0;
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container inner-container">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

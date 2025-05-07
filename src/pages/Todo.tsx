@@ -28,7 +28,7 @@ const Todo = () => {
     <TodoProvider>
       <div 
         className={cn(
-          "flex flex-col relative",
+          "flex flex-col relative inner-container",
           isFullScreen ? "fixed inset-0 z-50 bg-background" : "h-[calc(100vh-8rem)]"
         )}
       >

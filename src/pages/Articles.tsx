@@ -321,7 +321,7 @@ const Articles = () => {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container inner-container">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
