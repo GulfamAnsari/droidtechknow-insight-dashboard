@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
@@ -62,6 +62,14 @@ const MyFiles = () => {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [gridSize, setGridSize] = useState<number>(150);
   const isMobile = useIsMobile();
+  
+  // Initialize swipe handlers regardless of conditions
+  // This ensures hooks are called in the same order on every render
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => selectedFile && navigateFile('next'),
+    onSwipedRight: () => selectedFile && navigateFile('prev'),
+    trackMouse: false
+  });
   
   // Load initial data from localStorage
   useEffect(() => {
@@ -286,13 +294,18 @@ const MyFiles = () => {
   const handleFileClick = (file: FileItem) => {
     setSelectedFile(file);
     setIsPreviewOpen(true);
+    if (onViewFile) {
+      onViewFile(file);
+    }
   };
 
   // Function to navigate to next/prev file
   const navigateFile = (direction: 'next' | 'prev') => {
-    if (!selectedFile || displayFiles.length <= 1) return;
+    if (!selectedFile || !displayFiles || displayFiles.length <= 1) return;
     
     const currentIndex = displayFiles.findIndex(file => file.id === selectedFile.id);
+    if (currentIndex === -1) return;
+    
     let newIndex;
     
     if (direction === 'next') {
@@ -341,13 +354,6 @@ const MyFiles = () => {
     // Handle bulk selection logic
     console.log("Selected files for bulk action:", selectedFiles);
   };
-  
-  // Add swipe handlers for mobile preview
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => selectedFile && navigateFile('next'),
-    onSwipedRight: () => selectedFile && navigateFile('prev'),
-    trackMouse: false
-  });
   
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full">
@@ -786,6 +792,7 @@ const MyFiles = () => {
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">File Preview</DialogTitle>
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
@@ -801,7 +808,7 @@ const MyFiles = () => {
               </div>
             </div>
             
-            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...(isMobile ? swipeHandlers : {})}>
+            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...swipeHandlers}>
               {/* Fixed position navigation buttons with consistent positioning */}
               <button 
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"

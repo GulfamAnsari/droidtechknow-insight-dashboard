@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Info, Tag, X, ChevronLeft, ChevronRight, Download, Trash2, ZoomIn } from "lucide-react";
 import { getFileIcon, getFileType, getFileTypeLabel, formatFileSize, downloadFile } from "./FileUtils";
@@ -46,6 +46,13 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
   const navigableFiles = allFiles || files;
   const isMobile = useIsMobile();
   
+  // Initialize swipe handlers regardless of conditions to ensure consistent hook calls
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => navigateFiles('next'),
+    onSwipedRight: () => navigateFiles('prev'),
+    trackMouse: false
+  });
+  
   if (!files || files.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -86,13 +93,6 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
       }
     }
   };
-
-  // Add swipe handlers for mobile
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => navigateFiles('next'),
-    onSwipedRight: () => navigateFiles('prev'),
-    trackMouse: false
-  });
   
   return (
     <>
@@ -180,6 +180,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">File Preview</DialogTitle>
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
@@ -195,7 +196,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
               </div>
             </div>
             
-            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...(isMobile ? swipeHandlers : {})}>
+            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...swipeHandlers}>
               {/* Fixed position navigation buttons */}
               <button 
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
