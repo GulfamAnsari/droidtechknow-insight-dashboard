@@ -506,8 +506,8 @@ const MyFiles = () => {
                 <Slider 
                   className="w-24" 
                   value={[gridSize]} 
-                  min={100} 
-                  max={250} 
+                  min={50} 
+                  max={1000} 
                   step={10}
                   onValueChange={(value) => setGridSize(value[0])}
                 />
