@@ -1,214 +1,251 @@
 
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, FileText, MessageSquare, BarChart3, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-
-// Define interface for the stats data
-interface DashboardStats {
-  totalArticles: number;
-  totalViews: number;
-  totalLikes: number;
-  totalFeedback: number;
-  totalVisits: number;
-}
-
-// Mock functions to fetch stats data
-const fetchArticlesStats = async (): Promise<{ totalArticles: number; totalViews: number; totalLikes: number }> => {
-  try {
-    const response = await fetch("https://droidtechknow.com/api/dashboard_fetch_all_results.php");
-    if (!response.ok) {
-      throw new Error("Failed to fetch articles");
-    }
-    const articles = await response.json();
-    
-    return {
-      totalArticles: articles.length,
-      totalViews: articles.reduce((sum: number, article: any) => sum + parseInt(article.views || "0"), 0),
-      totalLikes: articles.reduce((sum: number, article: any) => sum + parseInt(article.likes || "0"), 0),
-    };
-  } catch (error) {
-    console.error("Error fetching articles stats:", error);
-    return { totalArticles: 0, totalViews: 0, totalLikes: 0 };
-  }
-};
-
-const fetchFeedbackStats = async (): Promise<{ totalFeedback: number }> => {
-  try {
-    const response = await fetch("https://droidtechknow.com/admin/api/feedback/getAllFeedbacks.php");
-    if (!response.ok) {
-      throw new Error("Failed to fetch feedback");
-    }
-    const feedback = await response.json();
-    
-    return {
-      totalFeedback: feedback.length,
-    };
-  } catch (error) {
-    console.error("Error fetching feedback stats:", error);
-    return { totalFeedback: 0 };
-  }
-};
-
-const fetchAnalyticsStats = async (): Promise<{ totalVisits: number }> => {
-  // Use today's date for analytics
-  const today = new Date();
-  const dateString = today.toISOString().split('T')[0];
-  
-  try {
-    const response = await fetch(
-      `https://droidtechknow.com/admin/api/analytics/getAnalytics.php?date1=${dateString}&date2=${dateString}`
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch analytics");
-    }
-    const analytics = await response.json();
-    
-    return {
-      totalVisits: analytics.length,
-    };
-  } catch (error) {
-    console.error("Error fetching analytics stats:", error);
-    return { totalVisits: 0 };
-  }
-};
+import { 
+  CheckSquare, 
+  BookOpen, 
+  Cloud, 
+  BarChart3, 
+  FileText, 
+  MessageSquare, 
+  Image 
+} from "lucide-react";
+import { useTodo } from "@/contexts/TodoContext";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  const { state } = useTodo();
   
-  // Fetch article stats
-  const { data: articlesStats, isLoading: isLoadingArticles } = useQuery({
-    queryKey: ["articlesStats"],
-    queryFn: fetchArticlesStats,
-  });
+  // Count todos by status
+  const totalTodos = state.todos.length;
+  const completedTodos = state.todos.filter(todo => todo.completed).length;
+  const pendingTodos = totalTodos - completedTodos;
   
-  // Fetch feedback stats
-  const { data: feedbackStats, isLoading: isLoadingFeedback } = useQuery({
-    queryKey: ["feedbackStats"],
-    queryFn: fetchFeedbackStats,
-  });
-  
-  // Fetch analytics stats
-  const { data: analyticsStats, isLoading: isLoadingAnalytics } = useQuery({
-    queryKey: ["analyticsStats"],
-    queryFn: fetchAnalyticsStats,
-  });
-  
-  const isLoading = isLoadingArticles || isLoadingFeedback || isLoadingAnalytics;
-  
-  // Combine stats data
-  const stats: DashboardStats = {
-    totalArticles: articlesStats?.totalArticles || 0,
-    totalViews: articlesStats?.totalViews || 0,
-    totalLikes: articlesStats?.totalLikes || 0,
-    totalFeedback: feedbackStats?.totalFeedback || 0,
-    totalVisits: analyticsStats?.totalVisits || 0,
-  };
+  // Get number of lists
+  const customLists = state.lists.filter(list => 
+    !["my-day", "important", "planned", "all", "tasks"].includes(list.id)
+  ).length;
 
   return (
-    <div className="dashboard-container">
-      <h1 className="text-3xl font-bold mb-8">Welcome to DroidTechKnow Insights</h1>
-      
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div className="container mx-auto p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Content</CardTitle>
-            <CardDescription>Manage your articles and content</CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-primary" />
+              Todo App
+            </CardTitle>
+            <CardDescription>Manage your tasks efficiently</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500">Total Articles</p>
-                <p className="text-2xl font-bold">
-                  {isLoading ? "Loading..." : stats.totalArticles.toLocaleString()}
-                </p>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Tasks</span>
+                <span className="font-semibold">{totalTodos}</span>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500">Total Views</p>
-                <p className="text-2xl font-bold">
-                  {isLoading ? "Loading..." : stats.totalViews.toLocaleString()}
-                </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pending</span>
+                <span className="font-semibold">{pendingTodos}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Completed</span>
+                <span className="font-semibold">{completedTodos}</span>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full flex justify-between items-center" 
-              onClick={() => navigate("/articles")}
-            >
-              View Articles <ChevronRight className="h-4 w-4" />
-            </Button>
           </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/todo">Go to Todo App</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Notepad
+            </CardTitle>
+            <CardDescription>Take and manage your notes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create and manage your notes with a rich text editor.
+                Your notes are saved automatically and stored locally.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Rich text formatting</li>
+                <li>Local storage persistence</li>
+                <li>Automatic saving</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/notepad">Open Notepad</Link>
+            </Button>
+          </CardFooter>
         </Card>
         
         <Card>
-          <CardContent>
-            <div className="space-y-1 mb-4">
-              <p className="text-sm text-gray-500">Total Feedback</p>
-              <p className="text-2xl font-bold">
-                {isLoading ? "Loading..." : stats.totalFeedback.toLocaleString()}
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              className="w-full flex justify-between items-center" 
-              onClick={() => navigate("/feedback")}
-            >
-              View Feedback <ChevronRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Analytics</CardTitle>
-            <CardDescription>Monitor site performance</CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cloud className="h-5 w-5 text-primary" />
+              My Cloud
+            </CardTitle>
+            <CardDescription>Store and manage your files</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-1 mb-4">
-              <p className="text-sm text-gray-500">Today's Visits</p>
-              <p className="text-2xl font-bold">
-                {isLoading ? "Loading..." : stats.totalVisits.toLocaleString()}
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Upload, view, and manage your files and documents in one place.
+                Supports images, videos, documents, and more.
               </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>File upload and preview</li>
+                <li>Folder organization</li>
+                <li>Responsive layout</li>
+              </ul>
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full flex justify-between items-center" 
-              onClick={() => navigate("/analytics")}
-            >
-              View Analytics <ChevronRight className="h-4 w-4" />
-            </Button>
           </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/myfiles">Open My Cloud</Link>
+            </Button>
+          </CardFooter>
         </Card>
-      </div>
-      
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="flex justify-center items-center gap-2"
-          onClick={() => navigate("/articles")}
-        >
-          <FileText className="h-5 w-5" /> Manage Articles
-        </Button>
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="flex justify-center items-center gap-2"
-          onClick={() => navigate("/feedback")}
-        >
-          <MessageSquare className="h-5 w-5" /> View Feedback
-        </Button>
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="flex justify-center items-center gap-2"
-          onClick={() => navigate("/analytics")}
-        >
-          <BarChart3 className="h-5 w-5" /> Check Analytics
-        </Button>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Analytics
+            </CardTitle>
+            <CardDescription>Track your performance metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                View analytics and statistics about your site's performance,
+                including traffic data and user engagement metrics.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Performance metrics</li>
+                <li>Visual charts</li>
+                <li>Data export options</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/analytics">View Analytics</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Articles
+            </CardTitle>
+            <CardDescription>Manage your content</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create, edit, and manage your articles and other written content.
+                Track views, likes, and engagement metrics.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Content management</li>
+                <li>Performance tracking</li>
+                <li>Publishing tools</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/articles">Manage Articles</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Feedback
+            </CardTitle>
+            <CardDescription>Review user feedback</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Collect and manage feedback from your users.
+                Analyze comments and improve your content based on suggestions.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Feedback collection</li>
+                <li>Comment management</li>
+                <li>Response tools</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/feedback">View Feedback</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5 text-primary" />
+              Photo Gallery
+            </CardTitle>
+            <CardDescription>Manage your photo collection</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Upload, organize, and view your photos in a clean gallery layout.
+                Sort photos by date and view them in high resolution.
+              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Features:</span>
+              </div>
+              <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+                <li>Drag and drop uploading</li>
+                <li>Date-based organization</li>
+                <li>Photo previews</li>
+                <li>Responsive grid layout</li>
+              </ul>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/gallery">Open Photo Gallery</Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );
