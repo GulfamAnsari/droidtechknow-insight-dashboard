@@ -20,7 +20,9 @@ const loginSchema = z.object({
 const signupSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(3, "Password must be at least 8 characters"),
+  role: z.string().min(1, "Role is required"),
+  key: z.string().min(1, "Key is required"),
   confirmPassword: z.string(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -52,6 +54,8 @@ const Login = () => {
       email: "",
       password: "",
       confirmPassword: "",
+      key: "",
+      role: ""
     },
   });
 
@@ -67,7 +71,7 @@ const Login = () => {
   const onSignupSubmit = async (values: SignupFormValues) => {
     setIsSubmitting(true);
     try {
-      const success = await signup(values.username, values.email, values.password);
+      const success = await signup(values.username, values.email, values.password, values.role, values.key);
       if (success) {
         // Reset the form and switch to login tab after successful signup
         signupForm.reset();
@@ -192,6 +196,32 @@ const Login = () => {
                             <FormLabel>Confirm Password</FormLabel>
                             <FormControl>
                               <Input type="password" placeholder="Confirm your password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={signupForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Role" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={signupForm.control}
+                        name="key"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Key</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Key" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

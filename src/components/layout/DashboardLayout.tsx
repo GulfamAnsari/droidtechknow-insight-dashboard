@@ -57,6 +57,8 @@ const DashboardLayout = () => {
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       
       {/* Global Header */}
+      {/* <header className="h-14 border-b flex items-center justify-end px-4 bg-background"> */}
+
       <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
         <div className="text-lg font-semibold">
           {user && `Welcome, ${user.username}`}

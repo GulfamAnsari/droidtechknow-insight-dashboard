@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
-  signup: (username: string, email: string, password: string, role?: string) => Promise<boolean>;
+  signup: (username: string, email: string, password: string, role?: string, key?: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: () => boolean;
 }
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signup = async (username: string, email: string, password: string, role: string = 'user'): Promise<boolean> => {
+  const signup = async (username: string, email: string, password: string, role: string = 'user', key: string = ''): Promise<boolean> => {
     try {
       setIsLoading(true);
       
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password, 
           email, 
           role,
-          key: "as" // As seen in the example request
+          key
         }),
       });
 
