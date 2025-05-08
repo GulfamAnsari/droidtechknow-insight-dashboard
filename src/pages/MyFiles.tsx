@@ -95,7 +95,7 @@ const MyFiles = () => {
     queryKey: ["files"],
     queryFn: async () => {
       try {
-        const response = await fetch("https://droidtechknow.com/admin/api/files/uploads/get_files.php");
+        const response = await fetch("https://droidtechknow.com/admin/api/files/get_files.php");
         if (!response.ok) {
           throw new Error("Failed to fetch files");
         }
