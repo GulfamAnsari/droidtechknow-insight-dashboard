@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Toaster } from "@/components/ui/sonner";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -27,6 +28,7 @@ const DashboardLayout = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
 
   // Close sidebar by default on navigation when on mobile
   useEffect(() => {
@@ -55,7 +57,10 @@ const DashboardLayout = () => {
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
       
       {/* Global Header */}
-      <header className="h-14 border-b flex items-center justify-end px-4 bg-background">
+      <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+        <div className="text-lg font-semibold">
+          {user && `Welcome, ${user.username}`}
+        </div>
         
         <div className="flex items-center">
           {!hideRefreshButton && (
@@ -98,7 +103,7 @@ const DashboardLayout = () => {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

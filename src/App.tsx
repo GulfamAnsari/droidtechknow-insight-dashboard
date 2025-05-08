@@ -5,7 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthProvider } from "@/contexts/AuthContext";
 import DashboardLayout from "./components/layout/DashboardLayout";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Articles from "./pages/Articles";
 import Feedback from "./pages/Feedback";
@@ -14,6 +16,7 @@ import Todo from "./pages/Todo";
 import Notepad from "./pages/Notepad";
 import MyFiles from "./pages/MyFiles";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,24 +30,32 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<DashboardLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="articles" element={<Articles />} />
-              <Route path="feedback" element={<Feedback />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="todo" element={<Todo />} />
-              <Route path="notepad" element={<Notepad />} />
-              <Route path="myfiles" element={<MyFiles />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              
+              {/* Protected routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<DashboardLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="articles" element={<Articles />} />
+                  <Route path="feedback" element={<Feedback />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="todo" element={<Todo />} />
+                  <Route path="notepad" element={<Notepad />} />
+                  <Route path="myfiles" element={<MyFiles />} />
+                </Route>
+              </Route>
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
