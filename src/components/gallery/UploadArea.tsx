@@ -122,7 +122,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
       formData.append('fileType', fileType);
 
       // Upload the file
-      const response = await fetch('https://droidtechknow.com/admin/upload.php', {
+      const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
         method: 'POST',
         body: formData,
       });

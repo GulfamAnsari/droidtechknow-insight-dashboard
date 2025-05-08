@@ -132,7 +132,7 @@ export const groupFilesByDate = (files: any[]): { [date: string]: any[] } => {
 export const downloadFile = (file: any) => {
   try {
     const link = document.createElement('a');
-    link.href = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`;
+    link.href = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/${file.url}`;
     link.download = file.title;
     document.body.appendChild(link);
     link.click();

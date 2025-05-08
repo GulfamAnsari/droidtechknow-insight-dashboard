@@ -108,7 +108,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
           formData.append('height', String(height));
         }
         
-        const response = await fetch('https://droidtechknow.com/admin/upload.php', {
+        const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
           method: 'POST',
           body: formData,
         });

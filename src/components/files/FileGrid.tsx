@@ -109,7 +109,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
             >
               {file.fileType === 'photo' ? (
                 <img 
-                  src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                  src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/${file.url}`} 
                   alt={file.title}
                   className="h-full w-full object-cover"
                   loading="lazy"
@@ -210,27 +210,27 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
               <div className="w-full h-full flex items-center justify-center">
                 {selectedFile?.fileType === 'photo' ? (
                   <img 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} 
                     alt={selectedFile?.title} 
                     className="max-h-full max-w-full object-contain"
                     style={{ maxHeight: 'calc(90vh - 140px)' }} // Ensure image fits within the container
                   />
                 ) : selectedFile?.fileType === 'video' ? (
                   <video 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} 
                     controls 
                     className="max-h-full max-w-full" 
                   />
                 ) : selectedFile?.fileType === 'audio' ? (
                   <div className="p-8 w-full">
-                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
+                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} controls className="w-full" />
                     <div className="mt-4 flex justify-center">
                       {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
                     </div>
                   </div>
                 ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
                   <iframe 
-                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
+                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}#toolbar=0`} 
                     className="w-full h-full" 
                     title={selectedFile?.title}
                   />

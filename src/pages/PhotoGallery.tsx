@@ -82,7 +82,7 @@ const PhotoGallery = () => {
     queryKey: ["photos"],
     queryFn: async () => {
       try {
-        const response = await fetch("https://droidtechknow.com/admin/get_images.php");
+        const response = await fetch("https://droidtechknow.com/admin/api/files/get_files.php");
         if (!response.ok) {
           throw new Error("Failed to fetch images");
         }

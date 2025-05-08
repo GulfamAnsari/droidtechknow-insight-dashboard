@@ -95,7 +95,7 @@ const MyFiles = () => {
     queryKey: ["files"],
     queryFn: async () => {
       try {
-        const response = await fetch("https://droidtechknow.com/admin/get_images.php");
+        const response = await fetch("https://droidtechknow.com/admin/api/files/uploads/get_files.php");
         if (!response.ok) {
           throw new Error("Failed to fetch files");
         }
@@ -638,7 +638,7 @@ const MyFiles = () => {
                         >
                           {file.fileType === 'photo' ? (
                             <img 
-                              src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                              src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`} 
                               alt={file.title}
                               className="h-full w-full object-cover"
                             />
@@ -729,7 +729,7 @@ const MyFiles = () => {
                           <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
                             {file.fileType === 'photo' ? (
                               <img 
-                                src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/${file.url}`} 
+                                src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`} 
                                 alt={file.title}
                                 className="h-full w-full object-cover"
                               />
@@ -819,27 +819,27 @@ const MyFiles = () => {
               <div className="w-full h-full flex items-center justify-center">
                 {selectedFile?.fileType === 'photo' ? (
                   <img 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
                     alt={selectedFile?.title} 
                     className="max-h-full max-w-full object-contain"
                     style={{ maxHeight: 'calc(90vh - 140px)' }} // Ensure image fits within the container
                   />
                 ) : selectedFile?.fileType === 'video' ? (
                   <video 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} 
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
                     controls 
                     className="max-h-full max-w-full" 
                   />
                 ) : selectedFile?.fileType === 'audio' ? (
                   <div className="p-8 w-full">
-                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`} controls className="w-full" />
+                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} controls className="w-full" />
                     <div className="mt-4 flex justify-center">
                       {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
                     </div>
                   </div>
                 ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
                   <iframe 
-                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/${selectedFile.url}`}#toolbar=0`} 
+                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`}#toolbar=0`} 
                     className="w-full h-full" 
                     title={selectedFile?.title}
                   />
