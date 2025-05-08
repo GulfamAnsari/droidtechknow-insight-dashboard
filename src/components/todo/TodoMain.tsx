@@ -273,7 +273,7 @@ const TodoMain = ({
         </div>
       </div>
       
-      {/* Todo list with tabs instead of carousel */}
+      {/* Todo list with tabs */}
       <div className="flex-1 overflow-y-auto">
         {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
           renderEmptyState()
