@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error('Failed to parse user data:', error);
         sessionStorage.removeItem('user');
         Cookies.remove('auth_token');
+        Cookies.remove('userId');
       }
     }
     setIsLoading(false);
@@ -66,6 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (success) {
         // Store the token in cookies
         Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
+        // Store the user ID in cookies
+        Cookies.set('userId', data.id, { expires: 7 }); // 7 days expiry
+        
         // Store the user data in sessionStorage
         sessionStorage.setItem('user', JSON.stringify(data));
         setUser(data);
@@ -124,6 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     sessionStorage.removeItem('user');
     Cookies.remove('Cookie');
+    Cookies.remove('userId');
     setUser(null);
     toast.info('You have been logged out.');
   };

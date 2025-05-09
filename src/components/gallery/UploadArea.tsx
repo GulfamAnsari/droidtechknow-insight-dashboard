@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Upload, Image as ImageIcon, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
+import Cookies from "js-cookie";
+import httpClient from "@/utils/httpClient";
 
 interface UploadAreaProps {
   onUploadSuccess: () => void;
@@ -75,93 +77,95 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
   };
   
   const uploadFiles = async () => {
-  // Check if no files are selected
-  if (files.length === 0) {
-    toast.error("Please select at least one file to upload");
-    return;
-  }
-
-  setUploading(true);
-  setProgress(0); // Reset progress
-  
-  const totalFiles = files.length;
-  let successCount = 0;
-  let errorCount = 0;
-
-  // Loop through files and upload each one
-  for (let i = 0; i < totalFiles; i++) {
-    try {
-      const file = files[i];
-      
-      // Get metadata for the file
-      const metadata = await getImageMetadata(file);
-
-      // Determine file type for API
-      let fileType = 'unknown';
-      if (file.type.startsWith('image/')) {
-        fileType = 'photo';
-      } else if (file.type.startsWith('video/')) {
-        fileType = 'video';
-      } else if (file.type.startsWith('audio/')) {
-        fileType = 'audio';
-      } else if (file.type.startsWith('application/') || file.type.startsWith('text/')) {
-        fileType = 'document';
-      }
-
-      const formData = new FormData();
-      formData.append('file', file); // Upload with photo0 key
-      formData.append('title', file.name); // Use filename as title
-      formData.append('size', String(file.size)); // File size
-      formData.append('type', file.type); // File MIME type
-      formData.append('lastModified', String(file.lastModified)); // Last modified timestamp
-      
-      // Add width and height for images
-      if (metadata.width) formData.append('width', String(metadata.width));
-      if (metadata.height) formData.append('height', String(metadata.height));
-      
-      // Add fileType for API
-      formData.append('fileType', fileType);
-      
-      // Add user ID if available
-      if (userId) {
-        formData.append('userId', userId);
-      }
-
-      // Upload the file
-      const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to upload ${file.name}`);
-      }
-
-      successCount++;
-    } catch (error) {
-      console.error("Upload error:", error);
-      errorCount++;
+    // Check if no files are selected
+    if (files.length === 0) {
+      toast.error("Please select at least one file to upload");
+      return;
     }
 
-    // Update the progress after each file upload
-    setProgress(Math.round(((i + 1) / totalFiles) * 100));
-  }
+    setUploading(true);
+    setProgress(0); // Reset progress
+    
+    const totalFiles = files.length;
+    let successCount = 0;
+    let errorCount = 0;
 
-  // Reset the uploading state and clear the selected files
-  setUploading(false);
-  setFiles([]);
+    // Get userId from props or from cookie
+    const userIdToUse = userId || Cookies.get('userId') || '';
 
-  // Show success or failure message depending on results
-  if (errorCount > 0) {
-    toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
-  } else {
-    toast.success(`Successfully uploaded ${successCount} files`);
-  }
+    // Loop through files and upload each one
+    for (let i = 0; i < totalFiles; i++) {
+      try {
+        const file = files[i];
+        
+        // Get metadata for the file
+        const metadata = await getImageMetadata(file);
 
-  // Trigger any callback on success
-  onUploadSuccess();
-};
+        // Determine file type for API
+        let fileType = 'unknown';
+        if (file.type.startsWith('image/')) {
+          fileType = 'photo';
+        } else if (file.type.startsWith('video/')) {
+          fileType = 'video';
+        } else if (file.type.startsWith('audio/')) {
+          fileType = 'audio';
+        } else if (file.type.startsWith('application/') || file.type.startsWith('text/')) {
+          fileType = 'document';
+        }
 
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', file.name);
+        formData.append('size', String(file.size));
+        formData.append('type', file.type);
+        formData.append('lastModified', String(file.lastModified));
+        
+        // Add width and height for images
+        if (metadata.width) formData.append('width', String(metadata.width));
+        if (metadata.height) formData.append('height', String(metadata.height));
+        
+        // Add fileType for API
+        formData.append('fileType', fileType);
+        
+        // Always include userId
+        formData.append('userId', userIdToUse);
+        
+        // Upload using our new HTTP client (no need to set headers here as the interceptor will handle it)
+        // We'll use fetch directly to handle FormData properly
+        const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        
+        await response.json();
+        successCount++;
+      } catch (error) {
+        console.error("Upload error:", error);
+        errorCount++;
+      }
+
+      // Update the progress after each file upload
+      setProgress(Math.round(((i + 1) / totalFiles) * 100));
+    }
+
+    // Reset the uploading state and clear the selected files
+    setUploading(false);
+    setFiles([]);
+
+    // Show success or failure message depending on results
+    if (errorCount > 0) {
+      toast.warning(`Uploaded ${successCount} files, but ${errorCount} failed`);
+    } else {
+      toast.success(`Successfully uploaded ${successCount} files`);
+    }
+
+    // Trigger any callback on success
+    onUploadSuccess();
+  };
   
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
