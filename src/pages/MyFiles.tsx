@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import UploadArea from "@/components/files/UploadArea";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
 import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogFooter, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
 import { useSwipeable } from "react-swipeable";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FileMetadata {
   format?: string;
@@ -61,9 +63,15 @@ const MyFiles = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [gridSize, setGridSize] = useState<number>(150);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   
-  // Initialize swipe handlers regardless of conditions
+  // Initialize swipe handlers
   // This ensures hooks are called in the same order on every render
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => selectedFile && navigateFile('next'),
@@ -121,6 +129,42 @@ const MyFiles = () => {
     }
   });
 
+  // Delete file mutation
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileIds: string[]) => {
+      const results = [];
+      
+      for (const fileId of fileIds) {
+        const response = await fetch('https://droidtechknow.com/admin/api/files/delete.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: fileId })
+        });
+        
+        const result = await response.json();
+        results.push(result);
+        
+        // Remove the file from local storage too
+        setLocalFiles(prev => prev.filter(file => file.id !== fileId));
+      }
+      
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      toast.success(filesToDelete.length > 1 
+        ? `${filesToDelete.length} files deleted successfully` 
+        : "File deleted successfully");
+      setSelectedFiles([]);
+      setFilesToDelete([]);
+      setIsSelectionMode(false);
+    },
+    onError: (error) => {
+      console.error("Error deleting files:", error);
+      toast.error("Failed to delete files. Please try again.");
+    }
+  });
+
   // Combine API files with local modifications
   const allFiles = apiFiles ? apiFiles.map(apiFile => {
     const localFile = localFiles.find(local => local.id === apiFile.id);
@@ -164,17 +208,39 @@ const MyFiles = () => {
   };
 
   const handleDeleteFile = (fileId: string) => {
-    // In a real app, you would call an API to delete the file
-    // For now, we'll just remove it from local state
-    setLocalFiles(files => files.filter(file => file.id !== fileId));
-    
-    // If the deleted file is currently selected, close the preview
-    if (selectedFile?.id === fileId) {
-      setIsPreviewOpen(false);
-      setSelectedFile(null);
+    setFilesToDelete([fileId]);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleBulkDeleteFiles = () => {
+    if (selectedFiles.length > 0) {
+      setFilesToDelete([...selectedFiles]);
+      setIsDeleteDialogOpen(true);
     }
-    
-    toast.success("File deleted successfully");
+  };
+  
+  const confirmDeleteFiles = () => {
+    if (filesToDelete.length > 0) {
+      deleteFileMutation.mutate(filesToDelete);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+  
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => {
+      if (prev.includes(fileId)) {
+        return prev.filter(id => id !== fileId);
+      } else {
+        return [...prev, fileId];
+      }
+    });
+  };
+  
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedFiles([]);
+    }
   };
 
   // Calculate storage statistics
@@ -292,8 +358,12 @@ const MyFiles = () => {
   
   // Handle file click to show preview
   const handleFileClick = (file: FileItem) => {
-    setSelectedFile(file);
-    setIsPreviewOpen(true);
+    if (isSelectionMode) {
+      toggleFileSelection(file.id);
+    } else {
+      setSelectedFile(file);
+      setIsPreviewOpen(true);
+    }
   };
 
   // Function to navigate to next/prev file
@@ -347,9 +417,8 @@ const MyFiles = () => {
   }
   
   // Fix the bulk selection callback
-  const handleBulkSelection = (selectedFiles: any[]) => {
-    // Handle bulk selection logic
-    console.log("Selected files for bulk action:", selectedFiles);
+  const handleBulkSelection = (selectedFiles: string[]) => {
+    setSelectedFiles(selectedFiles);
   };
   
   return (
@@ -498,7 +567,7 @@ const MyFiles = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            {viewMode === "grid" && (
+            {viewMode === "grid" && !isSelectionMode && (
               <div className="flex items-center space-x-2 mr-2">
                 <Slider 
                   className="w-24" 
@@ -525,18 +594,40 @@ const MyFiles = () => {
                 <LayoutGrid className="h-4 w-4" />
               </button>
             </div>
-          </div>
-          
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogTrigger asChild>
-              <Button size="icon">
-                <Upload className="h-4 w-4" />
+            
+            <Button 
+              variant={isSelectionMode ? "default" : "outline"} 
+              size="sm" 
+              onClick={toggleSelectionMode}
+              className="gap-2"
+            >
+              <Checkbox checked={isSelectionMode} className="h-4 w-4" />
+              {isSelectionMode ? "Cancel" : "Select"}
+            </Button>
+            
+            {isSelectionMode && selectedFiles.length > 0 && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleBulkDeleteFiles}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete ({selectedFiles.length})
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <UploadArea onUploadSuccess={handleUploadSuccess} />
-            </DialogContent>
-          </Dialog>
+            )}
+            
+            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+              <DialogTrigger asChild>
+                <Button size="icon">
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl">
+                <UploadArea onUploadSuccess={handleUploadSuccess} userId={user?.id} />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         
         {/* Main content */}
@@ -606,8 +697,6 @@ const MyFiles = () => {
             </div>
           )}
           
-       
-          
           {displayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
               <p className="text-muted-foreground mb-4">No files found</p>
@@ -632,8 +721,21 @@ const MyFiles = () => {
                         onClick={() => handleFileClick(file)}
                         style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                       >
+                        {isSelectionMode && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <Checkbox 
+                              checked={selectedFiles.includes(file.id)} 
+                              onCheckedChange={() => toggleFileSelection(file.id)}
+                              className="h-5 w-5 bg-white border-2 border-primary rounded"
+                            />
+                          </div>
+                        )}
                         <div 
-                          className="bg-muted rounded-md overflow-hidden flex items-center justify-center border hover:border-primary transition-all"
+                          className={`bg-muted rounded-md overflow-hidden flex items-center justify-center border transition-all ${
+                            isSelectionMode && selectedFiles.includes(file.id) 
+                              ? 'border-primary border-2' 
+                              : 'hover:border-primary'
+                          }`}
                           style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                         >
                           {file.fileType === 'photo' ? (
@@ -704,11 +806,12 @@ const MyFiles = () => {
               ))}
             </div>
           ) : (
-            // List view - updated to have same click functionality as grid
+            // List view
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    {isSelectionMode && <th className="p-2"><Checkbox /></th>}
                     <th className="text-left font-medium text-sm p-2">Name</th>
                     <th className="text-left font-medium text-sm p-2">Type</th>
                     <th className="text-left font-medium text-sm p-2">Date</th>
@@ -721,9 +824,19 @@ const MyFiles = () => {
                   {displayFiles.map((file) => (
                     <tr 
                       key={file.id} 
-                      className="hover:bg-muted/50 cursor-pointer" 
+                      className={`hover:bg-muted/50 cursor-pointer ${
+                        isSelectionMode && selectedFiles.includes(file.id) ? 'bg-muted/80' : ''
+                      }`} 
                       onClick={() => handleFileClick(file)}
                     >
+                      {isSelectionMode && (
+                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={selectedFiles.includes(file.id)} 
+                            onCheckedChange={() => toggleFileSelection(file.id)}
+                          />
+                        </td>
+                      )}
                       <td className="p-2">
                         <div className="flex items-center space-x-3">
                           <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
@@ -881,6 +994,35 @@ const MyFiles = () => {
               )}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {filesToDelete.length > 1 ? 'Files' : 'File'}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {filesToDelete.length > 1 ? `these ${filesToDelete.length} files` : 'this file'}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteFiles}
+              disabled={deleteFileMutation.isPending}
+            >
+              {deleteFileMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

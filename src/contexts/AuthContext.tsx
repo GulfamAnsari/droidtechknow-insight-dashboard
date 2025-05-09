@@ -1,12 +1,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
+import Cookies from "js-cookie";
 
 interface User {
   id: string;
   username: string;
   email: string;
   role: string;
+  token?: string;
 }
 
 interface AuthContextType {
@@ -34,13 +36,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check if the user is already logged in when the app loads
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (error) {
         console.error('Failed to parse user data:', error);
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
+        Cookies.remove('auth_token');
       }
     }
     setIsLoading(false);
@@ -67,10 +70,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           username: username,
           email: data.email || '',
           role: data.role || 'user',
+          token: data.token || data.auth_token || `token_${Date.now()}`, // Store the token
         };
         
-        // Store the user data in localStorage
-        localStorage.setItem('user', JSON.stringify(userData));
+        // Store the token in cookies
+        Cookies.set('auth_token', userData.token || '', { expires: 7 }); // 7 days expiry
+        
+        // Store the user data in sessionStorage
+        sessionStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
         
         toast.success('Successfully logged in!');
@@ -125,7 +132,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
+    Cookies.remove('auth_token');
     setUser(null);
     toast.info('You have been logged out.');
   };

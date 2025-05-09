@@ -9,9 +9,10 @@ import { useDropzone } from "react-dropzone";
 
 interface UploadAreaProps {
   onUploadSuccess: () => void;
+  userId?: string;
 }
 
-const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
+const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
@@ -120,6 +121,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess }) => {
       
       // Add fileType for API
       formData.append('fileType', fileType);
+      
+      // Add user ID if available
+      if (userId) {
+        formData.append('userId', userId);
+      }
 
       // Upload the file
       const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
