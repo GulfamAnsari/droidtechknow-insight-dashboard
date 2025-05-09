@@ -132,11 +132,7 @@ const MyFiles = () => {
       const results = [];
       
       for (const fileId of fileIds) {
-        const response = await httpClient.post('https://droidtechknow.com/admin/api/files/delete.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: fileId })
-        });
+        const response = await httpClient.post('https://droidtechknow.com/admin/api/files/delete.php', { id: fileId });
         
         const result = response;
         results.push(result);

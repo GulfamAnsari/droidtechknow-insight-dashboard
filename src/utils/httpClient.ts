@@ -20,25 +20,15 @@ const httpClient = {
    * Sends a POST request
    */
   post: async (url: string, data?: any, options: RequestOptions = {}) => {
-    const contentType = options.headers?.['Content-Type'] || 'application/json';
-    
-    let body: string | FormData = data;
-    
-    // Only stringify if it's JSON and not already a string or FormData
-    if (contentType.includes('application/json') && typeof data === 'object' && !(data instanceof FormData)) {
-      body = JSON.stringify(data);
-    }
-    
+    let headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers);
     return httpClient.request(url, {
       ...options,
       method: 'POST',
-      body,
-      headers: {
-        'Content-Type': contentType,
-        ...options.headers,
-      }
+      body: JSON.stringify(data),
+      headers,
     });
   },
+  
 
   /**
    * Sends a DELETE request
