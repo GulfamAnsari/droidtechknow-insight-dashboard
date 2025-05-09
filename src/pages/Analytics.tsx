@@ -31,6 +31,7 @@ import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import httpClient from "@/utils/httpClient";
 
 interface Analytics {
   browser: string;
@@ -74,7 +75,7 @@ const fetchAnalytics = async (params: AnalyticsQueryParams): Promise<Analytics[]
   if (params.visitor_ip) queryParams.append("visitor_ip", params.visitor_ip);
   if (params.page_url) queryParams.append("page_url", params.page_url);
   
-  const response = await fetch(
+  const response = await httpClient.get(
     `https://droidtechknow.com/admin/api/analytics/getAnalytics.php?${queryParams.toString()}`
   );
   

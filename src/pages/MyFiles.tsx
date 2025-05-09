@@ -16,6 +16,7 @@ import { Slider } from "@/components/ui/slider";
 import { useSwipeable } from "react-swipeable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
+import httpClient from '@/utils/httpClient';
 
 interface FileMetadata {
   format?: string;
@@ -103,7 +104,7 @@ const MyFiles = () => {
     queryKey: ["files"],
     queryFn: async () => {
       try {
-        const response = await fetch("https://droidtechknow.com/admin/api/files/get_files.php");
+        const response = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php");
         if (!response.ok) {
           throw new Error("Failed to fetch files");
         }
@@ -135,7 +136,7 @@ const MyFiles = () => {
       const results = [];
       
       for (const fileId of fileIds) {
-        const response = await fetch('https://droidtechknow.com/admin/api/files/delete.php', {
+        const response = await httpClient.post('https://droidtechknow.com/admin/api/files/delete.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: fileId })
