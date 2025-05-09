@@ -60,13 +60,13 @@ const httpClient = {
       // Add auth token from cookie if it exists
       const authToken = Cookies.get('Cookie');
       if (authToken) {
-        headers.set('Cookie', authToken);
+        headers.set('X-Auth-Token', authToken);
       }
       
       // Add userId from cookie if it exists
       const userId = Cookies.get('userId');
       if (userId) {
-        headers.set('User-Id', userId);
+        headers.set('Id', userId);
       }
       
       fetchOptions.headers = headers;
