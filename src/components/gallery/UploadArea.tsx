@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -130,18 +129,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
         // Always include userId
         formData.append('userId', userIdToUse);
         
-        // Upload using our new HTTP client (no need to set headers here as the interceptor will handle it)
-        // We'll use fetch directly to handle FormData properly
-        const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
+        // Upload using our HTTP client
+        await httpClient.post('https://droidtechknow.com/admin/api/files/upload.php', formData);
         
-        await response.json();
         successCount++;
       } catch (error) {
         console.error("Upload error:", error);

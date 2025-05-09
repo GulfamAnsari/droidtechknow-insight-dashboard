@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import httpClient from "@/utils/httpClient";
 
 interface Feedback {
   postId: string;
@@ -18,13 +18,10 @@ interface Feedback {
 }
 
 const fetchFeedback = async (): Promise<Feedback[]> => {
-  const response = await fetch(
+  const response = await httpClient.get(
     "https://droidtechknow.com/admin/api/feedback/getAllFeedbacks.php"
   );
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  return response.json();
+  return response;
 };
 
 const Feedback = () => {

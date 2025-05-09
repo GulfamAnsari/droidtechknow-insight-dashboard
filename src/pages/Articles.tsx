@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDashboard } from "@/components/layout/DashboardLayout";
+import httpClient from "@/utils/httpClient";
 
 interface Article {
   articleDate: string;
@@ -72,51 +72,26 @@ interface EditPayload {
 }
 
 const fetchArticles = async (): Promise<Article[]> => {
-  const response = await fetch(
+  const response = await httpClient.get(
     "https://droidtechknow.com/api/dashboard_fetch_all_results.php"
   );
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  return response.json();
+  return response;
 };
 
 const deleteArticle = async (payload: DeletePayload): Promise<any> => {
-  const response = await fetch(
-    "https://droidtechknow.com/admin/api/deleteArticle.php", 
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
+  const response = await httpClient.post(
+    "https://droidtechknow.com/admin/api/deleteArticle.php",
+    payload
   );
-  
-  if (!response.ok) {
-    throw new Error("Failed to delete article");
-  }
-  
-  return response.json();
+  return response;
 };
 
 const editArticle = async (payload: EditPayload): Promise<any> => {
-  const response = await fetch(
-    "https://droidtechknow.com/admin/api/editArticle.php", 
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
+  const response = await httpClient.post(
+    "https://droidtechknow.com/admin/api/editArticle.php",
+    payload
   );
-  
-  if (!response.ok) {
-    throw new Error("Failed to edit article");
-  }
-  
-  return response.json();
+  return response;
 };
 
 const Articles = () => {
