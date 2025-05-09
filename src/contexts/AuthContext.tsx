@@ -61,9 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      const { auth_token, data } = await response.json();
+      const { auth_token, data, success } = await response.json();
       
-      if (data.success) {
+      if (success) {
         // Store the token in cookies
         Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
         // Store the user data in sessionStorage
