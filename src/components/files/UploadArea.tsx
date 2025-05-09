@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,8 @@ import { Upload, Trash } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 import { getFileIcon, getFileType } from "@/components/files/FileUtils";
+import httpClient from "@/utils/httpClient";
+import Cookies from "js-cookie";
 
 interface UploadAreaProps {
   onUploadSuccess: () => void;
@@ -89,6 +90,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({
     let successCount = 0;
     let errorCount = 0;
     
+    // Get userId from cookies
+    const userId = Cookies.get('userId');
+    
     // Loop through files and make individual API calls
     for (let i = 0; i < totalFiles; i++) {
       try {
@@ -96,11 +100,16 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         const { width, height } = await getImageDimensions(file);
         
         const formData = new FormData();
-        formData.append('file', file); // Changed from 'photo0' to 'file'
+        formData.append('file', file);
         formData.append('title', file.name);
         formData.append('size', String(file.size));
         formData.append('type', file.type);
         formData.append('lastModified', String(file.lastModified));
+        
+        // Add userId to formData if available
+        if (userId) {
+          formData.append('userId', userId);
+        }
         
         // Only add width and height for image files
         if (file.type.startsWith('image/')) {
@@ -108,14 +117,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
           formData.append('height', String(height));
         }
         
-        const response = await fetch('https://droidtechknow.com/admin/api/files/upload.php', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
+        await httpClient.post('https://droidtechknow.com/admin/api/files/upload.php', formData);
         
         successCount++;
       } catch (error) {

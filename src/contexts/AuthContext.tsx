@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
+import httpClient from "@/utils/httpClient";
 
 interface User {
   id: string;
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error('Failed to parse user data:', error);
         sessionStorage.removeItem('user');
-        Cookies.remove('auth_token');
+        Cookies.remove('Cookie');
         Cookies.remove('userId');
       }
     }
@@ -54,15 +55,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch('https://droidtechknow.com/admin/api/auth/signin.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=UTF-8',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const { auth_token, data, success } = await response.json();
+      // Use httpClient for login request with skipAuth as we don't have auth yet
+      const response = await httpClient.post('https://droidtechknow.com/admin/api/auth/signin.php', 
+        { username, password },
+        { 
+          skipAuth: true,
+          headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+          }
+        }
+      );
+      
+      const { auth_token, data, success } = response;
       
       if (success) {
         // Store the token in cookies
@@ -93,27 +97,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch('https://droidtechknow.com/admin/api/auth/signup.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=UTF-8',
-        },
-        body: JSON.stringify({ 
-          username, 
-          password, 
-          email, 
-          role,
-          key
-        }),
-      });
-
-      const data = await response.json();
+      // Use httpClient for signup request with skipAuth as we don't have auth yet
+      const response = await httpClient.post('https://droidtechknow.com/admin/api/auth/signup.php', 
+        { username, password, email, role, key },
+        { 
+          skipAuth: true,
+          headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+          }
+        }
+      );
       
-      if (data.success) {
+      if (response.success) {
         toast.success('Account created successfully! Please log in.');
         return true;
       } else {
-        toast.error(data.message || 'Registration failed. Please try again.');
+        toast.error(response.message || 'Registration failed. Please try again.');
         return false;
       }
     } catch (error) {

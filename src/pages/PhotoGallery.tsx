@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import httpClient from "@/utils/httpClient";
 
 interface Photo {
   id: string;
@@ -82,11 +83,7 @@ const PhotoGallery = () => {
     queryKey: ["photos"],
     queryFn: async () => {
       try {
-        const response = await fetch("https://droidtechknow.com/admin/api/files/get_files.php");
-        if (!response.ok) {
-          throw new Error("Failed to fetch images");
-        }
-        const data = await response.json();
+        const data = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php");
         
         // Transform the data to our Photo interface
         return data.map((photo: any) => ({
