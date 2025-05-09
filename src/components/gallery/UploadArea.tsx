@@ -109,7 +109,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
       }
 
       const formData = new FormData();
-      formData.append('photo0', file); // Upload with photo0 key
+      formData.append('file', file); // Upload with photo0 key
       formData.append('title', file.name); // Use filename as title
       formData.append('size', String(file.size)); // File size
       formData.append('type', file.type); // File MIME type
