@@ -135,6 +135,7 @@ const Articles = () => {
   }, [isRefreshing, refetch]);
 
   // Filter articles based on search term
+  console.log(articles, 'articles')
   const filteredArticles = articles
     ? articles.filter((article) => {
         const searchLower = searchTerm.toLowerCase();
