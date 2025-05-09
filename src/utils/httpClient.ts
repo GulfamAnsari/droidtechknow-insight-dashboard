@@ -21,10 +21,18 @@ const httpClient = {
    */
   post: async (url: string, data?: any, options: RequestOptions = {}) => {
     let headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers);
+    let body: string | FormData = data;
+  
+    const isFormData = data instanceof FormData;
+  
+    if (!isFormData) {
+      body = JSON.stringify(data);
+    }
+  
     return httpClient.request(url, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data),
+      body,
       headers,
     });
   },
