@@ -66,7 +66,7 @@ const httpClient = {
       // Add userId from cookie if it exists
       const userId = Cookies.get('userId');
       if (userId) {
-        headers.set('UserId', userId);
+        headers.set('User-Id', userId);
       }
       
       fetchOptions.headers = headers;

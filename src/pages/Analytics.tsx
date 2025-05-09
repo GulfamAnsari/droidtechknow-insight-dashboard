@@ -75,14 +75,9 @@ const fetchAnalytics = async (params: AnalyticsQueryParams): Promise<Analytics[]
   if (params.visitor_ip) queryParams.append("visitor_ip", params.visitor_ip);
   if (params.page_url) queryParams.append("page_url", params.page_url);
   
-  const response = await httpClient.get(
+  return await httpClient.get(
     `https://droidtechknow.com/admin/api/analytics/getAnalytics.php?${queryParams.toString()}`
   );
-  
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  return response.json();
 };
 
 // Function to normalize referrer domains

@@ -104,11 +104,7 @@ const MyFiles = () => {
     queryKey: ["files"],
     queryFn: async () => {
       try {
-        const response = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php");
-        if (!response.ok) {
-          throw new Error("Failed to fetch files");
-        }
-        const data = await response.json();
+        const data = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php");
         
         return data.map((file: any) => ({
           id: file.id || String(Math.random()),
@@ -142,7 +138,7 @@ const MyFiles = () => {
           body: JSON.stringify({ id: fileId })
         });
         
-        const result = await response.json();
+        const result = response;
         results.push(result);
         
         // Remove the file from local storage too
