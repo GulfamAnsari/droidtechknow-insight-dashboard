@@ -61,24 +61,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const { auth_token, data } = await response.json();
       
       if (data.success) {
-        // Create a user object from the response
-        const userData: User = {
-          id: data.id || data.userId || Date.now().toString(), // Fallback if API doesn't return an id
-          username: username,
-          email: data.email || '',
-          role: data.role || 'user',
-          token: data.token || data.auth_token || `token_${Date.now()}`, // Store the token
-        };
-        
         // Store the token in cookies
-        Cookies.set('auth_token', userData.token || '', { expires: 7 }); // 7 days expiry
-        
+        Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
         // Store the user data in sessionStorage
-        sessionStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
+        sessionStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
         
         toast.success('Successfully logged in!');
         return true;
@@ -133,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     sessionStorage.removeItem('user');
-    Cookies.remove('auth_token');
+    Cookies.remove('Cookie');
     setUser(null);
     toast.info('You have been logged out.');
   };
