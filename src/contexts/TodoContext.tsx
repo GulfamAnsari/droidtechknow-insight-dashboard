@@ -1,24 +1,26 @@
 
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { TodoItem, TodoList, TodoFilter } from "@/types/todo";
 import { useToast } from "@/components/ui/use-toast";
+import httpClient from "@/utils/httpClient";
 
 interface TodoState {
   lists: TodoList[];
   todos: TodoItem[];
   activeListId: string | null;
   filter: TodoFilter;
+  isLoading: boolean;
 }
 
 type TodoAction =
   | { type: "SET_LISTS"; payload: TodoList[] }
-  | { type: "ADD_LIST"; payload: Omit<TodoList, "id"> }
+  | { type: "ADD_LIST"; payload: TodoList }
   | { type: "UPDATE_LIST"; payload: TodoList }
   | { type: "DELETE_LIST"; payload: string }
   | { type: "SET_ACTIVE_LIST"; payload: string }
   | { type: "SET_TODOS"; payload: TodoItem[] }
-  | { type: "ADD_TODO"; payload: Omit<TodoItem, "id" | "createdAt" | "updatedAt"> }
+  | { type: "ADD_TODO"; payload: TodoItem }
   | { type: "UPDATE_TODO"; payload: TodoItem }
   | { type: "DELETE_TODO"; payload: string }
   | { type: "TOGGLE_TODO_COMPLETED"; payload: string }
@@ -27,7 +29,8 @@ type TodoAction =
   | { type: "ADD_TODO_STEP"; payload: { todoId: string, stepTitle: string } }
   | { type: "UPDATE_TODO_STEP"; payload: { todoId: string, stepId: string, title: string } }
   | { type: "TOGGLE_TODO_STEP"; payload: { todoId: string, stepId: string } }
-  | { type: "DELETE_TODO_STEP"; payload: { todoId: string, stepId: string } };
+  | { type: "DELETE_TODO_STEP"; payload: { todoId: string, stepId: string } }
+  | { type: "SET_LOADING"; payload: boolean };
 
 interface TodoContextType {
   state: TodoState;
@@ -35,6 +38,14 @@ interface TodoContextType {
   filteredTodos: TodoItem[];
   getListById: (id: string) => TodoList | undefined;
   getTodoById: (id: string) => TodoItem | undefined;
+  fetchTodos: () => Promise<void>;
+  fetchLists: () => Promise<void>;
+  addTodo: (todo: Omit<TodoItem, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateTodo: (todo: TodoItem) => Promise<void>;
+  deleteTodo: (id: string) => Promise<void>;
+  toggleTodoCompleted: (id: string) => Promise<void>;
+  toggleTodoImportant: (id: string) => Promise<void>;
+  addList: (list: Omit<TodoList, "id">) => Promise<void>;
 }
 
 const TodoContext = createContext<TodoContextType | undefined>(undefined);
@@ -53,6 +64,7 @@ const initialState: TodoState = {
   todos: [],
   activeListId: "my-day",
   filter: {},
+  isLoading: true,
 };
 
 function todoReducer(state: TodoState, action: TodoAction): TodoState {
@@ -61,8 +73,7 @@ function todoReducer(state: TodoState, action: TodoAction): TodoState {
       return { ...state, lists: action.payload };
     
     case "ADD_LIST": {
-      const newList = { ...action.payload, id: uuidv4() };
-      return { ...state, lists: [...state.lists, newList] };
+      return { ...state, lists: [...state.lists, action.payload] };
     }
     
     case "UPDATE_LIST": {
@@ -99,20 +110,12 @@ function todoReducer(state: TodoState, action: TodoAction): TodoState {
       return { ...state, todos: action.payload };
     
     case "ADD_TODO": {
-      const now = new Date();
-      const newTodo: TodoItem = {
-        ...action.payload,
-        id: uuidv4(),
-        createdAt: now,
-        updatedAt: now,
-        steps: action.payload.steps || [],
-      };
-      return { ...state, todos: [...state.todos, newTodo] };
+      return { ...state, todos: [...state.todos, action.payload] };
     }
     
     case "UPDATE_TODO": {
       const updatedTodos = state.todos.map(todo => 
-        todo.id === action.payload.id ? { ...action.payload, updatedAt: new Date() } : todo
+        todo.id === action.payload.id ? action.payload : todo
       );
       return { ...state, todos: updatedTodos };
     }
@@ -195,6 +198,9 @@ function todoReducer(state: TodoState, action: TodoAction): TodoState {
       });
       return { ...state, todos: updatedTodos };
     }
+
+    case "SET_LOADING":
+      return { ...state, isLoading: action.payload };
     
     default:
       return state;
@@ -205,68 +211,208 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, dispatch] = useReducer(todoReducer, initialState);
   const { toast } = useToast();
 
-  // Load data from localStorage when component mounts
-  useEffect(() => {
-    const savedLists = localStorage.getItem("todoLists");
-    const savedTodos = localStorage.getItem("todoItems");
-    const savedActiveListId = localStorage.getItem("activeListId");
-
-    if (savedLists) {
-      try {
-        const parsedLists = JSON.parse(savedLists);
-        // Merge with default lists to ensure we always have defaults
-        const mergedLists = [...defaultLists];
-        parsedLists.forEach((list: TodoList) => {
-          if (!list.isDefault) {
-            mergedLists.push(list);
-          }
-        });
-        dispatch({ type: "SET_LISTS", payload: mergedLists });
-      } catch (error) {
-        console.error("Error parsing todo lists:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your task lists",
-          variant: "destructive",
-        });
-      }
-    }
-
-    if (savedTodos) {
-      try {
-        const parsedTodos = JSON.parse(savedTodos);
+  // API Functions
+  const fetchTodos = async () => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
+      
+      if (response.todos) {
         // Convert string dates to Date objects
-        const processedTodos = parsedTodos.map((todo: any) => ({
+        const processedTodos = response.todos.map((todo: any) => ({
           ...todo,
           createdAt: new Date(todo.createdAt),
           updatedAt: new Date(todo.updatedAt),
           dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
           reminderDate: todo.reminderDate ? new Date(todo.reminderDate) : null,
         }));
+        
         dispatch({ type: "SET_TODOS", payload: processedTodos });
-      } catch (error) {
-        console.error("Error parsing todo items:", error);
+      }
+    } catch (error) {
+      console.error("Error fetching todos:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your tasks",
+        variant: "destructive",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
+  };
+
+  const fetchLists = async () => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
+      
+      if (response.lists) {
+        // Merge with default lists to ensure we always have defaults
+        const customLists = response.lists.filter((list: TodoList) => !list.isDefault);
+        const mergedLists = [...defaultLists, ...customLists];
+        dispatch({ type: "SET_LISTS", payload: mergedLists });
+      }
+    } catch (error) {
+      console.error("Error fetching todo lists:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your task lists",
+        variant: "destructive",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
+  };
+
+  const addTodo = async (todoData: Omit<TodoItem, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item", todoData);
+      
+      if (response.todo) {
+        const newTodo: TodoItem = {
+          ...response.todo,
+          createdAt: new Date(response.todo.createdAt),
+          updatedAt: new Date(response.todo.updatedAt),
+          dueDate: response.todo.dueDate ? new Date(response.todo.dueDate) : null,
+          reminderDate: response.todo.reminderDate ? new Date(response.todo.reminderDate) : null,
+        };
+        
+        dispatch({ type: "ADD_TODO", payload: newTodo });
+        
         toast({
-          title: "Error",
-          description: "Failed to load your tasks",
-          variant: "destructive",
+          title: "Success",
+          description: "Task added successfully",
         });
       }
+    } catch (error) {
+      console.error("Error adding todo:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add task",
+        variant: "destructive",
+      });
     }
+  };
 
+  const updateTodo = async (todo: TodoItem) => {
+    try {
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", todo);
+      
+      dispatch({ 
+        type: "UPDATE_TODO", 
+        payload: {
+          ...todo,
+          updatedAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.error("Error updating todo:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteTodo = async (id: string) => {
+    try {
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/delete-todo-item", { id });
+      
+      dispatch({ type: "DELETE_TODO", payload: id });
+      
+      toast({
+        title: "Success",
+        description: "Task deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting todo:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleTodoCompleted = async (id: string) => {
+    const todo = state.todos.find(t => t.id === id);
+    if (!todo) return;
+    
+    try {
+      const updatedTodo = { ...todo, completed: !todo.completed, updatedAt: new Date() };
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", updatedTodo);
+      
+      dispatch({ type: "TOGGLE_TODO_COMPLETED", payload: id });
+    } catch (error) {
+      console.error("Error toggling todo completion:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleTodoImportant = async (id: string) => {
+    const todo = state.todos.find(t => t.id === id);
+    if (!todo) return;
+    
+    try {
+      const updatedTodo = { ...todo, important: !todo.important, updatedAt: new Date() };
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", updatedTodo);
+      
+      dispatch({ type: "TOGGLE_TODO_IMPORTANT", payload: id });
+    } catch (error) {
+      console.error("Error toggling todo importance:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addList = async (listData: Omit<TodoList, "id">) => {
+    try {
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list", listData);
+      
+      if (response.list) {
+        dispatch({ type: "ADD_LIST", payload: response.list });
+        
+        toast({
+          title: "Success",
+          description: "List added successfully",
+        });
+      }
+    } catch (error) {
+      console.error("Error adding list:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add list",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load data from API when component mounts
+  useEffect(() => {
+    const savedActiveListId = localStorage.getItem("activeListId");
     if (savedActiveListId) {
       dispatch({ type: "SET_ACTIVE_LIST", payload: savedActiveListId });
     }
-  }, [toast]);
+    
+    // Fetch todos and lists from API
+    fetchTodos();
+    fetchLists();
+  }, []);
 
-  // Save data to localStorage whenever state changes
+  // Save activeListId to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem("todoLists", JSON.stringify(state.lists));
-    localStorage.setItem("todoItems", JSON.stringify(state.todos));
     if (state.activeListId) {
       localStorage.setItem("activeListId", state.activeListId);
     }
-  }, [state.lists, state.todos, state.activeListId]);
+  }, [state.activeListId]);
 
   // Filter todos based on the active list and filter criteria
   const filteredTodos = React.useMemo(() => {
@@ -387,7 +533,21 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <TodoContext.Provider value={{ state, dispatch, filteredTodos, getListById, getTodoById }}>
+    <TodoContext.Provider value={{ 
+      state, 
+      dispatch, 
+      filteredTodos, 
+      getListById, 
+      getTodoById,
+      fetchTodos,
+      fetchLists,
+      addTodo,
+      updateTodo,
+      deleteTodo,
+      toggleTodoCompleted,
+      toggleTodoImportant,
+      addList
+    }}>
       {children}
     </TodoContext.Provider>
   );

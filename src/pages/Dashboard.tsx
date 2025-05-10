@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -16,6 +17,8 @@ import {
   FileText,
   MessageSquare
 } from "lucide-react";
+import { useTodo } from "@/contexts/TodoContext";
+import { useEffect, useState } from "react";
 
 const DashboardCard = ({ icon: Icon, title, description, features, link, linkText }) => (
   <Card className="hover:shadow-md transition-shadow">
@@ -44,26 +47,26 @@ const DashboardCard = ({ icon: Icon, title, description, features, link, linkTex
 );
 
 const DashboardTodoCard = () => {
-  const getTodoStats = () => {
-    let todos = [];
-    try {
-      const savedTodos = localStorage.getItem("todoItems");
-      if (savedTodos) {
-        todos = JSON.parse(savedTodos);
-      }
-    } catch (error) {
-      console.error("Error parsing todo items:", error);
-      return { total: 0, completed: 0, pending: 0 };
-    }
+  const { state, fetchTodos } = useTodo();
+  const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 });
+  const [isLoading, setIsLoading] = useState(true);
 
-    const total = todos.length;
-    const completed = todos.filter(todo => todo.completed).length;
+  useEffect(() => {
+    const loadTodoData = async () => {
+      await fetchTodos();
+      setIsLoading(false);
+    };
+    
+    loadTodoData();
+  }, [fetchTodos]);
+
+  useEffect(() => {
+    const total = state.todos.length;
+    const completed = state.todos.filter(todo => todo.completed).length;
     const pending = total - completed;
-
-    return { total, completed, pending };
-  };
-
-  const stats = getTodoStats();
+    
+    setStats({ total, completed, pending });
+  }, [state.todos]);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -75,18 +78,26 @@ const DashboardTodoCard = () => {
         <CardDescription>Manage your tasks efficiently</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-muted-foreground">
-        <div className="flex justify-between">
-          <span>Total Tasks</span>
-          <span className="font-semibold text-foreground">{stats.total}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Pending</span>
-          <span className="font-semibold text-yellow-600">{stats.pending}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Completed</span>
-          <span className="font-semibold text-green-600">{stats.completed}</span>
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between">
+              <span>Total Tasks</span>
+              <span className="font-semibold text-foreground">{stats.total}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Pending</span>
+              <span className="font-semibold text-yellow-600">{stats.pending}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Completed</span>
+              <span className="font-semibold text-green-600">{stats.completed}</span>
+            </div>
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full">
