@@ -17,56 +17,37 @@ import {
   FileText,
   MessageSquare
 } from "lucide-react";
-import { useTodo } from "@/contexts/TodoContext";
-import { useEffect, useState } from "react";
-
-const DashboardCard = ({ icon: Icon, title, description, features, link, linkText }) => (
-  <Card className="hover:shadow-md transition-shadow">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-lg">
-        <Icon className="h-5 w-5 text-primary" />
-        {title}
-      </CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {features && (
-        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-          {features.map((f, i) => (
-            <li key={i}>{f}</li>
-          ))}
-        </ul>
-      )}
-    </CardContent>
-    <CardFooter>
-      <Button asChild className="w-full">
-        <Link to={link}>{linkText}</Link>
-      </Button>
-    </CardFooter>
-  </Card>
-);
+import { useState, useEffect } from "react";
+import httpClient from "@/utils/httpClient";
+import { TodoProvider } from "@/contexts/TodoContext";
 
 const DashboardTodoCard = () => {
-  const { state, fetchTodos } = useTodo();
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadTodoData = async () => {
-      await fetchTodos();
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
+        
+        if (response.todos) {
+          const todos = response.todos;
+          const total = todos.length;
+          const completed = todos.filter(todo => todo.completed).length;
+          const pending = total - completed;
+          
+          setStats({ total, completed, pending });
+        }
+      } catch (error) {
+        console.error("Error loading todo data:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadTodoData();
-  }, [fetchTodos]);
-
-  useEffect(() => {
-    const total = state.todos.length;
-    const completed = state.todos.filter(todo => todo.completed).length;
-    const pending = total - completed;
-    
-    setStats({ total, completed, pending });
-  }, [state.todos]);
+  }, []);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -107,6 +88,32 @@ const DashboardTodoCard = () => {
     </Card>
   );
 };
+
+const DashboardCard = ({ icon: Icon, title, description, features, link, linkText }) => (
+  <Card className="hover:shadow-md transition-shadow">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-lg">
+        <Icon className="h-5 w-5 text-primary" />
+        {title}
+      </CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {features && (
+        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+          {features.map((f, i) => (
+            <li key={i}>{f}</li>
+          ))}
+        </ul>
+      )}
+    </CardContent>
+    <CardFooter>
+      <Button asChild className="w-full">
+        <Link to={link}>{linkText}</Link>
+      </Button>
+    </CardFooter>
+  </Card>
+);
 
 const Dashboard = () => {
   return (

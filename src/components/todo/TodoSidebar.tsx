@@ -1,4 +1,3 @@
-
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoList } from "@/types/todo";
 import { 
@@ -20,6 +19,7 @@ import { useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
+import { v4 as uuidv4 } from "uuid";
 
 interface TodoSidebarProps {
   isOpen: boolean;
@@ -30,17 +30,14 @@ interface TodoSidebarProps {
 }
 
 const TodoSidebar = ({ isOpen, onClose, refreshData, toggleFullScreen, isFullScreen }: TodoSidebarProps) => {
-  const { state, dispatch } = useTodo();
+  const { state, dispatch, addList } = useTodo();
   const [newListName, setNewListName] = useState("");
   const [showAddList, setShowAddList] = useState(false);
   const isMobile = useIsMobile();
 
   const handleAddList = () => {
     if (newListName.trim()) {
-      dispatch({
-        type: "ADD_LIST",
-        payload: { name: newListName.trim() }
-      });
+      addList({ name: newListName.trim() });
       setNewListName("");
       setShowAddList(false);
     }
