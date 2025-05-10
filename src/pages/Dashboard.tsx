@@ -30,9 +30,9 @@ const DashboardTodoCard = () => {
       setIsLoading(true);
       try {
         const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
-        
-        if (response.todos) {
-          const todos = response.todos;
+        console.log(response)
+        if (response.todoItems) {
+          const todos = response.todoItems;
           const total = todos.length;
           const completed = todos.filter(todo => todo.completed).length;
           const pending = total - completed;
