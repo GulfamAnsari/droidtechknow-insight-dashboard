@@ -217,7 +217,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
       
-      if (response.todoItems) {
+      if (response?.todoItems) {
         // Convert string dates to Date objects
         const processedTodos = response.todoItems.map((todo: any) => ({
           ...todo,
@@ -230,7 +230,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         dispatch({ type: "SET_TODOS", payload: processedTodos });
       }
       
-      if (response.todoLists) {
+      if (response?.todoLists) {
         // Process and merge with default lists to ensure we always have defaults
         const receivedLists = response.todoLists || [];
         const defaultListIds = defaultLists.map(list => list.id);
@@ -271,7 +271,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addTodo = async (todoData: Omit<TodoItem, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item", todoData);
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", { todoItem: todoData});
       
       if (response.todo) {
         const newTodo: TodoItem = {
@@ -301,7 +301,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateTodo = async (todo: TodoItem) => {
     try {
-      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", todo);
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", { todoItem: todo });
       
       dispatch({ 
         type: "UPDATE_TODO", 
@@ -346,7 +346,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       const updatedTodo = { ...todo, completed: !todo.completed, updatedAt: new Date() };
-      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", updatedTodo);
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", { todoItem: updatedTodo });
       
       dispatch({ type: "TOGGLE_TODO_COMPLETED", payload: id });
     } catch (error) {
@@ -365,7 +365,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       const updatedTodo = { ...todo, important: !todo.important, updatedAt: new Date() };
-      await httpClient.post("https://droidtechknow.com/admin/api/todo/update-todo-item", updatedTodo);
+      await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", {todoItem: updatedTodo});
       
       dispatch({ type: "TOGGLE_TODO_IMPORTANT", payload: id });
     } catch (error) {
@@ -380,7 +380,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addList = async (listData: Omit<TodoList, "id">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list", listData);
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list.php", { todoList: listData });
       
       if (response.list) {
         dispatch({ type: "ADD_LIST", payload: response.list });
