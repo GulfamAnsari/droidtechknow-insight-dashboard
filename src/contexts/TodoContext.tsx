@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { TodoItem, TodoList, TodoFilter } from "@/types/todo";
@@ -210,16 +209,17 @@ function todoReducer(state: TodoState, action: TodoAction): TodoState {
 export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const [state, dispatch] = useReducer(todoReducer, initialState);
   const { toast } = useToast();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // API Functions
-  const fetchTodos = async () => {
+  // Combined API function to fetch both todos and lists in a single call
+  const fetchTodoData = async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
       
-      if (response.todos) {
+      if (response.todoItems) {
         // Convert string dates to Date objects
-        const processedTodos = response.todos.map((todo: any) => ({
+        const processedTodos = response.todoItems.map((todo: any) => ({
           ...todo,
           createdAt: new Date(todo.createdAt),
           updatedAt: new Date(todo.updatedAt),
@@ -229,11 +229,26 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         
         dispatch({ type: "SET_TODOS", payload: processedTodos });
       }
+      
+      if (response.todoLists) {
+        // Process and merge with default lists to ensure we always have defaults
+        const receivedLists = response.todoLists || [];
+        const defaultListIds = defaultLists.map(list => list.id);
+        
+        // Filter out any duplicate default lists from the API response
+        const customLists = receivedLists.filter((list: TodoList) => 
+          !defaultListIds.includes(list.id)
+        );
+        
+        // Create a combined list with defaults taking priority
+        const mergedLists = [...defaultLists, ...customLists];
+        dispatch({ type: "SET_LISTS", payload: mergedLists });
+      }
     } catch (error) {
-      console.error("Error fetching todos:", error);
+      console.error("Error fetching todo data:", error);
       toast({
         title: "Error",
-        description: "Failed to load your tasks",
+        description: "Failed to load your tasks and lists",
         variant: "destructive",
       });
     } finally {
@@ -241,26 +256,16 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Separate function declarations to maintain API interface
+  const fetchTodos = async () => {
+    if (!isInitialLoad) {
+      await fetchTodoData();
+    }
+  };
+
   const fetchLists = async () => {
-    dispatch({ type: "SET_LOADING", payload: true });
-    try {
-      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
-      
-      if (response.lists) {
-        // Merge with default lists to ensure we always have defaults
-        const customLists = response.lists.filter((list: TodoList) => !list.isDefault);
-        const mergedLists = [...defaultLists, ...customLists];
-        dispatch({ type: "SET_LISTS", payload: mergedLists });
-      }
-    } catch (error) {
-      console.error("Error fetching todo lists:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load your task lists",
-        variant: "destructive",
-      });
-    } finally {
-      dispatch({ type: "SET_LOADING", payload: false });
+    if (!isInitialLoad) {
+      await fetchTodoData();
     }
   };
 
@@ -402,9 +407,9 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       dispatch({ type: "SET_ACTIVE_LIST", payload: savedActiveListId });
     }
     
-    // Fetch todos and lists from API
-    fetchTodos();
-    fetchLists();
+    // Fetch todos and lists from API with a single call
+    fetchTodoData();
+    setIsInitialLoad(false);
   }, []);
 
   // Save activeListId to localStorage when it changes

@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
-import { TodoProvider } from "@/contexts/TodoContext";
 
 const DashboardTodoCard = () => {
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 });
@@ -30,7 +28,7 @@ const DashboardTodoCard = () => {
       setIsLoading(true);
       try {
         const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
-        console.log(response)
+        
         if (response.todoItems) {
           const todos = response.todoItems;
           const total = todos.length;

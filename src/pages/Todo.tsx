@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { TodoProvider, useTodo } from "@/contexts/TodoContext";
 import TodoSidebar from "@/components/todo/TodoSidebar";
@@ -19,15 +18,7 @@ const TodoContent = () => {
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
   const isMobile = useIsMobile();
   const { refreshData } = useDashboard();
-  const { fetchTodos, fetchLists } = useTodo();
-  
-  useEffect(() => {
-    const loadData = async () => {
-      await Promise.all([fetchTodos(), fetchLists()]);
-    };
-    
-    loadData();
-  }, [fetchTodos, fetchLists]);
+  const { state } = useTodo();
   
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
@@ -97,7 +88,7 @@ const TodoContent = () => {
       <AddTaskDialog 
         open={showAddTaskDialog} 
         onOpenChange={setShowAddTaskDialog} 
-        listId={state => state.activeListId || "tasks"}
+        listId={state.activeListId || "tasks"}
       />
     </div>
   );
