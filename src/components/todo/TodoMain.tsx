@@ -47,7 +47,7 @@ const TodoMain = ({
   onOpenDetails,
   isMobile 
 }: TodoMainProps) => {
-  const { state, dispatch, filteredTodos, getListById } = useTodo();
+  const { state, dispatch, filteredTodos, getListById, toggleTodoCompleted, toggleTodoImportant, updateTodo } = useTodo();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCompletedTodos, setShowCompletedTodos] = useState(true);
   
@@ -58,19 +58,21 @@ const TodoMain = ({
   const completedTodos = filteredTodos.filter(todo => todo.completed);
   
   const handleToggleCompleted = (todoId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch({
-      type: "TOGGLE_TODO_COMPLETED",
-      payload: todoId
-    });
+    toggleTodoCompleted(todoId);
+    // e.stopPropagation();
+    // dispatch({
+    //   type: "TOGGLE_TODO_COMPLETED",
+    //   payload: todoId
+    // });
   };
   
   const handleToggleImportant = (todoId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch({
-      type: "TOGGLE_TODO_IMPORTANT",
-      payload: todoId
-    });
+    toggleTodoImportant(todoId)
+    // e.stopPropagation();
+    // dispatch({
+    //   type: "TOGGLE_TODO_IMPORTANT",
+    //   payload: todoId
+    // });
   };
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

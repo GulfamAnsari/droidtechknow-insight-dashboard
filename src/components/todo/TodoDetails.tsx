@@ -15,7 +15,7 @@ import {
   Trash2, 
   X,
   Bell,
-  ListTodo
+  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import TodoStepsList from "./TodoStepsList";
@@ -38,7 +38,7 @@ interface TodoDetailsProps {
 }
 
 const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
-  const { getTodoById, dispatch, state } = useTodo();
+  const { getTodoById, dispatch, state, updateTodo } = useTodo();
   const todo = getTodoById(todoId) as TodoItem;
   const [newStep, setNewStep] = useState("");
   
@@ -341,6 +341,12 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
           Delete task
         </Button>
       </div>
+      <Button 
+          className="w-full justify-start gap-2 mt-2"
+          onClick={() => updateTodo(todo)}
+        >
+          Update task
+        </Button>
     </div>
   );
 };
