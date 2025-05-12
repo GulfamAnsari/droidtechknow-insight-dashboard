@@ -105,6 +105,14 @@ const TodoMain = ({
     }
   };
   
+  const isDueInNext3Days = (dueDate, days = 3) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(now.getDate() + days);
+    return due >= now && due <= threeDaysLater;
+  };
+  
   const renderTodoItem = (todo: TodoItem) => {
     return (
       <div 
@@ -177,20 +185,30 @@ const TodoMain = ({
             
             {/* Due date and reminder badge */}
             <div className="flex flex-wrap gap-2 mt-2">
-              {todo.dueDate && (
-                <span className={cn(
+            {todo.dueDate && (
+              <span
+                className={cn(
                   "text-xs px-2 py-1 rounded-full inline-flex items-center gap-1",
-                  new Date(todo.dueDate) < new Date() && !todo.completed 
-                    ? "bg-destructive text-destructive-foreground" 
+                  new Date(todo.dueDate) < new Date() && !todo.completed
+                    ? "bg-destructive text-destructive-foreground"
+                    : isDueInNext3Days(todo.dueDate) && !todo.completed
+                    ? "bg-orange-200 text-orange-800"
                     : "bg-muted text-muted-foreground"
-                )}>
-                  <Calendar className="h-3 w-3" />
-                  {formatDueDate(todo.dueDate)}
-                </span>
-              )}
+                )}
+              >
+                <Calendar className="h-3 w-3" />
+                {formatDueDate(todo.dueDate)}
+              </span>
+            )}
               
               {todo.reminderDate && new Date(todo.reminderDate) > new Date() && (
-                <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full inline-flex items-center gap-1">
+                <span className={
+                  cn(
+                    "text-xs px-2 py-1 rounded-full inline-flex items-center gap-1",
+                    isDueInNext3Days(todo.reminderDate, 6)
+                      ? "bg-red-200 text-red-800": "bg-muted text-muted-foreground"
+                  )
+                }>
                   <Bell className="h-3 w-3" />
                   {format(new Date(todo.reminderDate), "MMM d, h:mm a")}
                 </span>
