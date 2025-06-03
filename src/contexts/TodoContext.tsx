@@ -271,7 +271,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addTodo = async (todoData: Omit<TodoItem, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item", { todoItem: todoData});
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", { todoItem: todoData});
       
       if (response.todo) {
         const newTodo: TodoItem = {
