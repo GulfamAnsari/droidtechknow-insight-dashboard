@@ -400,7 +400,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addList = async (listData: Omit<TodoList, "id">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list", { todoList: listData });
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list.php", { todoList: listData });
       
       if (response.list) {
         dispatch({ type: "ADD_LIST", payload: response.list });
