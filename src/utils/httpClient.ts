@@ -71,11 +71,11 @@ const httpClient = {
     }
     
     // Disable cache for all requests
-    fetchOptions.cache = 'no-store';
-     fetchOptions.headers = new Headers(fetchOptions.headers);
-     fetchOptions.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-     fetchOptions.headers.set('Pragma', 'no-cache');
-   fetchOptions.headers.set('Expires', '0');
+    //fetchOptions.cache = 'no-store';
+     //fetchOptions.headers = new Headers(fetchOptions.headers);
+     //fetchOptions.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+     //fetchOptions.headers.set('Pragma', 'no-cache');
+   //fetchOptions.headers.set('Expires', '0');
     
     // Send the request
     const response = await fetch(url, fetchOptions);
