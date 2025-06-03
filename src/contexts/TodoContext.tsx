@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { TodoItem, TodoList, TodoFilter } from "@/types/todo";
@@ -215,7 +216,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchTodoData = async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/", { cache: 'no-store' });
+      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
       
       if (response?.todoItems) {
         // Convert string dates to Date objects
