@@ -732,7 +732,8 @@ const MyFiles = () => {
                           style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                         >
                           {file.fileType === 'photo' ? (
-                            <img 
+                            <img
+  loading="lazy"
                               src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`} 
                               alt={file.title}
                               className="h-full w-full object-cover"
@@ -834,7 +835,8 @@ const MyFiles = () => {
                         <div className="flex items-center space-x-3">
                           <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
                             {file.fileType === 'photo' ? (
-                              <img 
+                              <img
+  loading="lazy"
                                 src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`} 
                                 alt={file.title}
                                 className="h-full w-full object-cover"
@@ -924,7 +926,8 @@ const MyFiles = () => {
               {/* File preview container with fixed max dimensions */}
               <div className="w-full h-full flex items-center justify-center">
                 {selectedFile?.fileType === 'photo' ? (
-                  <img 
+                  <img
+  loading="lazy"
                     src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
                     alt={selectedFile?.title} 
                     className="max-h-full max-w-full object-contain"
