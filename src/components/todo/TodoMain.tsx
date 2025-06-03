@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoItem } from "@/types/todo";
@@ -15,6 +14,7 @@ import {
   Search,
   Menu,
   Filter,
+  Loader2,
   ChevronDown,
   ChevronRight
 } from "lucide-react";
@@ -31,6 +31,16 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TodoMainProps {
   selectedTodoId: string | null;
@@ -47,9 +57,11 @@ const TodoMain = ({
   onOpenDetails,
   isMobile 
 }: TodoMainProps) => {
-  const { state, dispatch, filteredTodos, getListById, toggleTodoCompleted, toggleTodoImportant, updateTodo } = useTodo();
+  const { state, dispatch, filteredTodos, getListById, toggleTodoCompleted, toggleTodoImportant } = useTodo();
   const [searchTerm, setSearchTerm] = useState("");
-  const [showCompletedTodos, setShowCompletedTodos] = useState(true);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [todoToComplete, setTodoToComplete] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState<string | null>(null);
   
   const activeList = state.activeListId ? getListById(state.activeListId) : null;
   
@@ -57,24 +69,41 @@ const TodoMain = ({
   const incompleteTodos = filteredTodos.filter(todo => !todo.completed);
   const completedTodos = filteredTodos.filter(todo => todo.completed);
   
-  const handleToggleCompleted = (todoId: string, e: React.MouseEvent) => {
-    toggleTodoCompleted(todoId);
-    // e.stopPropagation();
-    // dispatch({
-    //   type: "TOGGLE_TODO_COMPLETED",
-    //   payload: todoId
-    // });
+  const handleToggleCompleted = async (todoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const todo = filteredTodos.find(t => t.id === todoId);
+    
+    if (!todo) return;
+    
+    if (!todo.completed) {
+      // Show confirmation dialog for completing a todo
+      setTodoToComplete(todoId);
+      setShowCompleteDialog(true);
+    } else {
+      // Directly uncomplete without confirmation
+      setIsToggling(todoId);
+      await toggleTodoCompleted(todoId);
+      setIsToggling(null);
+    }
   };
   
-  const handleToggleImportant = (todoId: string, e: React.MouseEvent) => {
-    toggleTodoImportant(todoId)
-    // e.stopPropagation();
-    // dispatch({
-    //   type: "TOGGLE_TODO_IMPORTANT",
-    //   payload: todoId
-    // });
+  const confirmComplete = async () => {
+    if (todoToComplete) {
+      setIsToggling(todoToComplete);
+      await toggleTodoCompleted(todoToComplete);
+      setIsToggling(null);
+      setTodoToComplete(null);
+      setShowCompleteDialog(false);
+    }
   };
   
+  const handleToggleImportant = async (todoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsToggling(todoId);
+    await toggleTodoImportant(todoId);
+    setIsToggling(null);
+  };
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value;
     setSearchTerm(term);
@@ -114,6 +143,8 @@ const TodoMain = ({
   };
   
   const renderTodoItem = (todo: TodoItem) => {
+    const isCurrentlyToggling = isToggling === todo.id;
+    
     return (
       <div 
         key={todo.id} 
@@ -133,12 +164,18 @@ const TodoMain = ({
           <button 
             className={cn(
               "mt-1 flex-shrink-0 h-5 w-5 rounded-full border flex items-center justify-center",
-              todo.completed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground"
+              todo.completed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground",
+              isCurrentlyToggling ? "opacity-50" : ""
             )}
             onClick={(e) => handleToggleCompleted(todo.id, e)}
+            disabled={isCurrentlyToggling}
             aria-label={todo.completed ? "Mark as incomplete" : "Mark as complete"}
           >
-            {todo.completed && <Check className="h-3 w-3" />}
+            {isCurrentlyToggling ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              todo.completed && <Check className="h-3 w-3" />
+            )}
           </button>
           
           <div className="flex-1 min-w-0">
@@ -153,9 +190,11 @@ const TodoMain = ({
               <button
                 className={cn(
                   "flex-shrink-0 text-muted-foreground hover:text-amber-500",
-                  todo.important ? "text-amber-500" : ""
+                  todo.important ? "text-amber-500" : "",
+                  isCurrentlyToggling ? "opacity-50" : ""
                 )}
                 onClick={(e) => handleToggleImportant(todo.id, e)}
+                disabled={isCurrentlyToggling}
                 aria-label={todo.important ? "Remove importance" : "Mark as important"}
               >
                 {todo.important ? (
@@ -239,108 +278,144 @@ const TodoMain = ({
       )}
     </div>
   );
+
+  if (state.isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading tasks...</span>
+        </div>
+      </div>
+    );
+  }
   
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full">
-      {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {isMobile && (
-            <Button variant="ghost" size="icon" onClick={onOpenSidebar}>
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-          <h1 className="text-xl font-semibold" style={{ color: activeList?.color }}>
-            {activeList?.name || "Tasks"}
-          </h1>
+    <>
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Header */}
+        <div className="p-4 border-b flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {isMobile && (
+              <Button variant="ghost" size="icon" onClick={onOpenSidebar}>
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+            <h1 className="text-xl font-semibold" style={{ color: activeList?.color }}>
+              {activeList?.name || "Tasks"}
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Filter className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => dispatch({
+                  type: "SET_FILTER",
+                  payload: { ...state.filter, completed: false }
+                })}>
+                  Hide completed
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => dispatch({
+                  type: "SET_FILTER",
+                  payload: { ...state.filter, completed: undefined }
+                })}>
+                  Show all
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Filter className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => dispatch({
-                type: "SET_FILTER",
-                payload: { ...state.filter, completed: false }
-              })}>
-                Hide completed
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => dispatch({
-                type: "SET_FILTER",
-                payload: { ...state.filter, completed: undefined }
-              })}>
-                Show all
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-      
-      {/* Search box */}
-      <div className="px-4 py-2 border-b">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search tasks"
-            className="pl-9"
-          />
-        </div>
-      </div>
-      
-      {/* Todo list with tabs */}
-      <div className="flex-1 overflow-y-auto">
-        {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          <div className="p-4">
-            <Tabs defaultValue="active" className="w-full">
-              <TabsList className="w-full mb-4">
-                <TabsTrigger value="active" className="flex-1">
-                  Tasks ({incompleteTodos.length})
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="flex-1">
-                  Completed ({completedTodos.length})
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="active" className="mt-0">
-                <div className="border rounded-lg overflow-hidden h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
-                    {incompleteTodos.length > 0 ? (
-                      incompleteTodos.map(renderTodoItem)
-                    ) : (
-                      <div className="p-4 text-center text-muted-foreground">
-                        No active tasks
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="completed" className="mt-0">
-                <div className="border rounded-lg overflow-hidden h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
-                    {completedTodos.length > 0 ? (
-                      completedTodos.map(renderTodoItem)
-                    ) : (
-                      <div className="p-4 text-center text-muted-foreground">
-                        No completed tasks
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+        {/* Search box */}
+        <div className="px-4 py-2 border-b">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Search tasks"
+              className="pl-9"
+            />
           </div>
-        )}
+        </div>
+        
+        {/* Todo list with tabs */}
+        <div className="flex-1 overflow-y-auto">
+          {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            <div className="p-4">
+              <Tabs defaultValue="active" className="w-full">
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="active" className="flex-1">
+                    Tasks ({incompleteTodos.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="flex-1">
+                    Completed ({completedTodos.length})
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="active" className="mt-0">
+                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                      {incompleteTodos.length > 0 ? (
+                        incompleteTodos.map(renderTodoItem)
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground">
+                          No active tasks
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="completed" className="mt-0">
+                  <div className="border rounded-lg overflow-hidden h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                      {completedTodos.length > 0 ? (
+                        completedTodos.map(renderTodoItem)
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground">
+                          No completed tasks
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Completion Confirmation Dialog */}
+      <AlertDialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark this task as completed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowCompleteDialog(false);
+              setTodoToComplete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmComplete}>
+              Complete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

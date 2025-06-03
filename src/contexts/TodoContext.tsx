@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { TodoItem, TodoList, TodoFilter } from "@/types/todo";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import httpClient from "@/utils/httpClient";
 
 interface TodoState {
@@ -215,7 +215,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchTodoData = async () => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/");
+      const response = await httpClient.get("https://droidtechknow.com/admin/api/todo/", { cache: 'no-store' });
       
       if (response?.todoItems) {
         // Convert string dates to Date objects
@@ -271,7 +271,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addTodo = async (todoData: Omit<TodoItem, "id" | "createdAt" | "updatedAt">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item.php", { todoItem: todoData});
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-item", { todoItem: todoData});
       
       if (response.todo) {
         const newTodo: TodoItem = {
@@ -287,6 +287,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         toast({
           title: "Success",
           description: "Task added successfully",
+          variant: "success",
         });
       }
     } catch (error) {
@@ -310,6 +311,12 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
           updatedAt: new Date()
         }
       });
+      
+      toast({
+        title: "Success",
+        description: "Task updated successfully",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error updating todo:", error);
       toast({
@@ -329,6 +336,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       toast({
         title: "Success",
         description: "Task deleted successfully",
+        variant: "success",
       });
     } catch (error) {
       console.error("Error deleting todo:", error);
@@ -349,6 +357,12 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       await httpClient.post("https://droidtechknow.com/admin/api/todo/edit-todo-item.php", { todoItem: updatedTodo, id: todo?.id });
       
       dispatch({ type: "TOGGLE_TODO_COMPLETED", payload: id });
+      
+      toast({
+        title: "Success",
+        description: updatedTodo.completed ? "Task completed" : "Task marked as incomplete",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error toggling todo completion:", error);
       toast({
@@ -368,6 +382,12 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       await httpClient.post("https://droidtechknow.com/admin/api/todo/edit-todo-item.php", { todoItem: updatedTodo, id: todo?.id });
       
       dispatch({ type: "TOGGLE_TODO_IMPORTANT", payload: id });
+      
+      toast({
+        title: "Success",
+        description: updatedTodo.important ? "Task marked as important" : "Task unmarked as important",
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error toggling todo importance:", error);
       toast({
@@ -380,7 +400,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addList = async (listData: Omit<TodoList, "id">) => {
     try {
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list.php", { todoList: listData });
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/todo/add-todo-list", { todoList: listData });
       
       if (response.list) {
         dispatch({ type: "ADD_LIST", payload: response.list });
@@ -388,6 +408,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         toast({
           title: "Success",
           description: "List added successfully",
+          variant: "success",
         });
       }
     } catch (error) {
