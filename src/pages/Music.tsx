@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import SearchTabs from "@/components/music/SearchTabs";
 import LyricsView from "@/components/music/LyricsView";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import DownloadManager from "@/components/music/DownloadManager";
+import SwipeAnimations from "@/components/music/SwipeAnimations";
 
 interface Song {
   id: string;
@@ -45,62 +45,64 @@ const Music = () => {
   const [isRepeat, setIsRepeat] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   
-  // Pagination states
-  const [songsPage, setSongsPage] = useState(0);
-  const [albumsPage, setAlbumsPage] = useState(0);
-  const [artistsPage, setArtistsPage] = useState(0);
-  const [playlistsPage, setPlaylistsPage] = useState(0);
-  const [allSongs, setAllSongs] = useState<Song[]>([]);
-  const [allAlbums, setAllAlbums] = useState<any[]>([]);
-  const [allArtists, setAllArtists] = useState<any[]>([]);
-  const [allPlaylists, setAllPlaylists] = useState<any[]>([]);
+  // Pagination states - simplified to track just current pages
+  const [currentPages, setCurrentPages] = useState({
+    songs: 0,
+    albums: 0,
+    artists: 0,
+    playlists: 0
+  });
+  
+  // Store all accumulated results
+  const [allResults, setAllResults] = useState({
+    songs: [] as Song[],
+    albums: [] as any[],
+    artists: [] as any[],
+    playlists: [] as any[]
+  });
 
   // Search for songs, albums, artists, and playlists
   const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
-    queryKey: ['search', searchQuery, songsPage, albumsPage, artistsPage, playlistsPage],
+    queryKey: ['search', searchQuery, currentPages],
     queryFn: async () => {
       if (!searchQuery.trim()) return null;
       
       const limit = 20;
       
       const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.all([
-        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${songsPage}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${albumsPage}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${artistsPage}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${playlistsPage}`, { skipAuth: true })
+        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.songs}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.albums}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.artists}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.playlists}`, { skipAuth: true })
       ]);
 
-      // Accumulate results for pagination
       const newSongs = songsRes?.data?.results || [];
       const newAlbums = albumsRes?.data?.results || [];
       const newArtists = artistsRes?.data?.results || [];
       const newPlaylists = playlistsRes?.data?.results || [];
 
-      if (songsPage === 0) {
-        setAllSongs(newSongs);
-        setAllAlbums(newAlbums);
-        setAllArtists(newArtists);
-        setAllPlaylists(newPlaylists);
+      // If it's the first page (0), replace all results, otherwise append
+      if (currentPages.songs === 0 && currentPages.albums === 0 && currentPages.artists === 0 && currentPages.playlists === 0) {
+        setAllResults({
+          songs: newSongs,
+          albums: newAlbums,
+          artists: newArtists,
+          playlists: newPlaylists
+        });
       } else {
-        if (songsPage > 0 && newSongs.length > 0) {
-          setAllSongs(prev => [...prev, ...newSongs]);
-        }
-        if (albumsPage > 0 && newAlbums.length > 0) {
-          setAllAlbums(prev => [...prev, ...newAlbums]);
-        }
-        if (artistsPage > 0 && newArtists.length > 0) {
-          setAllArtists(prev => [...prev, ...newArtists]);
-        }
-        if (playlistsPage > 0 && newPlaylists.length > 0) {
-          setAllPlaylists(prev => [...prev, ...newPlaylists]);
-        }
+        setAllResults(prev => ({
+          songs: currentPages.songs === 0 ? newSongs : [...prev.songs, ...newSongs],
+          albums: currentPages.albums === 0 ? newAlbums : [...prev.albums, ...newAlbums],
+          artists: currentPages.artists === 0 ? newArtists : [...prev.artists, ...newArtists],
+          playlists: currentPages.playlists === 0 ? newPlaylists : [...prev.playlists, ...newPlaylists]
+        }));
       }
       
       return {
-        songs: { data: { results: allSongs.length > 0 ? (songsPage === 0 ? newSongs : allSongs) : newSongs } },
-        albums: { data: { results: allAlbums.length > 0 ? (albumsPage === 0 ? newAlbums : allAlbums) : newAlbums } },
-        artists: { data: { results: allArtists.length > 0 ? (artistsPage === 0 ? newArtists : allArtists) : newArtists } },
-        playlists: { data: { results: allPlaylists.length > 0 ? (playlistsPage === 0 ? newPlaylists : allPlaylists) : newPlaylists } }
+        songs: { data: { results: allResults.songs.length > 0 ? allResults.songs : newSongs } },
+        albums: { data: { results: allResults.albums.length > 0 ? allResults.albums : newAlbums } },
+        artists: { data: { results: allResults.artists.length > 0 ? allResults.artists : newArtists } },
+        playlists: { data: { results: allResults.playlists.length > 0 ? allResults.playlists : newPlaylists } }
       };
     },
     enabled: false
@@ -108,34 +110,18 @@ const Music = () => {
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      // Reset pagination
-      setSongsPage(0);
-      setAlbumsPage(0);
-      setArtistsPage(0);
-      setPlaylistsPage(0);
-      setAllSongs([]);
-      setAllAlbums([]);
-      setAllArtists([]);
-      setAllPlaylists([]);
+      // Reset everything for new search
+      setCurrentPages({ songs: 0, albums: 0, artists: 0, playlists: 0 });
+      setAllResults({ songs: [], albums: [], artists: [], playlists: [] });
       refetch();
     }
   };
 
   const handleLoadMore = (type: 'songs' | 'albums' | 'artists' | 'playlists') => {
-    switch (type) {
-      case 'songs':
-        setSongsPage(prev => prev + 1);
-        break;
-      case 'albums':
-        setAlbumsPage(prev => prev + 1);
-        break;
-      case 'artists':
-        setArtistsPage(prev => prev + 1);
-        break;
-      case 'playlists':
-        setPlaylistsPage(prev => prev + 1);
-        break;
-    }
+    setCurrentPages(prev => ({
+      ...prev,
+      [type]: prev[type] + 1
+    }));
     refetch();
   };
 
@@ -202,6 +188,8 @@ const Music = () => {
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
+      <SwipeAnimations />
+      
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
@@ -236,7 +224,7 @@ const Music = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-6 pb-24">
+      <div className={`flex-1 overflow-auto p-6 ${currentSong ? 'pb-24' : 'pb-6'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="search" className="flex items-center gap-2">
@@ -252,8 +240,13 @@ const Music = () => {
           <TabsContent value="search">
             {searchResults ? (
               <SearchTabs
-                searchResults={searchResults}
-                onPlaySong={(song) => playSong(song, searchResults.songs?.data?.results)}
+                searchResults={{
+                  songs: { data: { results: allResults.songs } },
+                  albums: { data: { results: allResults.albums } },
+                  artists: { data: { results: allResults.artists } },
+                  playlists: { data: { results: allResults.playlists } }
+                }}
+                onPlaySong={(song) => playSong(song, allResults.songs)}
                 onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
                 onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
                 onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
@@ -303,13 +296,15 @@ const Music = () => {
       </div>
 
       {/* Audio Player */}
-      <AudioPlayer
-        song={currentSong}
-        isPlaying={isPlaying}
-        onPlayPause={togglePlayPause}
-        onNext={playNext}
-        onPrevious={playPrevious}
-      />
+      {currentSong && (
+        <AudioPlayer
+          song={currentSong}
+          isPlaying={isPlaying}
+          onPlayPause={togglePlayPause}
+          onNext={playNext}
+          onPrevious={playPrevious}
+        />
+      )}
 
       {/* Fullscreen Player */}
       {isFullscreen && currentSong && (
@@ -324,6 +319,8 @@ const Music = () => {
           isShuffle={isShuffle}
           onToggleRepeat={() => setIsRepeat(!isRepeat)}
           onToggleShuffle={() => setIsShuffle(!isShuffle)}
+          playlist={playlist}
+          currentIndex={currentIndex}
         />
       )}
 

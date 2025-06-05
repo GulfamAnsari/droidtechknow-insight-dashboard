@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -139,18 +138,39 @@ const SearchTabs = ({
                        song.downloadUrl?.[0]?.url;
     
     if (downloadUrl) {
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${song.name}.mp3`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Try to fetch and download as blob first
+      fetch(downloadUrl)
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${song.name.replace(/[^\w\s]/gi, '')}.mp3`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        })
+        .catch(() => {
+          // Fallback: direct download link
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = `${song.name.replace(/[^\w\s]/gi, '')}.mp3`;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
     }
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>, type: 'songs' | 'albums' | 'artists' | 'playlists') => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop === clientHeight) {
+    if (scrollHeight - scrollTop <= clientHeight + 100) { // Load more when near bottom
       onLoadMore(type);
     }
   };
@@ -301,7 +321,7 @@ const SearchTabs = ({
       </TabsList>
 
       <TabsContent value="songs" className="space-y-4">
-        <div className="max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'songs')}>
+        <div className="h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'songs')}>
           {searchResults.songs?.data?.results?.map((song: Song) => (
             <Card key={song.id} style={song.id == currentSong?.id ? { background: '#041a81f0'}: {}} className="hover:shadow-md transition-shadow mb-4">
               <CardContent className="p-4">
@@ -336,7 +356,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="albums" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'albums')}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'albums')}>
           {searchResults.albums?.data?.results?.map((album: Album) => (
             <Card key={album.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedAlbum(album.id)}>
               <CardContent className="p-4">
@@ -355,7 +375,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="artists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'artists')}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'artists')}>
           {searchResults.artists?.data?.results?.map((artist: Artist) => (
             <Card key={artist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedArtist(artist.id)}>
               <CardContent className="p-4 text-center">
@@ -373,7 +393,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="playlists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'playlists')}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'playlists')}>
           {searchResults.playlists?.data?.results?.map((playlist: Playlist) => (
             <Card key={playlist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedPlaylist(playlist.id)}>
               <CardContent className="p-4">
