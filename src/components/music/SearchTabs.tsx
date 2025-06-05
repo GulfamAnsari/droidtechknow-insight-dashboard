@@ -58,9 +58,10 @@ interface SearchTabsProps {
   onPlayAlbum: (albumId: string) => void;
   onPlayArtist: (artistId: string) => void;
   isLoading: boolean;
+  currentSong: Song;
 }
 
-const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLoading }: SearchTabsProps) => {
+const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLoading, currentSong }: SearchTabsProps) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
 
@@ -213,7 +214,7 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
 
       <TabsContent value="songs" className="space-y-4">
         {searchResults.songs?.data?.results?.map((song: Song) => (
-          <Card key={song.id} className="hover:shadow-md transition-shadow">
+          <Card key={song.id} style={song.id == currentSong?.id ? { background: '#041a81f0'}: {}} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <LazyImage
