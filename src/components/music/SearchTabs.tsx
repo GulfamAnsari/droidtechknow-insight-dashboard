@@ -48,9 +48,9 @@ interface Artist {
 
 interface SearchTabsProps {
   searchResults: {
-    songs?: { results: Song[] };
-    albums?: { results: Album[] };
-    artists?: { results: Artist[] };
+    songs?: { data: { results: Song[] } };
+    albums?: { data: {results: Album[] }};
+    artists?: { data: {results: Artist[] }};
   } | null;
   onPlaySong: (song: Song) => void;
   isLoading: boolean;
@@ -82,7 +82,7 @@ const SearchTabs = ({ searchResults, onPlaySong, isLoading }: SearchTabsProps) =
       </TabsList>
 
       <TabsContent value="songs" className="space-y-4">
-        {searchResults.songs?.results?.map((song: Song) => (
+        {searchResults.songs?.data?.results?.map((song: Song) => (
           <Card key={song.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlaySong(song)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -111,7 +111,7 @@ const SearchTabs = ({ searchResults, onPlaySong, isLoading }: SearchTabsProps) =
 
       <TabsContent value="albums" className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {searchResults.albums?.results?.map((album: Album) => (
+          {searchResults.albums?.data?.results?.map((album: Album) => (
             <Card key={album.id} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <LazyImage
@@ -130,7 +130,7 @@ const SearchTabs = ({ searchResults, onPlaySong, isLoading }: SearchTabsProps) =
 
       <TabsContent value="artists" className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {searchResults.artists?.results?.map((artist: Artist) => (
+          {searchResults.artists?.data?.results?.map((artist: Artist) => (
             <Card key={artist.id} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4 text-center">
                 <LazyImage
