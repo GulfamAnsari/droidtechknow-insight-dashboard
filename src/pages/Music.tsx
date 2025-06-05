@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Music as MusicIcon, FileText, TrendingUp } from "lucide-react";
+import { Search, Music as MusicIcon, FileText, Download, Maximize } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import httpClient from "@/utils/httpClient";
 import AudioPlayer from "@/components/music/AudioPlayer";
 import SearchTabs from "@/components/music/SearchTabs";
-import Charts from "@/components/music/Charts";
 import LyricsView from "@/components/music/LyricsView";
+import FullscreenPlayer from "@/components/music/FullscreenPlayer";
+import DownloadManager from "@/components/music/DownloadManager";
 
 interface Song {
   id: string;
@@ -38,7 +39,9 @@ const Music = () => {
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLyrics, setShowLyrics] = useState(false);
-  const [activeTab, setActiveTab] = useState("discover");
+  const [activeTab, setActiveTab] = useState("search");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showDownloads, setShowDownloads] = useState(false);
 
   // Search for songs, albums, and artists
   const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
@@ -63,7 +66,6 @@ const Music = () => {
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      setActiveTab("search");
       refetch();
     }
   };
@@ -115,11 +117,29 @@ const Music = () => {
     }
   };
 
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       {/* Header */}
       <div className="p-6 border-b">
-        <h1 className="text-3xl font-bold text-foreground mb-4">Music Player</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-foreground">Music Player</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowDownloads(true)} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Downloads
+            </Button>
+            {currentSong && (
+              <Button onClick={toggleFullscreen} variant="outline" size="sm">
+                <Maximize className="h-4 w-4 mr-2" />
+                Fullscreen
+              </Button>
+            )}
+          </div>
+        </div>
         
         {/* Search Bar */}
         <div className="flex gap-2 max-w-md">
@@ -139,11 +159,7 @@ const Music = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6 pb-24">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="discover" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Discover
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="search" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
               Search
@@ -154,15 +170,13 @@ const Music = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="discover">
-            <Charts onPlaySong={(song) => playSong(song)} />
-          </TabsContent>
-
           <TabsContent value="search">
             {searchResults ? (
               <SearchTabs
                 searchResults={searchResults}
                 onPlaySong={(song) => playSong(song, searchResults.songs?.data?.results)}
+                onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
+                onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
                 isLoading={searchLoading}
               />
             ) : (
@@ -214,13 +228,33 @@ const Music = () => {
         onPrevious={playPrevious}
       />
 
+      {/* Fullscreen Player */}
+      {isFullscreen && currentSong && (
+        <FullscreenPlayer
+          song={currentSong}
+          isPlaying={isPlaying}
+          onPlayPause={togglePlayPause}
+          onNext={playNext}
+          onPrevious={playPrevious}
+          onClose={() => setIsFullscreen(false)}
+        />
+      )}
+
       {/* Lyrics Modal */}
       {showLyrics && currentSong && (
         <LyricsView
-          songId={currentSong.id}
           songName={currentSong.name}
           artistName={currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
           onClose={() => setShowLyrics(false)}
+        />
+      )}
+
+      {/* Download Manager */}
+      {showDownloads && (
+        <DownloadManager
+          onClose={() => setShowDownloads(false)}
+          currentSong={currentSong}
+          playlist={playlist}
         />
       )}
     </div>

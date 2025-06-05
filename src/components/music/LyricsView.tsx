@@ -4,25 +4,25 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Music } from 'lucide-react';
-import httpClient from '@/utils/httpClient';
 
 interface LyricsViewProps {
-  songId: string;
   songName: string;
   artistName: string;
   onClose: () => void;
 }
 
-const LyricsView = ({ songId, songName, artistName, onClose }: LyricsViewProps) => {
+const LyricsView = ({ songName, artistName, onClose }: LyricsViewProps) => {
   const { data: lyricsData, isLoading, error } = useQuery({
-    queryKey: ['lyrics', songId],
+    queryKey: ['lyrics', artistName, songName],
     queryFn: async () => {
-      const response = await httpClient.get(`https://saavn.dev/api/lyrics?id=${songId}`, {
-        skipAuth: true
-      });
-      return response;
+      // Using lyrics.ovh free API
+      const response = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artistName)}/${encodeURIComponent(songName)}`);
+      if (!response.ok) {
+        throw new Error('Lyrics not found');
+      }
+      return await response.json();
     },
-    enabled: !!songId
+    enabled: !!(songName && artistName)
   });
 
   return (
@@ -56,13 +56,13 @@ const LyricsView = ({ songId, songName, artistName, onClose }: LyricsViewProps) 
             </div>
           )}
           
-          {lyricsData?.data?.lyrics && (
+          {lyricsData?.lyrics && (
             <div className="whitespace-pre-line leading-relaxed">
-              {lyricsData.data.lyrics}
+              {lyricsData.lyrics}
             </div>
           )}
           
-          {lyricsData && !lyricsData.data?.lyrics && (
+          {lyricsData && !lyricsData.lyrics && (
             <div className="text-center py-8 text-muted-foreground">
               <Music className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No lyrics found for this song</p>
