@@ -15,6 +15,7 @@ import Analytics from "./pages/Analytics";
 import Todo from "./pages/Todo";
 import Notepad from "./pages/Notepad";
 import MyFiles from "./pages/MyFiles";
+import Music from "./pages/Music";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -48,6 +49,7 @@ const App = () => (
                   <Route path="todo" element={<Todo />} />
                   <Route path="notepad" element={<Notepad />} />
                   <Route path="myfiles" element={<MyFiles />} />
+                  <Route path="music" element={<Music />} />
                 </Route>
               </Route>
               

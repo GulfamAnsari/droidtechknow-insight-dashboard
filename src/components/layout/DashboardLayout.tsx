@@ -45,7 +45,7 @@ const DashboardLayout = () => {
   };
 
   // Define pages where refresh button should be hidden
-  const hideRefreshButton = ['/todo', '/myfiles', '/notepad', '/articles'].includes(location.pathname);
+  const hideRefreshButton = ['/todo', '/myfiles', '/notepad', '/articles', '/music'].includes(location.pathname);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");

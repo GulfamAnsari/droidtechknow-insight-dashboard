@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -14,7 +15,8 @@ import {
   Cloud,
   BarChart3,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Music
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -118,6 +120,20 @@ const Dashboard = () => {
     <div className="mx-auto p-6 inner-container">
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-6">
         <DashboardTodoCard />
+
+        <DashboardCard
+          icon={Music}
+          title="Music Player"
+          description="Stream and discover music"
+          features={[
+            "Search songs and artists",
+            "High-quality streaming",
+            "Playlist management",
+            "Offline listening"
+          ]}
+          link="/music"
+          linkText="Open Music App"
+        />
 
         <DashboardCard
           icon={BookOpen}
