@@ -98,6 +98,7 @@ const Music = () => {
         }));
       }
       
+      setPlaylist(allResults.songs.length > 0 ? allResults.songs : newSongs);
       return {
         songs: { data: { results: allResults.songs.length > 0 ? allResults.songs : newSongs } },
         albums: { data: { results: allResults.albums.length > 0 ? allResults.albums : newAlbums } },
@@ -122,7 +123,9 @@ const Music = () => {
       ...prev,
       [type]: prev[type] + 1
     }));
-    refetch();
+    setTimeout(() => {
+      refetch();
+    }, 0);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -131,17 +134,10 @@ const Music = () => {
     }
   };
 
-  const playSong = (song: Song, songList?: Song[]) => {
+  const playSong = (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
-    
-    if (songList) {
-      setPlaylist(songList);
-      setCurrentIndex(songList.findIndex(s => s.id === song.id));
-    } else if (playlist.length === 0) {
-      setPlaylist([song]);
-      setCurrentIndex(0);
-    }
+    setCurrentIndex(playlist.findIndex(s => s.id === song.id));
   };
 
   const togglePlayPause = () => {
@@ -189,7 +185,6 @@ const Music = () => {
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
-      
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
@@ -246,7 +241,7 @@ const Music = () => {
                   artists: { data: { results: allResults.artists } },
                   playlists: { data: { results: allResults.playlists } }
                 }}
-                onPlaySong={(song) => playSong(song, allResults.songs)}
+                onPlaySong={(song) => playSong(song)}
                 onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
                 onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
                 onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
@@ -321,6 +316,7 @@ const Music = () => {
           onToggleShuffle={() => setIsShuffle(!isShuffle)}
           playlist={playlist}
           currentIndex={currentIndex}
+          onPlaySong={(song) => playSong(song)}
         />
       )}
 
