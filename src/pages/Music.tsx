@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Play, Pause, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { Search, Play, Pause, SkipBack, SkipForward, Volume2, Music as MusicIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import httpClient from "@/utils/httpClient";
 import { Slider } from "@/components/ui/slider";
@@ -137,7 +137,7 @@ const Music = () => {
 
         {!searchResults && !isLoading && (
           <div className="text-center py-12">
-            <Music className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <MusicIcon size={64} className="mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Discover Music</h3>
             <p className="text-muted-foreground">Search for your favorite songs and artists to get started</p>
           </div>
