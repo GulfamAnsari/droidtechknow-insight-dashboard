@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Play, Download } from 'lucide-react';
-import LazyImage from '@/components/ui/lazy-image';
-import { useQuery } from '@tanstack/react-query';
-import httpClient from '@/utils/httpClient';
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Play, Download } from "lucide-react";
+import LazyImage from "@/components/ui/lazy-image";
+import { useQuery } from "@tanstack/react-query";
+import httpClient from "@/utils/httpClient";
 
 interface Song {
   id: string;
@@ -61,9 +61,9 @@ interface Playlist {
 interface SearchTabsProps {
   searchResults: {
     songs?: { data: { results: Song[] } };
-    albums?: { data: {results: Album[] }};
-    artists?: { data: {results: Artist[] }};
-    playlists?: { data: {results: Playlist[] }};
+    albums?: { data: { results: Album[] } };
+    artists?: { data: { results: Artist[] } };
+    playlists?: { data: { results: Playlist[] } };
   } | null;
   onPlaySong: (song: Song) => void;
   onPlayAlbum: (albumId: string) => void;
@@ -72,19 +72,19 @@ interface SearchTabsProps {
   isLoading: boolean;
   currentSong: Song;
   searchQuery: string;
-  onLoadMore: (type: 'songs' | 'albums' | 'artists' | 'playlists') => void;
+  onLoadMore: (type: "songs" | "albums" | "artists" | "playlists") => void;
 }
 
-const SearchTabs = ({ 
-  searchResults, 
-  onPlaySong, 
-  onPlayAlbum, 
-  onPlayArtist, 
+const SearchTabs = ({
+  searchResults,
+  onPlaySong,
+  onPlayAlbum,
+  onPlayArtist,
   onPlayPlaylist,
-  isLoading, 
+  isLoading,
   currentSong,
   searchQuery,
-  onLoadMore 
+  onLoadMore
 }: SearchTabsProps) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
@@ -92,11 +92,14 @@ const SearchTabs = ({
 
   // Fetch album details when an album is selected
   const { data: albumData } = useQuery({
-    queryKey: ['album', selectedAlbum],
+    queryKey: ["album", selectedAlbum],
     queryFn: async () => {
-      const response = await httpClient.get(`https://saavn.dev/api/albums?id=${selectedAlbum}`, {
-        skipAuth: true
-      });
+      const response = await httpClient.get(
+        `https://saavn.dev/api/albums?id=${selectedAlbum}`,
+        {
+          skipAuth: true
+        }
+      );
       return response;
     },
     enabled: !!selectedAlbum
@@ -104,11 +107,14 @@ const SearchTabs = ({
 
   // Fetch artist details when an artist is selected
   const { data: artistData } = useQuery({
-    queryKey: ['artist', selectedArtist],
+    queryKey: ["artist", selectedArtist],
     queryFn: async () => {
-      const response = await httpClient.get(`https://saavn.dev/api/artists?id=${selectedArtist}`, {
-        skipAuth: true
-      });
+      const response = await httpClient.get(
+        `https://saavn.dev/api/artists?id=${selectedArtist}`,
+        {
+          skipAuth: true
+        }
+      );
       return response;
     },
     enabled: !!selectedArtist
@@ -116,11 +122,14 @@ const SearchTabs = ({
 
   // Fetch playlist details when a playlist is selected
   const { data: playlistData } = useQuery({
-    queryKey: ['playlist', selectedPlaylist],
+    queryKey: ["playlist", selectedPlaylist],
     queryFn: async () => {
-      const response = await httpClient.get(`https://saavn.dev/api/playlists?id=${selectedPlaylist}`, {
-        skipAuth: true
-      });
+      const response = await httpClient.get(
+        `https://saavn.dev/api/playlists?id=${selectedPlaylist}`,
+        {
+          skipAuth: true
+        }
+      );
       return response;
     },
     enabled: !!selectedPlaylist
@@ -129,26 +138,27 @@ const SearchTabs = ({
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const downloadSong = (song: Song) => {
-    const downloadUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                       song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                       song.downloadUrl?.[0]?.url;
-    
+    const downloadUrl =
+      song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+      song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+      song.downloadUrl?.[0]?.url;
+
     if (downloadUrl) {
       // Try to fetch and download as blob first
       fetch(downloadUrl)
-        .then(response => {
-          if (!response.ok) throw new Error('Network response was not ok');
+        .then((response) => {
+          if (!response.ok) throw new Error("Network response was not ok");
           return response.blob();
         })
-        .then(blob => {
+        .then((blob) => {
           const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = url;
-          link.download = `${song.name.replace(/[^\w\s]/gi, '')}.mp3`;
+          link.download = `${song.name.replace(/[^\w\s]/gi, "")}.mp3`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -156,11 +166,11 @@ const SearchTabs = ({
         })
         .catch(() => {
           // Fallback: direct download link
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = downloadUrl;
-          link.download = `${song.name.replace(/[^\w\s]/gi, '')}.mp3`;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
+          link.download = `${song.name.replace(/[^\w\s]/gi, "")}.mp3`;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -168,9 +178,13 @@ const SearchTabs = ({
     }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>, type: 'songs' | 'albums' | 'artists' | 'playlists') => {
+  const handleScroll = (
+    e: React.UIEvent<HTMLDivElement>,
+    type: "songs" | "albums" | "artists" | "playlists"
+  ) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop <= clientHeight + 100) { // Load more when near bottom
+    if (scrollHeight - scrollTop <= clientHeight + 100) {
+      // Load more when near bottom
       onLoadMore(type);
     }
   };
@@ -189,10 +203,16 @@ const SearchTabs = ({
   if (selectedAlbum && albumData?.data?.songs) {
     return (
       <div className="space-y-4">
-        <Button onClick={() => setSelectedAlbum(null)} variant="outline" className="mb-4">
+        <Button
+          onClick={() => setSelectedAlbum(null)}
+          variant="outline"
+          className="mb-4"
+        >
           ← Back to Search Results
         </Button>
-        <h2 className="text-xl font-bold mb-4">{albumData.data.name} - Songs</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {albumData.data.name} - Songs
+        </h2>
         {albumData.data.songs.map((song: Song) => (
           <Card key={song.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -205,17 +225,26 @@ const SearchTabs = ({
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium truncate">{song.name}</h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                      "Unknown Artist"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDuration(song.duration)}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => onPlaySong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onPlaySong(song)}
+                  >
                     <Play className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => downloadSong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => downloadSong(song)}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
@@ -231,10 +260,16 @@ const SearchTabs = ({
   if (selectedArtist && artistData?.data?.topSongs) {
     return (
       <div className="space-y-4">
-        <Button onClick={() => setSelectedArtist(null)} variant="outline" className="mb-4">
+        <Button
+          onClick={() => setSelectedArtist(null)}
+          variant="outline"
+          className="mb-4"
+        >
           ← Back to Search Results
         </Button>
-        <h2 className="text-xl font-bold mb-4">{artistData.data.name} - Top Songs</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {artistData.data.name} - Top Songs
+        </h2>
         {artistData.data.topSongs.map((song: Song) => (
           <Card key={song.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -247,17 +282,26 @@ const SearchTabs = ({
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium truncate">{song.name}</h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                      "Unknown Artist"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDuration(song.duration)}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => onPlaySong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onPlaySong(song)}
+                  >
                     <Play className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => downloadSong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => downloadSong(song)}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
@@ -273,10 +317,16 @@ const SearchTabs = ({
   if (selectedPlaylist && playlistData?.data?.songs) {
     return (
       <div className="space-y-4">
-        <Button onClick={() => setSelectedPlaylist(null)} variant="outline" className="mb-4">
+        <Button
+          onClick={() => setSelectedPlaylist(null)}
+          variant="outline"
+          className="mb-4"
+        >
           ← Back to Search Results
         </Button>
-        <h2 className="text-xl font-bold mb-4">{playlistData.data.name} - Songs</h2>
+        <h2 className="text-xl font-bold mb-4">
+          {playlistData.data.name} - Songs
+        </h2>
         {playlistData.data.songs.map((song: Song) => (
           <Card key={song.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -289,17 +339,26 @@ const SearchTabs = ({
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium truncate">{song.name}</h3>
                   <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                      "Unknown Artist"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDuration(song.duration)}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => onPlaySong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onPlaySong(song)}
+                  >
                     <Play className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => downloadSong(song)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => downloadSong(song)}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
@@ -320,10 +379,22 @@ const SearchTabs = ({
         <TabsTrigger value="playlists">Playlists</TabsTrigger>
       </TabsList>
 
+
+
       <TabsContent value="songs" className="space-y-4">
-        <div className="h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'songs')}>
+        <div
+          className="h-96 overflow-y-auto"
+          onScroll={(e) => handleScroll(e, "songs")}
+        >
           {searchResults.songs?.data?.results?.map((song: Song) => (
-            <Card key={song.id} style={song.id == currentSong?.id ? { background: '#041a81f0'}: {}} className="hover:shadow-md transition-shadow mb-4">
+            <Card
+              className={`hover:shadow-md transition-shadow mb-4 rounded cursor-pointer transition-colors ${
+                song.id == currentSong?.id
+                  ? "bg-white/20 border border-white/30"
+                  : "hover:bg-white/10"
+              }`}
+              key={song.id}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
                   <LazyImage
@@ -334,17 +405,26 @@ const SearchTabs = ({
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{song.name}</h3>
                     <p className="text-sm text-muted-foreground truncate">
-                      {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                      {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                        "Unknown Artist"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDuration(song.duration)}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => onPlaySong(song)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onPlaySong(song)}
+                    >
                       <Play className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => downloadSong(song)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => downloadSong(song)}
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                   </div>
@@ -356,9 +436,16 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="albums" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'albums')}>
+        <div
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          onScroll={(e) => handleScroll(e, "albums")}
+        >
           {searchResults.albums?.data?.results?.map((album: Album) => (
-            <Card key={album.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedAlbum(album.id)}>
+            <Card
+              key={album.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedAlbum(album.id)}
+            >
               <CardContent className="p-4">
                 <LazyImage
                   src={album.image[1]?.url || album.image[0]?.url}
@@ -366,7 +453,9 @@ const SearchTabs = ({
                   className="w-full aspect-square rounded-lg object-cover mb-3"
                 />
                 <h3 className="font-medium truncate">{album.name}</h3>
-                <p className="text-sm text-muted-foreground truncate">{album.primaryArtists}</p>
+                <p className="text-sm text-muted-foreground truncate">
+                  {album.primaryArtists}
+                </p>
                 <p className="text-xs text-muted-foreground">{album.year}</p>
               </CardContent>
             </Card>
@@ -375,9 +464,16 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="artists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'artists')}>
+        <div
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          onScroll={(e) => handleScroll(e, "artists")}
+        >
           {searchResults.artists?.data?.results?.map((artist: Artist) => (
-            <Card key={artist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedArtist(artist.id)}>
+            <Card
+              key={artist.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedArtist(artist.id)}
+            >
               <CardContent className="p-4 text-center">
                 <LazyImage
                   src={artist.image[1]?.url || artist.image[0]?.url}
@@ -385,7 +481,9 @@ const SearchTabs = ({
                   className="w-24 h-24 rounded-full object-cover mx-auto mb-3"
                 />
                 <h3 className="font-medium truncate">{artist.name}</h3>
-                <p className="text-sm text-muted-foreground">{artist.followerCount} followers</p>
+                <p className="text-sm text-muted-foreground">
+                  {artist.followerCount} followers
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -393,9 +491,16 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="playlists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'playlists')}>
+        <div
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          onScroll={(e) => handleScroll(e, "playlists")}
+        >
           {searchResults.playlists?.data?.results?.map((playlist: Playlist) => (
-            <Card key={playlist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedPlaylist(playlist.id)}>
+            <Card
+              key={playlist.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedPlaylist(playlist.id)}
+            >
               <CardContent className="p-4">
                 <LazyImage
                   src={playlist.image[1]?.url || playlist.image[0]?.url}
@@ -403,8 +508,12 @@ const SearchTabs = ({
                   className="w-full aspect-square rounded-lg object-cover mb-3"
                 />
                 <h3 className="font-medium truncate">{playlist.name}</h3>
-                <p className="text-sm text-muted-foreground">{playlist.songCount} songs</p>
-                <p className="text-xs text-muted-foreground">{playlist.followerCount} followers</p>
+                <p className="text-sm text-muted-foreground">
+                  {playlist.songCount} songs
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {playlist.followerCount} followers
+                </p>
               </CardContent>
             </Card>
           ))}
