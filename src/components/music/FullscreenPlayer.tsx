@@ -31,14 +31,28 @@ interface FullscreenPlayerProps {
   onNext: () => void;
   onPrevious: () => void;
   onClose: () => void;
+  isRepeat: boolean;
+  isShuffle: boolean;
+  onToggleRepeat: () => void;
+  onToggleShuffle: () => void;
 }
 
-const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, onClose }: FullscreenPlayerProps) => {
+const FullscreenPlayer = ({ 
+  song, 
+  isPlaying, 
+  onPlayPause, 
+  onNext, 
+  onPrevious, 
+  onClose,
+  isRepeat,
+  isShuffle,
+  onToggleRepeat,
+  onToggleShuffle
+}: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState([70]);
-  const [isRepeat, setIsRepeat] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -48,6 +62,7 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
       
       if (audioUrl) {
         audioRef.current.src = audioUrl;
+        audioRef.current.volume = volume[0] / 100;
         if (isPlaying) {
           audioRef.current.play();
         }
@@ -85,6 +100,32 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+
+    // Check if it's a vertical swipe (more vertical than horizontal)
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+      if (deltaY < 0) {
+        // Swipe up - next song
+        onNext();
+      } else {
+        // Swipe down - previous song
+        onPrevious();
+      }
+    }
+
+    setTouchStart(null);
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -106,13 +147,27 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
     }
   };
 
+  const handleAudioEnded = () => {
+    if (isRepeat) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+    } else {
+      onNext();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col items-center justify-center text-white">
+    <div 
+      className="fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col items-center justify-center text-white"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
-        onEnded={onNext}
-        loop={isRepeat}
+        onEnded={handleAudioEnded}
       />
       
       {/* Close button */}
@@ -124,6 +179,11 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
       >
         <X className="h-6 w-6" />
       </Button>
+
+      {/* Swipe instructions */}
+      <div className="absolute top-4 left-4 text-sm text-white/60">
+        Swipe up/down to change songs
+      </div>
 
       {/* Album Art */}
       <div className="mb-8">
@@ -162,7 +222,7 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
         <Button 
           size="lg" 
           variant="ghost"
-          onClick={() => setIsShuffle(!isShuffle)}
+          onClick={onToggleShuffle}
           className={`text-white hover:bg-white/20 ${isShuffle ? "text-primary" : ""}`}
         >
           <Shuffle className="h-6 w-6" />
@@ -179,7 +239,7 @@ const FullscreenPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious, on
         <Button 
           size="lg" 
           variant="ghost"
-          onClick={() => setIsRepeat(!isRepeat)}
+          onClick={onToggleRepeat}
           className={`text-white hover:bg-white/20 ${isRepeat ? "text-primary" : ""}`}
         >
           <Repeat className="h-6 w-6" />

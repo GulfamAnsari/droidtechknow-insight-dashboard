@@ -42,23 +42,65 @@ const Music = () => {
   const [activeTab, setActiveTab] = useState("search");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  
+  // Pagination states
+  const [songsPage, setSongsPage] = useState(0);
+  const [albumsPage, setAlbumsPage] = useState(0);
+  const [artistsPage, setArtistsPage] = useState(0);
+  const [playlistsPage, setPlaylistsPage] = useState(0);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
+  const [allAlbums, setAllAlbums] = useState<any[]>([]);
+  const [allArtists, setAllArtists] = useState<any[]>([]);
+  const [allPlaylists, setAllPlaylists] = useState<any[]>([]);
 
-  // Search for songs, albums, and artists
+  // Search for songs, albums, artists, and playlists
   const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
-    queryKey: ['search', searchQuery],
+    queryKey: ['search', searchQuery, songsPage, albumsPage, artistsPage, playlistsPage],
     queryFn: async () => {
       if (!searchQuery.trim()) return null;
       
-      const [songsRes, albumsRes, artistsRes] = await Promise.all([
-        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}`, { skipAuth: true })
+      const limit = 20;
+      
+      const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.all([
+        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${songsPage}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${albumsPage}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${artistsPage}`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${playlistsPage}`, { skipAuth: true })
       ]);
+
+      // Accumulate results for pagination
+      const newSongs = songsRes?.data?.results || [];
+      const newAlbums = albumsRes?.data?.results || [];
+      const newArtists = artistsRes?.data?.results || [];
+      const newPlaylists = playlistsRes?.data?.results || [];
+
+      if (songsPage === 0) {
+        setAllSongs(newSongs);
+        setAllAlbums(newAlbums);
+        setAllArtists(newArtists);
+        setAllPlaylists(newPlaylists);
+      } else {
+        if (songsPage > 0 && newSongs.length > 0) {
+          setAllSongs(prev => [...prev, ...newSongs]);
+        }
+        if (albumsPage > 0 && newAlbums.length > 0) {
+          setAllAlbums(prev => [...prev, ...newAlbums]);
+        }
+        if (artistsPage > 0 && newArtists.length > 0) {
+          setAllArtists(prev => [...prev, ...newArtists]);
+        }
+        if (playlistsPage > 0 && newPlaylists.length > 0) {
+          setAllPlaylists(prev => [...prev, ...newPlaylists]);
+        }
+      }
       
       return {
-        songs: songsRes,
-        albums: albumsRes,
-        artists: artistsRes
+        songs: { data: { results: allSongs.length > 0 ? (songsPage === 0 ? newSongs : allSongs) : newSongs } },
+        albums: { data: { results: allAlbums.length > 0 ? (albumsPage === 0 ? newAlbums : allAlbums) : newAlbums } },
+        artists: { data: { results: allArtists.length > 0 ? (artistsPage === 0 ? newArtists : allArtists) : newArtists } },
+        playlists: { data: { results: allPlaylists.length > 0 ? (playlistsPage === 0 ? newPlaylists : allPlaylists) : newPlaylists } }
       };
     },
     enabled: false
@@ -66,8 +108,35 @@ const Music = () => {
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
+      // Reset pagination
+      setSongsPage(0);
+      setAlbumsPage(0);
+      setArtistsPage(0);
+      setPlaylistsPage(0);
+      setAllSongs([]);
+      setAllAlbums([]);
+      setAllArtists([]);
+      setAllPlaylists([]);
       refetch();
     }
+  };
+
+  const handleLoadMore = (type: 'songs' | 'albums' | 'artists' | 'playlists') => {
+    switch (type) {
+      case 'songs':
+        setSongsPage(prev => prev + 1);
+        break;
+      case 'albums':
+        setAlbumsPage(prev => prev + 1);
+        break;
+      case 'artists':
+        setArtistsPage(prev => prev + 1);
+        break;
+      case 'playlists':
+        setPlaylistsPage(prev => prev + 1);
+        break;
+    }
+    refetch();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -95,7 +164,12 @@ const Music = () => {
 
   const playNext = () => {
     if (playlist.length > 0) {
-      const nextIndex = (currentIndex + 1) % playlist.length;
+      let nextIndex;
+      if (isShuffle) {
+        nextIndex = Math.floor(Math.random() * playlist.length);
+      } else {
+        nextIndex = (currentIndex + 1) % playlist.length;
+      }
       setCurrentIndex(nextIndex);
       setCurrentSong(playlist[nextIndex]);
       setIsPlaying(true);
@@ -104,7 +178,12 @@ const Music = () => {
 
   const playPrevious = () => {
     if (playlist.length > 0) {
-      const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+      let prevIndex;
+      if (isShuffle) {
+        prevIndex = Math.floor(Math.random() * playlist.length);
+      } else {
+        prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+      }
       setCurrentIndex(prevIndex);
       setCurrentSong(playlist[prevIndex]);
       setIsPlaying(true);
@@ -144,7 +223,7 @@ const Music = () => {
         {/* Search Bar */}
         <div className="flex gap-2 max-w-md">
           <Input
-            placeholder="Search for songs, artists, albums..."
+            placeholder="Search for songs, artists, albums, playlists..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -177,13 +256,17 @@ const Music = () => {
                 onPlaySong={(song) => playSong(song, searchResults.songs?.data?.results)}
                 onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
                 onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
+                onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
                 isLoading={searchLoading}
+                currentSong={currentSong}
+                searchQuery={searchQuery}
+                onLoadMore={handleLoadMore}
               />
             ) : (
               <div className="text-center py-12">
                 <MusicIcon size={64} className="mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">Search for Music</h3>
-                <p className="text-muted-foreground">Find your favorite songs, albums, and artists</p>
+                <p className="text-muted-foreground">Find your favorite songs, albums, artists, and playlists</p>
               </div>
             )}
           </TabsContent>
@@ -237,6 +320,10 @@ const Music = () => {
           onNext={playNext}
           onPrevious={playPrevious}
           onClose={() => setIsFullscreen(false)}
+          isRepeat={isRepeat}
+          isShuffle={isShuffle}
+          onToggleRepeat={() => setIsRepeat(!isRepeat)}
+          onToggleShuffle={() => setIsShuffle(!isShuffle)}
         />
       )}
 
@@ -245,6 +332,7 @@ const Music = () => {
         <LyricsView
           songName={currentSong.name}
           artistName={currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+          songId={currentSong.id}
           onClose={() => setShowLyrics(false)}
         />
       )}

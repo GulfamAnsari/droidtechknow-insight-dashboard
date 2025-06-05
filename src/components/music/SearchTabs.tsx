@@ -48,22 +48,48 @@ interface Artist {
   followerCount: string;
 }
 
+interface Playlist {
+  id: string;
+  name: string;
+  image: {
+    quality: string;
+    url: string;
+  }[];
+  songCount: string;
+  followerCount: string;
+}
+
 interface SearchTabsProps {
   searchResults: {
     songs?: { data: { results: Song[] } };
     albums?: { data: {results: Album[] }};
     artists?: { data: {results: Artist[] }};
+    playlists?: { data: {results: Playlist[] }};
   } | null;
   onPlaySong: (song: Song) => void;
   onPlayAlbum: (albumId: string) => void;
   onPlayArtist: (artistId: string) => void;
+  onPlayPlaylist: (playlistId: string) => void;
   isLoading: boolean;
   currentSong: Song;
+  searchQuery: string;
+  onLoadMore: (type: 'songs' | 'albums' | 'artists' | 'playlists') => void;
 }
 
-const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLoading, currentSong }: SearchTabsProps) => {
+const SearchTabs = ({ 
+  searchResults, 
+  onPlaySong, 
+  onPlayAlbum, 
+  onPlayArtist, 
+  onPlayPlaylist,
+  isLoading, 
+  currentSong,
+  searchQuery,
+  onLoadMore 
+}: SearchTabsProps) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
 
   // Fetch album details when an album is selected
   const { data: albumData } = useQuery({
@@ -89,6 +115,18 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
     enabled: !!selectedArtist
   });
 
+  // Fetch playlist details when a playlist is selected
+  const { data: playlistData } = useQuery({
+    queryKey: ['playlist', selectedPlaylist],
+    queryFn: async () => {
+      const response = await httpClient.get(`https://saavn.dev/api/playlists?id=${selectedPlaylist}`, {
+        skipAuth: true
+      });
+      return response;
+    },
+    enabled: !!selectedPlaylist
+  });
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -107,6 +145,13 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>, type: 'songs' | 'albums' | 'artists' | 'playlists') => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop === clientHeight) {
+      onLoadMore(type);
     }
   };
 
@@ -204,17 +249,16 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
     );
   }
 
-  return (
-    <Tabs defaultValue="songs" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="songs">Songs</TabsTrigger>
-        <TabsTrigger value="albums">Albums</TabsTrigger>
-        <TabsTrigger value="artists">Artists</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="songs" className="space-y-4">
-        {searchResults.songs?.data?.results?.map((song: Song) => (
-          <Card key={song.id} style={song.id == currentSong?.id ? { background: '#041a81f0'}: {}} className="hover:shadow-md transition-shadow">
+  // Show playlist songs if a playlist is selected
+  if (selectedPlaylist && playlistData?.data?.songs) {
+    return (
+      <div className="space-y-4">
+        <Button onClick={() => setSelectedPlaylist(null)} variant="outline" className="mb-4">
+          ← Back to Search Results
+        </Button>
+        <h2 className="text-xl font-bold mb-4">{playlistData.data.name} - Songs</h2>
+        {playlistData.data.songs.map((song: Song) => (
+          <Card key={song.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <LazyImage
@@ -243,10 +287,56 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  return (
+    <Tabs defaultValue="songs" className="w-full">
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="songs">Songs</TabsTrigger>
+        <TabsTrigger value="albums">Albums</TabsTrigger>
+        <TabsTrigger value="artists">Artists</TabsTrigger>
+        <TabsTrigger value="playlists">Playlists</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="songs" className="space-y-4">
+        <div className="max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'songs')}>
+          {searchResults.songs?.data?.results?.map((song: Song) => (
+            <Card key={song.id} style={song.id == currentSong?.id ? { background: '#041a81f0'}: {}} className="hover:shadow-md transition-shadow mb-4">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <LazyImage
+                    src={song.image[1]?.url || song.image[0]?.url}
+                    alt={song.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{song.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDuration(song.duration)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => onPlaySong(song)}>
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => downloadSong(song)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </TabsContent>
 
       <TabsContent value="albums" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'albums')}>
           {searchResults.albums?.data?.results?.map((album: Album) => (
             <Card key={album.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedAlbum(album.id)}>
               <CardContent className="p-4">
@@ -265,7 +355,7 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
       </TabsContent>
 
       <TabsContent value="artists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'artists')}>
           {searchResults.artists?.data?.results?.map((artist: Artist) => (
             <Card key={artist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedArtist(artist.id)}>
               <CardContent className="p-4 text-center">
@@ -276,6 +366,25 @@ const SearchTabs = ({ searchResults, onPlaySong, onPlayAlbum, onPlayArtist, isLo
                 />
                 <h3 className="font-medium truncate">{artist.name}</h3>
                 <p className="text-sm text-muted-foreground">{artist.followerCount} followers</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="playlists" className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto" onScroll={(e) => handleScroll(e, 'playlists')}>
+          {searchResults.playlists?.data?.results?.map((playlist: Playlist) => (
+            <Card key={playlist.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedPlaylist(playlist.id)}>
+              <CardContent className="p-4">
+                <LazyImage
+                  src={playlist.image[1]?.url || playlist.image[0]?.url}
+                  alt={playlist.name}
+                  className="w-full aspect-square rounded-lg object-cover mb-3"
+                />
+                <h3 className="font-medium truncate">{playlist.name}</h3>
+                <p className="text-sm text-muted-foreground">{playlist.songCount} songs</p>
+                <p className="text-xs text-muted-foreground">{playlist.followerCount} followers</p>
               </CardContent>
             </Card>
           ))}
