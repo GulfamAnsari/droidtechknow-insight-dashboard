@@ -12,7 +12,7 @@ import LazyImage from "@/components/ui/lazy-image";
 interface Song {
   id: string;
   name: string;
-  artist: {
+  artists: {
     primary: {
       name: string;
     }[];
@@ -118,7 +118,7 @@ const Music = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">{song.name}</h3>
                         <p className="text-sm text-muted-foreground truncate">
-                          {song.artist.primary.map(a => a.name).join(", ")}
+                          {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDuration(song.duration)}
@@ -156,7 +156,7 @@ const Music = () => {
             <div className="flex-1 min-w-0">
               <h4 className="font-medium truncate">{currentSong.name}</h4>
               <p className="text-sm text-muted-foreground truncate">
-                {currentSong.artist.primary.map(a => a.name).join(", ")}
+                {currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
               </p>
             </div>
             <div className="flex items-center gap-2">
