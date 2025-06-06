@@ -1,9 +1,8 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Play, Heart, Download } from 'lucide-react';
+import { Play, Heart, Download, Pause } from 'lucide-react';
 import LazyImage from '@/components/ui/lazy-image';
 
 interface Song {
@@ -70,6 +69,7 @@ interface SearchTabsProps {
   onLoadMore: (type: 'songs' | 'albums' | 'artists' | 'playlists') => void;
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
+  isPlaying: boolean;
 }
 
 const SearchTabs = ({
@@ -83,7 +83,8 @@ const SearchTabs = ({
   searchQuery,
   onLoadMore,
   onToggleLike,
-  likedSongs
+  likedSongs,
+  isPlaying
 }: SearchTabsProps) => {
   const [downloadingStates, setDownloadingStates] = useState<{ [key: string]: boolean }>({});
 
@@ -153,7 +154,11 @@ const SearchTabs = ({
             />
             {currentSong?.id === song.id && (
               <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                {isPlaying ? (
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                ) : (
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                )}
               </div>
             )}
           </div>
@@ -186,9 +191,13 @@ const SearchTabs = ({
             <Button
               size="sm"
               onClick={() => onPlaySong(song)}
-              disabled={currentSong?.id === song.id}
+              disabled={currentSong?.id === song.id && isPlaying}
             >
-              <Play className="h-4 w-4" />
+              {currentSong?.id === song.id && isPlaying ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -246,7 +255,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="albums" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {searchResults.albums.map((album) => (
             <Card key={album.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayAlbum(album.id)}>
               <div className="aspect-square">
@@ -256,9 +265,9 @@ const SearchTabs = ({
                   className="w-full h-full object-cover"
                 />
               </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium truncate">{album.name}</h3>
-                <p className="text-sm text-muted-foreground truncate">{album.primaryArtists}</p>
+              <CardContent className="p-3">
+                <h3 className="font-medium truncate text-sm">{album.name}</h3>
+                <p className="text-xs text-muted-foreground truncate">{album.primaryArtists}</p>
               </CardContent>
             </Card>
           ))}
@@ -278,7 +287,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="artists" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {searchResults.artists.map((artist) => (
             <Card key={artist.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayArtist(artist.id)}>
               <div className="aspect-square">
@@ -288,9 +297,9 @@ const SearchTabs = ({
                   className="w-full h-full object-cover rounded-full"
                 />
               </div>
-              <CardContent className="p-4 text-center">
-                <h3 className="font-medium truncate">{artist.name}</h3>
-                <p className="text-sm text-muted-foreground">Artist</p>
+              <CardContent className="p-3 text-center">
+                <h3 className="font-medium truncate text-sm">{artist.name}</h3>
+                <p className="text-xs text-muted-foreground">Artist</p>
               </CardContent>
             </Card>
           ))}
@@ -310,7 +319,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="playlists" className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {searchResults.playlists.map((playlist) => (
             <Card key={playlist.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayPlaylist(playlist.id)}>
               <div className="aspect-square">
@@ -320,9 +329,9 @@ const SearchTabs = ({
                   className="w-full h-full object-cover"
                 />
               </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium truncate">{playlist.name}</h3>
-                <p className="text-sm text-muted-foreground">Playlist</p>
+              <CardContent className="p-3">
+                <h3 className="font-medium truncate text-sm">{playlist.name}</h3>
+                <p className="text-xs text-muted-foreground">Playlist</p>
               </CardContent>
             </Card>
           ))}

@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Music as MusicIcon, Download, Maximize, MoreHorizontal, Heart } from "lucide-react";
+import { Search, Music as MusicIcon, Download, Maximize, MoreHorizontal, Heart, ArrowLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import httpClient from "@/utils/httpClient";
 import AudioPlayer from "@/components/music/AudioPlayer";
@@ -72,6 +71,14 @@ const Music = () => {
     playlists: 0
   });
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([]);
+  
+  // New states for album/artist/playlist view
+  const [viewingContent, setViewingContent] = useState<{
+    type: 'album' | 'artist' | 'playlist' | null;
+    id: string;
+    name: string;
+    songs: Song[];
+  } | null>(null);
 
   // Fetch suggestions when liked songs change
   useEffect(() => {
@@ -188,7 +195,8 @@ const Music = () => {
   const playSong = (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
-    setCurrentIndex(playlist.findIndex(s => s.id === song.id));
+    const songIndex = playlist.findIndex(s => s.id === song.id);
+    setCurrentIndex(songIndex !== -1 ? songIndex : 0);
     setCurrentTime(0);
     setDuration(song.duration);
   };
@@ -250,13 +258,91 @@ const Music = () => {
     setDuration(dur);
   };
 
+  // New functions for album/artist/playlist handling
+  const handlePlayAlbum = async (albumId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await httpClient.get(`https://saavn.dev/api/albums?id=${albumId}`, { skipAuth: true });
+      if (response?.data?.songs) {
+        const albumSongs = response.data.songs;
+        setViewingContent({
+          type: 'album',
+          id: albumId,
+          name: response.data.name || 'Album',
+          songs: albumSongs
+        });
+        setPlaylist(albumSongs);
+      }
+    } catch (error) {
+      console.error('Error fetching album:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayArtist = async (artistId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await httpClient.get(`https://saavn.dev/api/artists/${artistId}/songs`, { skipAuth: true });
+      if (response?.data?.songs) {
+        const artistSongs = response.data.songs;
+        setViewingContent({
+          type: 'artist',
+          id: artistId,
+          name: response.data.name || 'Artist',
+          songs: artistSongs
+        });
+        setPlaylist(artistSongs);
+      }
+    } catch (error) {
+      console.error('Error fetching artist songs:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePlayPlaylist = async (playlistId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await httpClient.get(`https://saavn.dev/api/playlists?id=${playlistId}`, { skipAuth: true });
+      if (response?.data?.songs) {
+        const playlistSongs = response.data.songs;
+        setViewingContent({
+          type: 'playlist',
+          id: playlistId,
+          name: response.data.name || 'Playlist',
+          songs: playlistSongs
+        });
+        setPlaylist(playlistSongs);
+      }
+    } catch (error) {
+      console.error('Error fetching playlist:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const goBackToSearch = () => {
+    setViewingContent(null);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-foreground">Music Player</h1>
+          <div className="flex items-center gap-4">
+            {viewingContent && (
+              <Button onClick={goBackToSearch} variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+            <h1 className="text-3xl font-bold text-foreground">
+              {viewingContent ? `${viewingContent.name} - ${viewingContent.type}` : 'Music Player'}
+            </h1>
+          </div>
           
           {/* Controls Row */}
           <div className="flex items-center gap-2">
@@ -307,37 +393,49 @@ const Music = () => {
           </div>
         </div>
         
-        {/* Search Bar */}
-        <div className="flex gap-2 max-w-md">
-          <Input
-            placeholder="Search for songs, artists, albums, playlists..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1"
-            style={{ fontSize: '16px' }} // Prevents zoom on mobile
-          />
-          <Button onClick={handleSearch} disabled={isLoading}>
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Search Bar - Only show when not viewing content */}
+        {!viewingContent && (
+          <div className="flex gap-2 max-w-md">
+            <Input
+              placeholder="Search for songs, artists, albums, playlists..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="flex-1"
+              style={{ fontSize: '16px' }}
+            />
+            <Button onClick={handleSearch} disabled={isLoading}>
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
       <div className={`flex-1 overflow-auto p-6 ${currentSong ? 'pb-24' : 'pb-6'}`}>
-        {searchResults.songs.length > 0 || searchResults.albums.length > 0 || searchResults.artists.length > 0 || searchResults.playlists.length > 0 ? (
+        {viewingContent ? (
+          <SongList 
+            songs={viewingContent.songs}
+            onPlaySong={playSong}
+            currentSong={currentSong}
+            onToggleLike={toggleLike}
+            likedSongs={likedSongs}
+            isPlaying={isPlaying}
+          />
+        ) : searchResults.songs.length > 0 || searchResults.albums.length > 0 || searchResults.artists.length > 0 || searchResults.playlists.length > 0 ? (
           <SearchTabs
             searchResults={searchResults}
-            onPlaySong={(song) => playSong(song)}
-            onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
-            onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
-            onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
+            onPlaySong={playSong}
+            onPlayAlbum={handlePlayAlbum}
+            onPlayArtist={handlePlayArtist}
+            onPlayPlaylist={handlePlayPlaylist}
             isLoading={isLoading}
             currentSong={currentSong}
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
             onToggleLike={toggleLike}
             likedSongs={likedSongs}
+            isPlaying={isPlaying}
           />
         ) : (
           <div className="text-center py-12">
@@ -384,7 +482,7 @@ const Music = () => {
           onToggleShuffle={() => setIsShuffle(!isShuffle)}
           playlist={playlist}
           currentIndex={currentIndex}
-          onPlaySong={(song) => playSong(song)}
+          onPlaySong={playSong}
           currentTime={currentTime}
           duration={duration}
           onTimeUpdate={handleTimeUpdate}
@@ -413,8 +511,75 @@ const Music = () => {
           onPlaySong={playSong}
           likedSongs={likedSongs}
           onToggleLike={toggleLike}
+          playlist={playlist}
+          setPlaylist={setPlaylist}
         />
       )}
+    </div>
+  );
+};
+
+// New SongList component
+const SongList = ({ songs, onPlaySong, currentSong, onToggleLike, likedSongs, isPlaying }) => {
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="space-y-2">
+      {songs.map((song, index) => (
+        <div
+          key={song.id}
+          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+            currentSong?.id === song.id
+              ? "bg-primary/20 border border-primary/30"
+              : "hover:bg-muted/50"
+          }`}
+          onClick={() => onPlaySong(song)}
+        >
+          <div className="relative">
+            <img
+              src={song.image[0]?.url}
+              alt={song.name}
+              className="w-12 h-12 rounded object-cover"
+            />
+            {currentSong?.id === song.id && (
+              <div className="absolute inset-0 bg-black/30 rounded flex items-center justify-center">
+                {isPlaying ? (
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                ) : (
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                )}
+              </div>
+            )}
+          </div>
+          <span className="text-sm text-muted-foreground w-8">{index + 1}</span>
+          <div className="flex-1 min-w-0">
+            <p className="truncate text-sm font-medium">{song.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {formatDuration(song.duration)}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleLike(song.id);
+              }}
+              className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+            >
+              <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+            </Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

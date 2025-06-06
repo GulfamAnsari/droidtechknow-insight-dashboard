@@ -30,9 +30,18 @@ interface OfflineManagerProps {
   onPlaySong: (song: Song) => void;
   likedSongs: string[];
   onToggleLike: (songId: string) => void;
+  playlist: Song[];
+  setPlaylist: (songs: Song[]) => void;
 }
 
-const OfflineManager = ({ onClose, onPlaySong, likedSongs, onToggleLike }: OfflineManagerProps) => {
+const OfflineManager = ({ 
+  onClose, 
+  onPlaySong, 
+  likedSongs, 
+  onToggleLike, 
+  playlist, 
+  setPlaylist 
+}: OfflineManagerProps) => {
   const [offlineSongs, setOfflineSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +110,32 @@ const OfflineManager = ({ onClose, onPlaySong, likedSongs, onToggleLike }: Offli
           url: URL.createObjectURL(song.audioBlob)
         }]
       };
+      
+      // Set the offline playlist
+      setPlaylist(offlineSongs.map(s => ({
+        ...s,
+        downloadUrl: s.audioBlob ? [{
+          quality: '320kbps',
+          url: URL.createObjectURL(s.audioBlob)
+        }] : s.downloadUrl
+      })));
+      
       onPlaySong(offlineSong);
+    }
+  };
+
+  const playAllOfflineSongs = () => {
+    if (offlineSongs.length > 0) {
+      const offlinePlaylist = offlineSongs.map(song => ({
+        ...song,
+        downloadUrl: song.audioBlob ? [{
+          quality: '320kbps',
+          url: URL.createObjectURL(song.audioBlob)
+        }] : song.downloadUrl
+      }));
+      
+      setPlaylist(offlinePlaylist);
+      playOfflineSong(offlineSongs[0]);
     }
   };
 
@@ -127,9 +161,17 @@ const OfflineManager = ({ onClose, onPlaySong, likedSongs, onToggleLike }: Offli
             <Music className="h-5 w-5" />
             Offline Songs ({offlineSongs.length})
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            {offlineSongs.length > 0 && (
+              <Button onClick={playAllOfflineSongs} variant="outline" size="sm">
+                <Play className="h-4 w-4 mr-2" />
+                Play All
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {offlineSongs.length === 0 ? (
@@ -140,11 +182,12 @@ const OfflineManager = ({ onClose, onPlaySong, likedSongs, onToggleLike }: Offli
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {offlineSongs.map((song) => (
+              {offlineSongs.map((song, index) => (
                 <div
                   key={song.id}
                   className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                 >
+                  <span className="text-sm text-muted-foreground w-8">{index + 1}</span>
                   <LazyImage
                     src={song.image[1]?.url || song.image[0]?.url}
                     alt={song.name}

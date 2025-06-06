@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { X, Download, DownloadCloud } from 'lucide-react';
 import LazyImage from '@/components/ui/lazy-image';
 
@@ -32,36 +33,79 @@ interface DownloadManagerProps {
 
 const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProps) => {
   const [downloading, setDownloading] = useState<string[]>([]);
+  const [downloadProgress, setDownloadProgress] = useState<{ [key: string]: number }>({});
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   const downloadSong = async (song: Song) => {
     setDownloading(prev => [...prev, song.id]);
+    setDownloadProgress(prev => ({ ...prev, [song.id]: 0 }));
     
     try {
-      const downloadUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                         song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                         song.downloadUrl?.[0]?.url;
+      const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
+                      song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
+                      song.downloadUrl?.[0]?.url;
+      const secureDownloadUrl = audioUrl?.replace(/^http:\/\//i, 'https://');
       
-      if (downloadUrl) {
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = `${song.name}.mp3`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      if (!secureDownloadUrl) {
+        console.error('No audio URL found for song:', song.name);
+        return;
       }
+
+      setDownloadProgress(prev => ({ ...prev, [song.id]: 50 }));
+      
+      const response = await fetch(secureDownloadUrl);
+      const audioBlob = await response.blob();
+      
+      setDownloadProgress(prev => ({ ...prev, [song.id]: 75 }));
+      
+      const request = indexedDB.open('OfflineMusicDB', 1);
+      
+      request.onupgradeneeded = function(event) {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains('songs')) {
+          db.createObjectStore('songs', { keyPath: 'id' });
+        }
+      };
+      
+      request.onsuccess = function(event) {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = db.transaction(['songs'], 'readwrite');
+        const store = transaction.objectStore('songs');
+        
+        const songWithBlob = {
+          ...song,
+          audioBlob: audioBlob
+        };
+        
+        store.put(songWithBlob);
+        
+        transaction.oncomplete = () => {
+          setDownloadProgress(prev => ({ ...prev, [song.id]: 100 }));
+          console.log('Song downloaded successfully:', song.name);
+        };
+      };
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error('Error downloading song:', error);
     } finally {
-      setDownloading(prev => prev.filter(id => id !== song.id));
+      setTimeout(() => {
+        setDownloading(prev => prev.filter(id => id !== song.id));
+        setDownloadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[song.id];
+          return newProgress;
+        });
+      }, 1000);
     }
   };
 
   const downloadAllPlaylist = async () => {
+    setIsDownloadingAll(true);
     for (const song of playlist) {
       await downloadSong(song);
       // Add a small delay between downloads
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    setIsDownloadingAll(false);
   };
 
   return (
@@ -92,6 +136,9 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
                   <p className="text-sm text-muted-foreground truncate">
                     {currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
                   </p>
+                  {downloadProgress[currentSong.id] && (
+                    <Progress value={downloadProgress[currentSong.id]} className="mt-2" />
+                  )}
                 </div>
                 <Button 
                   onClick={() => downloadSong(currentSong)}
@@ -110,9 +157,14 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
             <div className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium">Current Playlist ({playlist.length} songs)</h3>
-                <Button onClick={downloadAllPlaylist} variant="outline" size="sm">
+                <Button 
+                  onClick={downloadAllPlaylist} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isDownloadingAll}
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Download All
+                  {isDownloadingAll ? 'Downloading All...' : 'Download All'}
                 </Button>
               </div>
               
@@ -130,6 +182,9 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
                       <p className="text-xs text-muted-foreground truncate">
                         {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
                       </p>
+                      {downloadProgress[song.id] && (
+                        <Progress value={downloadProgress[song.id]} className="mt-1 h-1" />
+                      )}
                     </div>
                     <Button 
                       onClick={() => downloadSong(song)}
