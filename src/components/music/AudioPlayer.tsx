@@ -163,7 +163,7 @@ const AudioPlayer = ({
   if (!song) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40" style={{ zIndex: 99 }}>
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
