@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Heart, Music } from 'lucide-react';
+import { Play, Heart } from 'lucide-react';
 import httpClient from '@/utils/httpClient';
 import LazyImage from '@/components/ui/lazy-image';
 
@@ -62,11 +62,11 @@ const MusicHomepage = ({
       setTrendingSongs(trendingResponse?.data?.results || []);
 
       // Load top charts
-      const chartsResponse = await httpClient.get('https://saavn.dev/api/search/playlists?query=top%20charts&limit=8', { skipAuth: true });
+      const chartsResponse = await httpClient.get('https://saavn.dev/api/search/playlists?query=new&limit=50', { skipAuth: true });
       setTopCharts(chartsResponse?.data?.results || []);
 
       // Load popular artists
-      const artistsResponse = await httpClient.get('https://saavn.dev/api/search/artists?query=popular&limit=8', { skipAuth: true });
+      const artistsResponse = await httpClient.get('https://saavn.dev/api/search/artists?query=popular artists&limit=50', { skipAuth: true });
       setPopularArtists(artistsResponse?.data?.results || []);
 
     } catch (error) {
@@ -99,7 +99,7 @@ const MusicHomepage = ({
         id: item.id,
         name: item.name || item.title,
         songs,
-        image: item.image?.[1]?.url || item.image?.[0]?.url
+        image: item.image?.[1]?.url || item.image?.[0]?.url,
       });
     } catch (error) {
       console.error(`Error loading ${type}:`, error);
@@ -120,13 +120,28 @@ const MusicHomepage = ({
     );
   }
 
+  const handleMoodChange = async (moods) => {
+    try {
+
+      const response = await httpClient.get(`https://saavn.dev/api/search/songs?query=${moods} song&limit=10`, { skipAuth: true });
+      const songs = response?.data?.results || [];
+      onOpenBottomSheet({
+        type: "mood",
+        name: moods,
+        songs,
+      });
+    } catch (error) {
+      console.error(`Error loading ${moods}:`, error);
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Trending Songs */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Trending Songs</h2>
         <div className="space-y-2">
-          {trendingSongs.slice(0, 8).map((song, index) => (
+          {trendingSongs.map((song, index) => (
             <div
               key={song.id}
               className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
@@ -180,10 +195,32 @@ const MusicHomepage = ({
         </div>
       </section>
 
+      {/* Moods  */}
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Select your Moond</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {["Romantic", "Happy", "Sad", "Calm", "Relax", "Slow", "Dance"].map((moods, i) => (
+            <Card
+              key={i}
+              className="cursor-pointer hover:shadow-sm transition-shadow group"
+              onClick={() => handleMoodChange(moods)}
+            >
+              <CardContent className="p-3">
+                <div className="relative mb-2">
+                  <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <h3 className="font-medium text-sm truncate text-center">{moods}</h3>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
       {/* Popular Artists */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Popular Artists</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-4">
           {popularArtists.map((artist) => (
             <Card
               key={artist.id}
@@ -212,11 +249,11 @@ const MusicHomepage = ({
       {/* Top Charts */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Top Charts</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-4">
           {topCharts.map((chart) => (
             <Card
               key={chart.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow group"
+              className="cursor-pointer hover:shadow-md transition-shadow group"
               onClick={() => handleOpenContent('playlist', chart)}
             >
               <CardContent className="p-3">
