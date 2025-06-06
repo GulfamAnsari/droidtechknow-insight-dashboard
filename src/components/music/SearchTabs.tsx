@@ -94,13 +94,13 @@ const SearchTabs = ({
       const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
                       song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
                       song.downloadUrl?.[0]?.url;
-      
+      const secureDownloadUrl= audioUrl.replace(/^http:\/\//i, 'https://');
       if (!audioUrl) {
         console.error('No audio URL found for song:', song.name);
         return;
       }
 
-      const response = await fetch(audioUrl);
+      const response = await fetch(secureDownloadUrl);
       const audioBlob = await response.blob();
       
       const request = indexedDB.open('OfflineMusicDB', 1);
