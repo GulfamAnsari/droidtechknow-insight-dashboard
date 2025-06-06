@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const isAuthenticated = () => {
-    return Cookies.get("Cookie") !== null;
+    return user !== null;
   };
 
   const value = {
