@@ -13,6 +13,7 @@ interface User {
 }
 
 interface AuthContextType {
+  user: User | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   signup: (username: string, email: string, password: string, role?: string, key?: string) => Promise<boolean>;
@@ -31,7 +32,24 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Check if the user is already logged in when the app loads
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+        localStorage.removeItem('user');
+        Cookies.remove('Cookie');
+        Cookies.remove('userId');
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -55,6 +73,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
         // Store the user ID in cookies
         Cookies.set('userId', data.id, { expires: 7 }); // 7 days expiry
+        
+        // Store the user data in localStorage
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
         
         toast.success('Successfully logged in!');
         return true;
@@ -103,9 +125,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('user');
     Cookies.remove('Cookie');
     Cookies.remove('userId');
+    setUser(null);
     toast.info('You have been logged out.');
   };
 
@@ -114,6 +137,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = {
+    user,
     isLoading,
     login,
     signup,
