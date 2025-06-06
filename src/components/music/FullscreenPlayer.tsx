@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -310,7 +309,7 @@ const FullscreenPlayer = ({
 
   return (
     <div
-      className={`fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col items-center justify-center text-white transition-transform duration-200 overflow-hidden ${
+      className={`fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col text-white transition-transform duration-200 overflow-hidden ${
         isSwipeAnimating
           ? swipeDirection === "left"
             ? "animate-slide-left"
@@ -326,165 +325,196 @@ const FullscreenPlayer = ({
         onEnded={handleAudioEnded}
       />
 
-      <Button
-        onClick={() => setShowList(!showList)}
-        variant="ghost"
-        size="sm"
-        className="absolute top-4 right-12 text-white hover:bg-white/20"
-      >
-        <List className="h-6 w-6" />
-      </Button>
-
-      {/* Close button */}
-      <Button
-        onClick={onClose}
-        variant="ghost"
-        size="sm"
-        className="absolute top-4 right-4 text-white hover:bg-white/20"
-      >
-        <X className="h-6 w-6" />
-      </Button>
-
-      {/* Swipe instructions */}
-      <div className="absolute top-4 left-4 text-sm text-white/60">
-        Swipe left/right to change songs
+      {/* Header Controls */}
+      <div className="flex items-center justify-between p-4">
+        <div className="text-sm text-white/60">
+          Swipe left/right to change songs
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowList(!showList)}
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <List className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Previous Song Preview (Left) */}
-      {prevSong && !showList && (
-        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75">
-          <LazyImage
-            src={prevSong.image[1]?.url || prevSong.image[0]?.url}
-            alt={prevSong.name}
-            className="w-32 h-32 rounded-lg object-cover"
-          />
-        </div>
-      )}
-
-      {/* Next Song Preview (Right) */}
-      {nextSong && !showList && (
-        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75">
-          <LazyImage
-            src={nextSong.image[1]?.url || nextSong.image[0]?.url}
-            alt={nextSong.name}
-            className="w-32 h-32 rounded-lg object-cover"
-          />
-        </div>
-      )}
-
       {/* Main Content Container */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-6xl px-4">
-        {/* Left Side - Album Art and Controls */}
-        {showList ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 max-w-md ml-8">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="playlist">Playlist</TabsTrigger>
-              <TabsTrigger value="suggestions">Suggested</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="playlist">
-              {renderSongList(playlist, "Current Playlist")}
-            </TabsContent>
-            
-            <TabsContent value="suggestions">
-              {renderSongList(suggestedSongs, "Suggested Songs")}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="flex-1 flex flex-col items-center">
-            {/* Album Art */}
-            <div className="mb-8" onClick={onPlayPause}>
-              <LazyImage
-                src={
-                  song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
-                }
-                alt={song.name}
-                className="w-80 h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
-              />
-            </div>
+      <div className="flex-1 flex">
+        {/* Previous Song Preview (Left) - Mobile Responsive */}
+        {prevSong && !showList && (
+          <div className="hidden sm:flex absolute left-2 md:left-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75 z-10">
+            <LazyImage
+              src={prevSong.image[1]?.url || prevSong.image[0]?.url}
+              alt={prevSong.name}
+              className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover"
+            />
+          </div>
+        )}
 
-            {/* Song Info */}
-            <div className="text-center mb-8 max-w-md">
-              <h1 className="text-3xl font-bold mb-2">{song.name}</h1>
-              <p className="text-xl text-white/80">
-                {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                  "Unknown Artist"}
-              </p>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full max-w-2xl mb-8">
-              <Slider
-                value={[
-                  song.duration > 0 ? (currentTime / song.duration) * 100 : 0
-                ]}
-                onValueChange={handleSeek}
-                max={100}
-                step={0.1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-white/60 mt-2">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(song.duration)}</span>
+        {/* Center Content */}
+        <div className="flex-1 flex items-center justify-center px-4 md:px-8">
+          {showList ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
+              <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/10">
+                <TabsTrigger value="playlist" className="text-white data-[state=active]:bg-white/20">
+                  Playlist
+                </TabsTrigger>
+                <TabsTrigger value="suggestions" className="text-white data-[state=active]:bg-white/20">
+                  Suggested
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="playlist">
+                {renderSongList(playlist, "Current Playlist")}
+              </TabsContent>
+              
+              <TabsContent value="suggestions">
+                {renderSongList(suggestedSongs, "Suggested Songs")}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex flex-col items-center w-full max-w-md">
+              {/* Album Art */}
+              <div className="mb-6 md:mb-8" onClick={onPlayPause}>
+                <LazyImage
+                  src={
+                    song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
+                  }
+                  alt={song.name}
+                  className="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+                />
               </div>
-            </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-6 mb-8">
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleShuffle}
-                className={`text-white hover:bg-white/20 ${
-                  isShuffle ? "text-primary" : ""
-                }`}
-              >
-                <Shuffle className="h-6 w-6" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onPrevious}
-                className="text-white hover:bg-white/20"
-              >
-                <SkipBack className="h-8 w-8" />
-              </Button>
-              <Button
-                size="lg"
-                onClick={onPlayPause}
-                className="bg-white text-black hover:bg-white/90 rounded-full p-4"
-              >
-                {isPlaying ? (
-                  <Pause className="h-8 w-8" />
-                ) : (
-                  <Play className="h-8 w-8" />
-                )}
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onNext}
-                className="text-white hover:bg-white/20"
-              >
-                <SkipForward className="h-8 w-8" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleRepeat}
-                className={`text-white hover:bg-white/20 ${
-                  isRepeat ? "text-primary" : ""
-                }`}
-              >
-                <Repeat className="h-6 w-6" />
-              </Button>
-            </div>
+              {/* Song Info */}
+              <div className="text-center mb-6 md:mb-8 max-w-full px-4">
+                <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">{song.name}</h1>
+                <p className="text-lg md:text-xl text-white/80 truncate">
+                  {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                    "Unknown Artist"}
+                </p>
+              </div>
 
-            {/* Bottom Controls */}
-            <div className="flex items-center gap-8 w-full max-w-2xl">
-              {/* Volume */}
-              <div className="flex items-center gap-3 flex-1">
-                <Volume2 className="h-5 w-5 text-white/60" />
+              {/* Progress bar */}
+              <div className="w-full max-w-md mb-6 md:mb-8 px-4">
+                <Slider
+                  value={[
+                    song.duration > 0 ? (currentTime / song.duration) * 100 : 0
+                  ]}
+                  onValueChange={handleSeek}
+                  max={100}
+                  step={0.1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-sm text-white/60 mt-2">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(song.duration)}</span>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={onToggleShuffle}
+                  className={`text-white hover:bg-white/20 ${
+                    isShuffle ? "text-primary" : ""
+                  }`}
+                >
+                  <Shuffle className="h-5 w-5 md:h-6 md:w-6" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={onPrevious}
+                  className="text-white hover:bg-white/20"
+                >
+                  <SkipBack className="h-6 w-6 md:h-8 md:w-8" />
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={onPlayPause}
+                  className="bg-white text-black hover:bg-white/90 rounded-full p-3 md:p-4"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-6 w-6 md:h-8 md:w-8" />
+                  ) : (
+                    <Play className="h-6 w-6 md:h-8 md:w-8" />
+                  )}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={onNext}
+                  className="text-white hover:bg-white/20"
+                >
+                  <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={onToggleRepeat}
+                  className={`text-white hover:bg-white/20 ${
+                    isRepeat ? "text-primary" : ""
+                  }`}
+                >
+                  <Repeat className="h-5 w-5 md:h-6 md:w-6" />
+                </Button>
+              </div>
+
+              {/* Bottom Controls */}
+              <div className="flex items-center gap-4 md:gap-8 w-full max-w-md px-4">
+                {/* Volume - Hidden on very small screens */}
+                <div className="hidden sm:flex items-center gap-3 flex-1">
+                  <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
+                  <Slider
+                    value={[volume]}
+                    onValueChange={handleVolumeChange}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => onToggleLike(song.id)}
+                    variant="ghost"
+                    size="sm"
+                    className={`text-white hover:bg-white/20 ${
+                      likedSongs.includes(song.id) ? "text-red-500" : ""
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 md:h-5 md:w-5 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                  </Button>
+
+                  <Button
+                    onClick={downloadSong}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/20"
+                  >
+                    <Download className="h-4 w-4 md:h-5 md:w-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Mobile Volume Control */}
+              <div className="sm:hidden flex items-center gap-3 w-full max-w-md px-4 mt-4">
+                <Volume2 className="h-4 w-4 text-white/60" />
                 <Slider
                   value={[volume]}
                   onValueChange={handleVolumeChange}
@@ -493,29 +523,18 @@ const FullscreenPlayer = ({
                   className="flex-1"
                 />
               </div>
-
-              {/* Like Button */}
-              <Button
-                onClick={() => onToggleLike(song.id)}
-                variant="ghost"
-                size="sm"
-                className={`text-white hover:bg-white/20 ${
-                  likedSongs.includes(song.id) ? "text-red-500" : ""
-                }`}
-              >
-                <Heart className={`h-5 w-5 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
-              </Button>
-
-              {/* Download */}
-              <Button
-                onClick={downloadSong}
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20"
-              >
-                <Download className="h-5 w-5" />
-              </Button>
             </div>
+          )}
+        </div>
+
+        {/* Next Song Preview (Right) - Mobile Responsive */}
+        {nextSong && !showList && (
+          <div className="hidden sm:flex absolute right-2 md:right-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75 z-10">
+            <LazyImage
+              src={nextSong.image[1]?.url || nextSong.image[0]?.url}
+              alt={nextSong.name}
+              className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover"
+            />
           </div>
         )}
       </div>

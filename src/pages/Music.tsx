@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Music as MusicIcon, FileText, Download, Maximize } from "lucide-react";
+import { Search, Music as MusicIcon, Download, Maximize, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import httpClient from "@/utils/httpClient";
 import AudioPlayer from "@/components/music/AudioPlayer";
 import SearchTabs from "@/components/music/SearchTabs";
-import LyricsView from "@/components/music/LyricsView";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import DownloadManager from "@/components/music/DownloadManager";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
@@ -39,8 +39,6 @@ const Music = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showLyrics, setShowLyrics] = useState(false);
-  const [activeTab, setActiveTab] = useState("search");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
@@ -52,7 +50,7 @@ const Music = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  // Pagination states - simplified to track just current pages
+  // Pagination states
   const [currentPages, setCurrentPages] = useState({
     songs: 0,
     albums: 0,
@@ -72,12 +70,14 @@ const Music = () => {
   const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
     queryKey: ['search', searchQuery, currentPages],
     queryFn: async () => {
-      if (!searchQuery.trim()) return {
-        songs: { data: { results: allResults.songs } },
-        albums: { data: { results: allResults.albums } },
-        artists: { data: { results: allResults.artists } },
-        playlists: { data: { results: allResults.playlists } }
-      };
+      if (!searchQuery.trim()) {
+        return {
+          songs: { data: { results: allResults.songs } },
+          albums: { data: { results: allResults.albums } },
+          artists: { data: { results: allResults.artists } },
+          playlists: { data: { results: allResults.playlists } }
+        };
+      }
       
       const limit = 20;
       
@@ -93,21 +93,16 @@ const Music = () => {
       const newArtists = artistsRes?.data?.results || [];
       const newPlaylists = playlistsRes?.data?.results || [];
 
-      // Update accumulated results
-      setAllResults(prev => ({
-        songs: currentPages.songs === 0 ? newSongs : [...prev.songs, ...newSongs],
-        albums: currentPages.albums === 0 ? newAlbums : [...prev.albums, ...newAlbums],
-        artists: currentPages.artists === 0 ? newArtists : [...prev.artists, ...newArtists],
-        playlists: currentPages.playlists === 0 ? newPlaylists : [...prev.playlists, ...newPlaylists]
-      }));
-
-      // Return current state for immediate use
+      // Update accumulated results based on page
       const updatedResults = {
         songs: currentPages.songs === 0 ? newSongs : [...allResults.songs, ...newSongs],
         albums: currentPages.albums === 0 ? newAlbums : [...allResults.albums, ...newAlbums],
         artists: currentPages.artists === 0 ? newArtists : [...allResults.artists, ...newArtists],
         playlists: currentPages.playlists === 0 ? newPlaylists : [...allResults.playlists, ...newPlaylists]
       };
+
+      // Update state only after successful API call
+      setAllResults(updatedResults);
       
       if (currentPages.songs === 0 && currentPages.albums === 0 && currentPages.artists === 0 && currentPages.playlists === 0) {
         setPlaylist(updatedResults.songs);
@@ -214,12 +209,6 @@ const Music = () => {
     }
   };
 
-  const showSongLyrics = () => {
-    if (currentSong) {
-      setShowLyrics(true);
-    }
-  };
-
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
@@ -240,7 +229,9 @@ const Music = () => {
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-foreground">Music Player</h1>
-          <div className="flex gap-2">
+          
+          {/* Desktop Controls */}
+          <div className="hidden md:flex gap-2">
             <Button onClick={() => setShowDownloads(true)} variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               Downloads
@@ -251,6 +242,29 @@ const Music = () => {
                 Fullscreen
               </Button>
             )}
+          </div>
+
+          {/* Mobile Controls */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="space-y-1 p-2">
+                <Button onClick={() => setShowDownloads(true)} variant="ghost" size="sm" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" />
+                  Downloads
+                </Button>
+                {currentSong && (
+                  <Button onClick={toggleFullscreen} variant="ghost" size="sm" className="w-full justify-start">
+                    <Maximize className="h-4 w-4 mr-2" />
+                    Fullscreen
+                  </Button>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         
@@ -271,75 +285,31 @@ const Music = () => {
 
       {/* Main Content */}
       <div className={`flex-1 overflow-auto p-6 ${currentSong ? 'pb-24' : 'pb-6'}`}>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="search" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              Search
-            </TabsTrigger>
-            <TabsTrigger value="lyrics" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Lyrics
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="search">
-            {searchResults ? (
-              <SearchTabs
-                searchResults={searchResults}
-                onPlaySong={(song) => playSong(song)}
-                onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
-                onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
-                onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
-                isLoading={searchLoading}
-                currentSong={currentSong}
-                searchQuery={searchQuery}
-                onLoadMore={handleLoadMore}
-                onToggleLike={toggleLike}
-                likedSongs={likedSongs}
-              />
-            ) : (
-              <div className="text-center py-12">
-                <MusicIcon size={64} className="mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Search for Music</h3>
-                <p className="text-muted-foreground">Find your favorite songs, albums, artists, and playlists</p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="lyrics">
-            {currentSong ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Current Song Lyrics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-medium">{currentSong.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
-                      </p>
-                    </div>
-                    <Button onClick={showSongLyrics}>
-                      View Full Lyrics
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-center py-12">
-                <FileText size={64} className="mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Song Playing</h3>
-                <p className="text-muted-foreground">Select a song to view lyrics</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+        {searchResults ? (
+          <SearchTabs
+            searchResults={searchResults}
+            onPlaySong={(song) => playSong(song)}
+            onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
+            onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
+            onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
+            isLoading={searchLoading}
+            currentSong={currentSong}
+            searchQuery={searchQuery}
+            onLoadMore={handleLoadMore}
+            onToggleLike={toggleLike}
+            likedSongs={likedSongs}
+          />
+        ) : (
+          <div className="text-center py-12">
+            <MusicIcon size={64} className="mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Search for Music</h3>
+            <p className="text-muted-foreground">Find your favorite songs, albums, artists, and playlists</p>
+          </div>
+        )}
       </div>
 
-      {/* Audio Player */}
-      {currentSong && (
+      {/* Audio Player - Only show when not in fullscreen */}
+      {currentSong && !isFullscreen && (
         <AudioPlayer
           song={currentSong}
           isPlaying={isPlaying}
@@ -380,16 +350,6 @@ const Music = () => {
           onToggleLike={toggleLike}
           likedSongs={likedSongs}
           suggestedSongs={suggestedSongs || []}
-        />
-      )}
-
-      {/* Lyrics Modal */}
-      {showLyrics && currentSong && (
-        <LyricsView
-          songName={currentSong.name}
-          artistName={currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
-          songId={currentSong.id}
-          onClose={() => setShowLyrics(false)}
         />
       )}
 

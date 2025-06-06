@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -406,24 +405,44 @@ const SearchTabs = ({
 
   return (
     <Tabs defaultValue="songs" className="w-full">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="songs">Songs</TabsTrigger>
-        <TabsTrigger value="albums">Albums</TabsTrigger>
-        <TabsTrigger value="artists">Artists</TabsTrigger>
-        <TabsTrigger value="playlists">Playlists</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-4 bg-background/50 rounded-xl p-1 backdrop-blur-sm border">
+        <TabsTrigger 
+          value="songs" 
+          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+        >
+          Songs
+        </TabsTrigger>
+        <TabsTrigger 
+          value="albums"
+          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+        >
+          Albums
+        </TabsTrigger>
+        <TabsTrigger 
+          value="artists"
+          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+        >
+          Artists
+        </TabsTrigger>
+        <TabsTrigger 
+          value="playlists"
+          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+        >
+          Playlists
+        </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="songs" className="space-y-4">
+      <TabsContent value="songs" className="space-y-4 mt-6">
         <div
-          className="h-96 overflow-y-auto"
+          className="h-[calc(100vh-300px)] overflow-y-auto"
           onScroll={(e) => handleScroll(e, "songs")}
         >
           {searchResults.songs?.data?.results?.map((song: Song) => (
             <Card
-              className={`hover:shadow-md transition-shadow mb-4 rounded cursor-pointer transition-colors ${
+              className={`hover:shadow-md transition-shadow mb-4 rounded-xl cursor-pointer transition-colors ${
                 song.id == currentSong?.id
-                  ? "bg-white/20 border border-white/30"
-                  : "hover:bg-white/10"
+                  ? "bg-primary/10 border-primary/30 shadow-lg"
+                  : "hover:bg-accent/50"
               }`}
               key={song.id}
             >
@@ -480,15 +499,15 @@ const SearchTabs = ({
         </div>
       </TabsContent>
 
-      <TabsContent value="albums" className="space-y-4">
+      <TabsContent value="albums" className="space-y-4 mt-6">
         <div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-[calc(100vh-300px)] overflow-y-auto"
           onScroll={(e) => handleScroll(e, "albums")}
         >
           {searchResults.albums?.data?.results?.map((album: Album) => (
             <Card
               key={album.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              className="hover:shadow-md transition-shadow cursor-pointer rounded-xl hover:bg-accent/50"
               onClick={() => setSelectedAlbum(album.id)}
             >
               <CardContent className="p-4">
@@ -513,15 +532,15 @@ const SearchTabs = ({
         </div>
       </TabsContent>
 
-      <TabsContent value="artists" className="space-y-4">
+      <TabsContent value="artists" className="space-y-4 mt-6">
         <div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-[calc(100vh-300px)] overflow-y-auto"
           onScroll={(e) => handleScroll(e, "artists")}
         >
           {searchResults.artists?.data?.results?.map((artist: Artist) => (
             <Card
               key={artist.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              className="hover:shadow-md transition-shadow cursor-pointer rounded-xl hover:bg-accent/50"
               onClick={() => setSelectedArtist(artist.id)}
             >
               <CardContent className="p-4 text-center">
@@ -545,15 +564,15 @@ const SearchTabs = ({
         </div>
       </TabsContent>
 
-      <TabsContent value="playlists" className="space-y-4">
+      <TabsContent value="playlists" className="space-y-4 mt-6">
         <div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-96 overflow-y-auto"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-[calc(100vh-300px)] overflow-y-auto"
           onScroll={(e) => handleScroll(e, "playlists")}
         >
           {searchResults.playlists?.data?.results?.map((playlist: Playlist) => (
             <Card
               key={playlist.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
+              className="hover:shadow-md transition-shadow cursor-pointer rounded-xl hover:bg-accent/50"
               onClick={() => setSelectedPlaylist(playlist.id)}
             >
               <CardContent className="p-4">
