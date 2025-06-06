@@ -227,9 +227,9 @@ const FullscreenPlayer = ({
         const downloadUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
                           song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
                           song.downloadUrl?.[0]?.url;
-        
+        const secureDownloadUrl= downloadUrl.replace(/^http:\/\//i, 'https://');
         if (downloadUrl) {
-          const response = await fetch(downloadUrl);
+          const response = await fetch(secureDownloadUrl);
           const audioBlob = await response.blob();
           
           const songData = {
