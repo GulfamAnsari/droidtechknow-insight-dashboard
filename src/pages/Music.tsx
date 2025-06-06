@@ -1,17 +1,17 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Music as MusicIcon, Download, Maximize, MoreHorizontal } from "lucide-react";
+import { Search, Music as MusicIcon, Download, Maximize, MoreHorizontal, Heart } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
 import httpClient from "@/utils/httpClient";
 import AudioPlayer from "@/components/music/AudioPlayer";
 import SearchTabs from "@/components/music/SearchTabs";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import DownloadManager from "@/components/music/DownloadManager";
+import OfflineManager from "@/components/music/OfflineManager";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
 
 interface Song {
@@ -41,128 +41,142 @@ const Music = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
+  const [showOffline, setShowOffline] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(70);
   const [likedSongs, setLikedSongs] = useState<string[]>(() => {
     const saved = localStorage.getItem('likedSongs');
     return saved ? JSON.parse(saved) : [];
   });
   
-  // Pagination states
+  // Search states
+  const [searchResults, setSearchResults] = useState<{
+    songs: Song[],
+    albums: any[],
+    artists: any[],
+    playlists: any[]
+  }>({
+    songs: [],
+    albums: [],
+    artists: [],
+    playlists: []
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [currentPages, setCurrentPages] = useState({
     songs: 0,
     albums: 0,
     artists: 0,
     playlists: 0
   });
-  
-  // Store all accumulated results
-  const [allResults, setAllResults] = useState({
-    songs: [] as Song[],
-    albums: [] as any[],
-    artists: [] as any[],
-    playlists: [] as any[]
-  });
+  const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([]);
 
-  // Search for songs, albums, artists, and playlists
-  const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
-    queryKey: ['search', searchQuery, currentPages],
-    queryFn: async () => {
-      if (!searchQuery.trim()) {
-        return {
-          songs: { data: { results: allResults.songs } },
-          albums: { data: { results: allResults.albums } },
-          artists: { data: { results: allResults.artists } },
-          playlists: { data: { results: allResults.playlists } }
-        };
+  // Fetch suggestions when liked songs change
+  useEffect(() => {
+    if (likedSongs.length > 0) {
+      fetchSuggestions();
+    }
+  }, [likedSongs]);
+
+  const fetchSuggestions = async () => {
+    const suggestions = [];
+    for (const songId of likedSongs.slice(0, 3)) {
+      try {
+        const response = await httpClient.get(`https://saavn.dev/api/songs/${songId}/suggestions`, { skipAuth: true });
+        if (response?.data) {
+          suggestions.push(...response.data);
+        }
+      } catch (error) {
+        console.log('Error fetching suggestions for', songId);
       }
-      
+    }
+    
+    const uniqueSuggestions = suggestions.filter((song, index, self) => 
+      index === self.findIndex(s => s.id === song.id)
+    ).slice(0, 20);
+    
+    setSuggestedSongs(uniqueSuggestions);
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsLoading(true);
+    setCurrentPages({ songs: 0, albums: 0, artists: 0, playlists: 0 });
+    setSearchResults({ songs: [], albums: [], artists: [], playlists: [] });
+    
+    try {
       const limit = 20;
-      
       const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.all([
-        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.songs}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.albums}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.artists}`, { skipAuth: true }),
-        httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${currentPages.playlists}`, { skipAuth: true })
+        httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=0`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=0`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=0`, { skipAuth: true }),
+        httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=0`, { skipAuth: true })
       ]);
 
-      const newSongs = songsRes?.data?.results || [];
-      const newAlbums = albumsRes?.data?.results || [];
-      const newArtists = artistsRes?.data?.results || [];
-      const newPlaylists = playlistsRes?.data?.results || [];
-
-      // Update accumulated results based on page
-      const updatedResults = {
-        songs: currentPages.songs === 0 ? newSongs : [...allResults.songs, ...newSongs],
-        albums: currentPages.albums === 0 ? newAlbums : [...allResults.albums, ...newAlbums],
-        artists: currentPages.artists === 0 ? newArtists : [...allResults.artists, ...newArtists],
-        playlists: currentPages.playlists === 0 ? newPlaylists : [...allResults.playlists, ...newPlaylists]
+      const newResults = {
+        songs: songsRes?.data?.results || [],
+        albums: albumsRes?.data?.results || [],
+        artists: artistsRes?.data?.results || [],
+        playlists: playlistsRes?.data?.results || []
       };
 
-      // Update state only after successful API call
-      setAllResults(updatedResults);
-      
-      if (currentPages.songs === 0 && currentPages.albums === 0 && currentPages.artists === 0 && currentPages.playlists === 0) {
-        setPlaylist(updatedResults.songs);
-      }
-      
-      return {
-        songs: { data: { results: updatedResults.songs } },
-        albums: { data: { results: updatedResults.albums } },
-        artists: { data: { results: updatedResults.artists } },
-        playlists: { data: { results: updatedResults.playlists } }
-      };
-    },
-    enabled: false
-  });
-
-  // Get song suggestions based on liked songs
-  const { data: suggestedSongs } = useQuery({
-    queryKey: ['suggestions', likedSongs],
-    queryFn: async () => {
-      if (likedSongs.length === 0) return [];
-      
-      const suggestions = [];
-      for (const songId of likedSongs.slice(0, 3)) {
-        try {
-          const response = await httpClient.get(`https://saavn.dev/api/songs/${songId}/suggestions`, { skipAuth: true });
-          if (response?.data) {
-            suggestions.push(...response.data);
-          }
-        } catch (error) {
-          console.log('Error fetching suggestions for', songId);
-        }
-      }
-      
-      // Remove duplicates and limit to 20 songs
-      const uniqueSuggestions = suggestions.filter((song, index, self) => 
-        index === self.findIndex(s => s.id === song.id)
-      ).slice(0, 20);
-      
-      return uniqueSuggestions;
-    },
-    enabled: likedSongs.length > 0
-  });
-
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      // Reset everything for new search
-      setCurrentPages({ songs: 0, albums: 0, artists: 0, playlists: 0 });
-      setAllResults({ songs: [], albums: [], artists: [], playlists: [] });
-      refetch();
+      setSearchResults(newResults);
+      setPlaylist(newResults.songs);
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleLoadMore = (type: 'songs' | 'albums' | 'artists' | 'playlists') => {
-    setCurrentPages(prev => ({
-      ...prev,
-      [type]: prev[type] + 1
-    }));
-    setTimeout(() => {
-      refetch();
-    }, 0);
+  const handleLoadMore = async (type: 'songs' | 'albums' | 'artists' | 'playlists') => {
+    if (isLoading || !searchQuery.trim()) return;
+    
+    setIsLoading(true);
+    const nextPage = currentPages[type] + 1;
+    
+    try {
+      const limit = 20;
+      let response;
+      
+      switch (type) {
+        case 'songs':
+          response = await httpClient.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${nextPage}`, { skipAuth: true });
+          break;
+        case 'albums':
+          response = await httpClient.get(`https://saavn.dev/api/search/albums?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${nextPage}`, { skipAuth: true });
+          break;
+        case 'artists':
+          response = await httpClient.get(`https://saavn.dev/api/search/artists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${nextPage}`, { skipAuth: true });
+          break;
+        case 'playlists':
+          response = await httpClient.get(`https://saavn.dev/api/search/playlists?query=${encodeURIComponent(searchQuery)}&limit=${limit}&page=${nextPage}`, { skipAuth: true });
+          break;
+      }
+      
+      const newResults = response?.data?.results || [];
+      
+      setSearchResults(prev => ({
+        ...prev,
+        [type]: [...prev[type], ...newResults]
+      }));
+      
+      setCurrentPages(prev => ({
+        ...prev,
+        [type]: nextPage
+      }));
+      
+      if (type === 'songs') {
+        setPlaylist(prev => [...prev, ...newResults]);
+      }
+    } catch (error) {
+      console.error(`Load more ${type} failed:`, error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -175,6 +189,8 @@ const Music = () => {
     setCurrentSong(song);
     setIsPlaying(true);
     setCurrentIndex(playlist.findIndex(s => s.id === song.id));
+    setCurrentTime(0);
+    setDuration(song.duration);
   };
 
   const togglePlayPause = () => {
@@ -192,6 +208,8 @@ const Music = () => {
       setCurrentIndex(nextIndex);
       setCurrentSong(playlist[nextIndex]);
       setIsPlaying(true);
+      setCurrentTime(0);
+      setDuration(playlist[nextIndex].duration);
     }
   };
 
@@ -206,6 +224,8 @@ const Music = () => {
       setCurrentIndex(prevIndex);
       setCurrentSong(playlist[prevIndex]);
       setIsPlaying(true);
+      setCurrentTime(0);
+      setDuration(playlist[prevIndex].duration);
     }
   };
 
@@ -222,6 +242,14 @@ const Music = () => {
     localStorage.setItem('likedSongs', JSON.stringify(newLikedSongs));
   };
 
+  const handleTimeUpdate = (time: number) => {
+    setCurrentTime(time);
+  };
+
+  const handleDurationUpdate = (dur: number) => {
+    setDuration(dur);
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
@@ -230,41 +258,52 @@ const Music = () => {
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-bold text-foreground">Music Player</h1>
           
-          {/* Desktop Controls */}
-          <div className="hidden md:flex gap-2">
-            <Button onClick={() => setShowDownloads(true)} variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Downloads
-            </Button>
-            {currentSong && (
-              <Button onClick={toggleFullscreen} variant="outline" size="sm">
-                <Maximize className="h-4 w-4 mr-2" />
-                Fullscreen
+          {/* Controls Row */}
+          <div className="flex items-center gap-2">
+            {/* Desktop Controls */}
+            <div className="hidden md:flex gap-2">
+              <Button onClick={() => setShowOffline(true)} variant="outline" size="sm">
+                <Heart className="h-4 w-4 mr-2" />
+                Offline
               </Button>
-            )}
-          </div>
+              <Button onClick={() => setShowDownloads(true)} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Downloads
+              </Button>
+              {currentSong && (
+                <Button onClick={toggleFullscreen} variant="outline" size="sm">
+                  <Maximize className="h-4 w-4 mr-2" />
+                  Fullscreen
+                </Button>
+              )}
+            </div>
 
-          {/* Mobile Controls */}
-          <div className="md:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="space-y-1 p-2">
-                <Button onClick={() => setShowDownloads(true)} variant="ghost" size="sm" className="w-full justify-start">
-                  <Download className="h-4 w-4 mr-2" />
-                  Downloads
-                </Button>
-                {currentSong && (
-                  <Button onClick={toggleFullscreen} variant="ghost" size="sm" className="w-full justify-start">
-                    <Maximize className="h-4 w-4 mr-2" />
-                    Fullscreen
+            {/* Mobile Controls */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="space-y-1 p-2 bg-background border z-50">
+                  <Button onClick={() => setShowOffline(true)} variant="ghost" size="sm" className="w-full justify-start">
+                    <Heart className="h-4 w-4 mr-2" />
+                    Offline Songs
+                  </Button>
+                  <Button onClick={() => setShowDownloads(true)} variant="ghost" size="sm" className="w-full justify-start">
+                    <Download className="h-4 w-4 mr-2" />
+                    Downloads
+                  </Button>
+                  {currentSong && (
+                    <Button onClick={toggleFullscreen} variant="ghost" size="sm" className="w-full justify-start">
+                      <Maximize className="h-4 w-4 mr-2" />
+                      Fullscreen
+                    </Button>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
         
@@ -276,8 +315,9 @@ const Music = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1"
+            style={{ fontSize: '16px' }} // Prevents zoom on mobile
           />
-          <Button onClick={handleSearch} disabled={searchLoading}>
+          <Button onClick={handleSearch} disabled={isLoading}>
             <Search className="h-4 w-4" />
           </Button>
         </div>
@@ -285,14 +325,14 @@ const Music = () => {
 
       {/* Main Content */}
       <div className={`flex-1 overflow-auto p-6 ${currentSong ? 'pb-24' : 'pb-6'}`}>
-        {searchResults ? (
+        {searchResults.songs.length > 0 || searchResults.albums.length > 0 || searchResults.artists.length > 0 || searchResults.playlists.length > 0 ? (
           <SearchTabs
             searchResults={searchResults}
             onPlaySong={(song) => playSong(song)}
             onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
             onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
             onPlayPlaylist={(playlistId) => console.log('Play playlist:', playlistId)}
-            isLoading={searchLoading}
+            isLoading={isLoading}
             currentSong={currentSong}
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
@@ -317,7 +357,9 @@ const Music = () => {
           onNext={playNext}
           onPrevious={playPrevious}
           currentTime={currentTime}
-          onTimeUpdate={setCurrentTime}
+          duration={duration}
+          onTimeUpdate={handleTimeUpdate}
+          onDurationUpdate={handleDurationUpdate}
           volume={volume}
           onVolumeChange={setVolume}
           isRepeat={isRepeat}
@@ -344,12 +386,14 @@ const Music = () => {
           currentIndex={currentIndex}
           onPlaySong={(song) => playSong(song)}
           currentTime={currentTime}
-          onTimeUpdate={setCurrentTime}
+          duration={duration}
+          onTimeUpdate={handleTimeUpdate}
+          onDurationUpdate={handleDurationUpdate}
           volume={volume}
           onVolumeChange={setVolume}
           onToggleLike={toggleLike}
           likedSongs={likedSongs}
-          suggestedSongs={suggestedSongs || []}
+          suggestedSongs={suggestedSongs}
         />
       )}
 
@@ -359,6 +403,16 @@ const Music = () => {
           onClose={() => setShowDownloads(false)}
           currentSong={currentSong}
           playlist={playlist}
+        />
+      )}
+
+      {/* Offline Manager */}
+      {showOffline && (
+        <OfflineManager
+          onClose={() => setShowOffline(false)}
+          onPlaySong={playSong}
+          likedSongs={likedSongs}
+          onToggleLike={toggleLike}
         />
       )}
     </div>

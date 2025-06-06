@@ -31,7 +31,9 @@ interface AudioPlayerProps {
   onNext: () => void;
   onPrevious: () => void;
   currentTime: number;
+  duration: number;
   onTimeUpdate: (time: number) => void;
+  onDurationUpdate: (duration: number) => void;
   volume: number;
   onVolumeChange: (volume: number) => void;
   isRepeat: boolean;
@@ -47,7 +49,9 @@ const AudioPlayer = ({
   onNext, 
   onPrevious,
   currentTime,
+  duration,
   onTimeUpdate,
+  onDurationUpdate,
   volume,
   onVolumeChange,
   isRepeat,
@@ -65,7 +69,7 @@ const AudioPlayer = ({
       
       if (audioUrl) {
         audioRef.current.src = audioUrl;
-        audioRef.current.currentTime = currentTime;
+        audioRef.current.volume = volume / 100;
         if (isPlaying) {
           audioRef.current.play();
         }
@@ -89,21 +93,21 @@ const AudioPlayer = ({
     }
   }, [volume]);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = currentTime;
-    }
-  }, [currentTime]);
-
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       onTimeUpdate(audioRef.current.currentTime);
     }
   };
 
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      onDurationUpdate(audioRef.current.duration);
+    }
+  };
+
   const handleSeek = (value: number[]) => {
-    if (audioRef.current && song) {
-      const newTime = (value[0] / 100) * song.duration;
+    if (audioRef.current && duration > 0) {
+      const newTime = (value[0] / 100) * duration;
       audioRef.current.currentTime = newTime;
       onTimeUpdate(newTime);
     }
@@ -137,6 +141,7 @@ const AudioPlayer = ({
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleAudioEnded}
       />
       
@@ -144,7 +149,7 @@ const AudioPlayer = ({
         {/* Progress bar */}
         <div className="mb-4">
           <Slider
-            value={[song.duration > 0 ? (currentTime / song.duration) * 100 : 0]}
+            value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
             onValueChange={handleSeek}
             max={100}
             step={0.1}
@@ -152,7 +157,7 @@ const AudioPlayer = ({
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(song.duration)}</span>
+            <span>{formatTime(duration)}</span>
           </div>
         </div>
 
