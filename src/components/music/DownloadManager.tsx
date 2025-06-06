@@ -51,10 +51,27 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
         return;
       }
 
+      setDownloadProgress(prev => ({ ...prev, [song.id]: 25 }));
+      
+      // Download audio
+      const audioResponse = await fetch(secureDownloadUrl);
+      const audioBlob = await audioResponse.blob();
+      
       setDownloadProgress(prev => ({ ...prev, [song.id]: 50 }));
       
-      const response = await fetch(secureDownloadUrl);
-      const audioBlob = await response.blob();
+      // Download and cache thumbnail
+      let cachedImageUrl = null;
+      try {
+        const imageUrl = song.image[0]?.url;
+        if (imageUrl) {
+          const secureImageUrl = imageUrl.replace(/^http:\/\//i, 'https://');
+          const imageResponse = await fetch(secureImageUrl);
+          const imageBlob = await imageResponse.blob();
+          cachedImageUrl = URL.createObjectURL(imageBlob);
+        }
+      } catch (imageError) {
+        console.log('Failed to cache image for', song.name);
+      }
       
       setDownloadProgress(prev => ({ ...prev, [song.id]: 75 }));
       
@@ -74,7 +91,8 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
         
         const songWithBlob = {
           ...song,
-          audioBlob: audioBlob
+          audioBlob: audioBlob,
+          cachedImageUrl: cachedImageUrl
         };
         
         store.put(songWithBlob);
@@ -101,9 +119,11 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
   const downloadAllPlaylist = async () => {
     setIsDownloadingAll(true);
     for (const song of playlist) {
-      await downloadSong(song);
-      // Add a small delay between downloads
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!downloading.includes(song.id)) {
+        await downloadSong(song);
+        // Add a small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
     setIsDownloadingAll(false);
   };
@@ -137,7 +157,12 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
                     {currentSong.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
                   </p>
                   {downloadProgress[currentSong.id] && (
-                    <Progress value={downloadProgress[currentSong.id]} className="mt-2" />
+                    <div className="mt-2">
+                      <Progress value={downloadProgress[currentSong.id]} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {downloadProgress[currentSong.id]}% complete
+                      </p>
+                    </div>
                   )}
                 </div>
                 <Button 

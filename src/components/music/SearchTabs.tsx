@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Play, Heart, Download, Pause } from 'lucide-react';
-import LazyImage from '@/components/ui/lazy-image';
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Play, Heart } from "lucide-react";
+import LazyImage from "@/components/ui/lazy-image";
 
 interface Song {
   id: string;
@@ -24,45 +23,16 @@ interface Song {
   duration: number;
 }
 
-interface Album {
-  id: string;
-  name: string;
-  primaryArtists: string;
-  image: {
-    quality: string;
-    url: string;
-  }[];
-}
-
-interface Artist {
-  id: string;
-  name: string;
-  image: {
-    quality: string;
-    url: string;
-  }[];
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  image: {
-    quality: string;
-    url: string;
-  }[];
+interface SearchResults {
+  songs: Song[];
+  albums: any[];
+  artists: any[];
+  playlists: any[];
 }
 
 interface SearchTabsProps {
-  searchResults: {
-    songs: Song[];
-    albums: Album[];
-    artists: Artist[];
-    playlists: Playlist[];
-  };
+  searchResults: SearchResults;
   onPlaySong: (song: Song) => void;
-  onPlayAlbum: (albumId: string) => void;
-  onPlayArtist: (artistId: string) => void;
-  onPlayPlaylist: (playlistId: string) => void;
   isLoading: boolean;
   currentSong: Song | null;
   searchQuery: string;
@@ -75,9 +45,7 @@ interface SearchTabsProps {
 const SearchTabs = ({
   searchResults,
   onPlaySong,
-  onPlayAlbum,
-  onPlayArtist,
-  onPlayPlaylist,
+  onOpenBottomSheet,
   isLoading,
   currentSong,
   searchQuery,
@@ -85,268 +53,207 @@ const SearchTabs = ({
   onToggleLike,
   likedSongs,
   isPlaying
-}: SearchTabsProps) => {
-  const [downloadingStates, setDownloadingStates] = useState<{ [key: string]: boolean }>({});
-
-  const downloadSong = async (song: Song) => {
-    setDownloadingStates(prev => ({ ...prev, [song.id]: true }));
-    
-    try {
-      const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                      song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                      song.downloadUrl?.[0]?.url;
-      const secureDownloadUrl= audioUrl.replace(/^http:\/\//i, 'https://');
-      if (!audioUrl) {
-        console.error('No audio URL found for song:', song.name);
-        return;
-      }
-
-      const response = await fetch(secureDownloadUrl);
-      const audioBlob = await response.blob();
-      
-      const request = indexedDB.open('OfflineMusicDB', 1);
-      
-      request.onupgradeneeded = function(event) {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('songs')) {
-          db.createObjectStore('songs', { keyPath: 'id' });
-        }
-      };
-      
-      request.onsuccess = function(event) {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['songs'], 'readwrite');
-        const store = transaction.objectStore('songs');
-        
-        const songWithBlob = {
-          ...song,
-          audioBlob: audioBlob
-        };
-        
-        store.put(songWithBlob);
-        
-        transaction.oncomplete = () => {
-          console.log('Song downloaded successfully:', song.name);
-        };
-      };
-    } catch (error) {
-      console.error('Error downloading song:', error);
-    } finally {
-      setDownloadingStates(prev => ({ ...prev, [song.id]: false }));
-    }
-  };
-
+}: SearchTabsProps & { onOpenBottomSheet: (content: any) => void }) => {
+  
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const SongItem = ({ song }: { song: Song }) => (
-    <Card className="mb-3 overflow-hidden hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <LazyImage
-              src={song.image[1]?.url || song.image[0]?.url}
-              alt={song.name}
-              className="w-16 h-16 rounded-lg object-cover"
-            />
-            {currentSong?.id === song.id && (
-              <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center">
-                {isPlaying ? (
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                ) : (
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate">{song.name}</h3>
-            <p className="text-sm text-muted-foreground truncate">
-              {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {formatDuration(song.duration)}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onToggleLike(song.id)}
-              className={likedSongs.includes(song.id) ? "text-red-500" : ""}
-            >
-              <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => downloadSong(song)}
-              disabled={downloadingStates[song.id]}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => onPlaySong(song)}
-              disabled={currentSong?.id === song.id && isPlaying}
-            >
-              {currentSong?.id === song.id && isPlaying ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const handleOpenContent = async (type: 'album' | 'artist' | 'playlist', item: any) => {
+    onOpenBottomSheet({
+      type,
+      id: item.id,
+      name: item.name || item.title,
+      songs: [],
+      image: item.image?.[1]?.url || item.image?.[0]?.url
+    });
+  };
 
   return (
     <Tabs defaultValue="songs" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50 rounded-xl p-1 h-12">
-        <TabsTrigger 
-          value="songs" 
-          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium transition-all duration-200"
-        >
-          Songs ({searchResults.songs.length})
-        </TabsTrigger>
-        <TabsTrigger 
-          value="albums"
-          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium transition-all duration-200"
-        >
-          Albums ({searchResults.albums.length})
-        </TabsTrigger>
-        <TabsTrigger 
-          value="artists"
-          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium transition-all duration-200"
-        >
-          Artists ({searchResults.artists.length})
-        </TabsTrigger>
-        <TabsTrigger 
-          value="playlists"
-          className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium transition-all duration-200"
-        >
-          Playlists ({searchResults.playlists.length})
-        </TabsTrigger>
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="songs">Songs ({searchResults.songs.length})</TabsTrigger>
+        <TabsTrigger value="albums">Albums ({searchResults.albums.length})</TabsTrigger>
+        <TabsTrigger value="artists">Artists ({searchResults.artists.length})</TabsTrigger>
+        <TabsTrigger value="playlists">Playlists ({searchResults.playlists.length})</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="songs" className="space-y-4">
+      <TabsContent value="songs" className="mt-4">
         <div className="space-y-2">
-          {searchResults.songs.map((song) => (
-            <SongItem key={song.id} song={song} />
+          {searchResults.songs.map((song, index) => (
+            <div
+              key={song.id}
+              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                currentSong?.id === song.id
+                  ? "bg-primary/20 border border-primary/30"
+                  : "hover:bg-muted/50"
+              }`}
+              onClick={() => onPlaySong(song)}
+            >
+              <div className="relative">
+                <LazyImage
+                  src={song.image[0]?.url}
+                  alt={song.name}
+                  className="w-12 h-12 rounded object-cover"
+                />
+                {currentSong?.id === song.id && (
+                  <div className="absolute inset-0 bg-black/30 rounded flex items-center justify-center">
+                    {isPlaying ? (
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    ) : (
+                      <Play className="w-3 h-3 text-white" />
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground w-8">{index + 1}</span>
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium">{song.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {formatDuration(song.duration)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleLike(song.id);
+                  }}
+                  className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                >
+                  <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
-        {searchResults.songs.length > 0 && (
-          <div className="text-center">
-            <Button 
-              onClick={() => onLoadMore('songs')} 
-              disabled={isLoading}
-              variant="outline"
-              className="w-full max-w-xs"
-            >
-              {isLoading ? 'Loading...' : 'Load More Songs'}
-            </Button>
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
+        )}
+        {!isLoading && searchResults.songs.length > 0 && (
+          <Button onClick={() => onLoadMore('songs')} disabled={isLoading} className="w-full">
+            Load More Songs
+          </Button>
         )}
       </TabsContent>
 
-      <TabsContent value="albums" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <TabsContent value="albums" className="mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {searchResults.albums.map((album) => (
-            <Card key={album.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayAlbum(album.id)}>
-              <div className="aspect-square">
-                <LazyImage
-                  src={album.image[1]?.url || album.image[0]?.url}
-                  alt={album.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+            <Card
+              key={album.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow group"
+              onClick={() => handleOpenContent('album', album)}
+            >
               <CardContent className="p-3">
-                <h3 className="font-medium truncate text-sm">{album.name}</h3>
+                <div className="relative mb-2">
+                  <LazyImage
+                    src={album.image?.[1]?.url || album.image?.[0]?.url}
+                    alt={album.name}
+                    className="w-full aspect-square rounded-lg object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <h3 className="font-medium text-xs truncate">{album.name}</h3>
                 <p className="text-xs text-muted-foreground truncate">{album.primaryArtists}</p>
               </CardContent>
             </Card>
           ))}
         </div>
-        {searchResults.albums.length > 0 && (
-          <div className="text-center">
-            <Button 
-              onClick={() => onLoadMore('albums')} 
-              disabled={isLoading}
-              variant="outline"
-              className="w-full max-w-xs"
-            >
-              {isLoading ? 'Loading...' : 'Load More Albums'}
-            </Button>
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
+        )}
+        {!isLoading && searchResults.albums.length > 0 && (
+          <Button onClick={() => onLoadMore('albums')} disabled={isLoading} className="w-full">
+            Load More Albums
+          </Button>
         )}
       </TabsContent>
 
-      <TabsContent value="artists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <TabsContent value="artists" className="mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {searchResults.artists.map((artist) => (
-            <Card key={artist.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayArtist(artist.id)}>
-              <div className="aspect-square">
-                <LazyImage
-                  src={artist.image[1]?.url || artist.image[0]?.url}
-                  alt={artist.name}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              </div>
-              <CardContent className="p-3 text-center">
-                <h3 className="font-medium truncate text-sm">{artist.name}</h3>
-                <p className="text-xs text-muted-foreground">Artist</p>
+            <Card
+              key={artist.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow group"
+              onClick={() => handleOpenContent('artist', artist)}
+            >
+              <CardContent className="p-3">
+                <div className="relative mb-2">
+                  <LazyImage
+                    src={artist.image?.[1]?.url || artist.image?.[0]?.url}
+                    alt={artist.name}
+                    className="w-full aspect-square rounded-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <h3 className="font-medium text-xs truncate text-center">{artist.name}</h3>
+                <p className="text-xs text-muted-foreground text-center">Artist</p>
               </CardContent>
             </Card>
           ))}
         </div>
-        {searchResults.artists.length > 0 && (
-          <div className="text-center">
-            <Button 
-              onClick={() => onLoadMore('artists')} 
-              disabled={isLoading}
-              variant="outline"
-              className="w-full max-w-xs"
-            >
-              {isLoading ? 'Loading...' : 'Load More Artists'}
-            </Button>
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
+        )}
+        {!isLoading && searchResults.artists.length > 0 && (
+          <Button onClick={() => onLoadMore('artists')} disabled={isLoading} className="w-full">
+            Load More Artists
+          </Button>
         )}
       </TabsContent>
 
-      <TabsContent value="playlists" className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <TabsContent value="playlists" className="mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {searchResults.playlists.map((playlist) => (
-            <Card key={playlist.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => onPlayPlaylist(playlist.id)}>
-              <div className="aspect-square">
-                <LazyImage
-                  src={playlist.image[1]?.url || playlist.image[0]?.url}
-                  alt={playlist.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+            <Card
+              key={playlist.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow group"
+              onClick={() => handleOpenContent('playlist', playlist)}
+            >
               <CardContent className="p-3">
-                <h3 className="font-medium truncate text-sm">{playlist.name}</h3>
-                <p className="text-xs text-muted-foreground">Playlist</p>
+                <div className="relative mb-2">
+                  <LazyImage
+                    src={playlist.image?.[1]?.url || playlist.image?.[0]?.url}
+                    alt={playlist.name}
+                    className="w-full aspect-square rounded-lg object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Play className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <h3 className="font-medium text-xs truncate">{playlist.name}</h3>
+                <p className="text-xs text-muted-foreground truncate">{playlist.subtitle || 'Playlist'}</p>
               </CardContent>
             </Card>
           ))}
         </div>
-        {searchResults.playlists.length > 0 && (
-          <div className="text-center">
-            <Button 
-              onClick={() => onLoadMore('playlists')} 
-              disabled={isLoading}
-              variant="outline"
-              className="w-full max-w-xs"
-            >
-              {isLoading ? 'Loading...' : 'Load More Playlists'}
-            </Button>
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
           </div>
+        )}
+        {!isLoading && searchResults.playlists.length > 0 && (
+          <Button onClick={() => onLoadMore('playlists')} disabled={isLoading} className="w-full">
+            Load More Playlists
+          </Button>
         )}
       </TabsContent>
     </Tabs>

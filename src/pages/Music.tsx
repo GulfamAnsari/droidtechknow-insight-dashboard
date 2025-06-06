@@ -12,6 +12,9 @@ import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import DownloadManager from "@/components/music/DownloadManager";
 import OfflineManager from "@/components/music/OfflineManager";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
+import MusicHomepage from "@/components/music/MusicHomepage";
+import ContentBottomSheet from "@/components/music/ContentBottomSheet";
+import LikedSongsManager from "@/components/music/LikedSongsManager";
 
 interface Song {
   id: string;
@@ -41,11 +44,13 @@ const Music = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
   const [showOffline, setShowOffline] = useState(false);
+  const [showLikedSongs, setShowLikedSongs] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(70);
+  const [isMuted, setIsMuted] = useState(false);
   const [likedSongs, setLikedSongs] = useState<string[]>(() => {
     const saved = localStorage.getItem('likedSongs');
     return saved ? JSON.parse(saved) : [];
@@ -71,13 +76,15 @@ const Music = () => {
     playlists: 0
   });
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([]);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   
-  // New states for album/artist/playlist view
-  const [viewingContent, setViewingContent] = useState<{
+  // Bottom sheet states
+  const [bottomSheetContent, setBottomSheetContent] = useState<{
     type: 'album' | 'artist' | 'playlist' | null;
     id: string;
     name: string;
     songs: Song[];
+    image?: string;
   } | null>(null);
 
   // Fetch suggestions when liked songs change
@@ -110,6 +117,7 @@ const Music = () => {
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
+    setIsSearchMode(true);
     setIsLoading(true);
     setCurrentPages({ songs: 0, albums: 0, artists: 0, playlists: 0 });
     setSearchResults({ songs: [], albums: [], artists: [], playlists: [] });
@@ -258,72 +266,16 @@ const Music = () => {
     setDuration(dur);
   };
 
-  // New functions for album/artist/playlist handling
-  const handlePlayAlbum = async (albumId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await httpClient.get(`https://saavn.dev/api/albums?id=${albumId}`, { skipAuth: true });
-      if (response?.data?.songs) {
-        const albumSongs = response.data.songs;
-        setViewingContent({
-          type: 'album',
-          id: albumId,
-          name: response.data.name || 'Album',
-          songs: albumSongs
-        });
-        setPlaylist(albumSongs);
-      }
-    } catch (error) {
-      console.error('Error fetching album:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
   };
 
-  const handlePlayArtist = async (artistId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await httpClient.get(`https://saavn.dev/api/artists/${artistId}/songs`, { skipAuth: true });
-      if (response?.data?.songs) {
-        const artistSongs = response.data.songs;
-        setViewingContent({
-          type: 'artist',
-          id: artistId,
-          name: response.data.name || 'Artist',
-          songs: artistSongs
-        });
-        setPlaylist(artistSongs);
-      }
-    } catch (error) {
-      console.error('Error fetching artist songs:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleOpenBottomSheet = (content: any) => {
+    setBottomSheetContent(content);
   };
 
-  const handlePlayPlaylist = async (playlistId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await httpClient.get(`https://saavn.dev/api/playlists?id=${playlistId}`, { skipAuth: true });
-      if (response?.data?.songs) {
-        const playlistSongs = response.data.songs;
-        setViewingContent({
-          type: 'playlist',
-          id: playlistId,
-          name: response.data.name || 'Playlist',
-          songs: playlistSongs
-        });
-        setPlaylist(playlistSongs);
-      }
-    } catch (error) {
-      console.error('Error fetching playlist:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const goBackToSearch = () => {
-    setViewingContent(null);
+  const handleCloseBottomSheet = () => {
+    setBottomSheetContent(null);
   };
 
   return (
@@ -333,14 +285,14 @@ const Music = () => {
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            {viewingContent && (
-              <Button onClick={goBackToSearch} variant="ghost" size="sm">
+            {isSearchMode && (
+              <Button onClick={() => setIsSearchMode(false)} variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
             )}
             <h1 className="text-3xl font-bold text-foreground">
-              {viewingContent ? `${viewingContent.name} - ${viewingContent.type}` : 'Music Player'}
+              Music Player
             </h1>
           </div>
           
@@ -348,20 +300,18 @@ const Music = () => {
           <div className="flex items-center gap-2">
             {/* Desktop Controls */}
             <div className="hidden md:flex gap-2">
-              <Button onClick={() => setShowOffline(true)} variant="outline" size="sm">
+              <Button onClick={() => setShowLikedSongs(true)} variant="outline" size="sm">
                 <Heart className="h-4 w-4 mr-2" />
+                Liked
+              </Button>
+              <Button onClick={() => setShowOffline(true)} variant="outline" size="sm">
+                <MusicIcon className="h-4 w-4 mr-2" />
                 Offline
               </Button>
               <Button onClick={() => setShowDownloads(true)} variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
                 Downloads
               </Button>
-              {currentSong && (
-                <Button onClick={toggleFullscreen} variant="outline" size="sm">
-                  <Maximize className="h-4 w-4 mr-2" />
-                  Fullscreen
-                </Button>
-              )}
             </div>
 
             {/* Mobile Controls */}
@@ -373,62 +323,47 @@ const Music = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="space-y-1 p-2 bg-background border z-50">
-                  <Button onClick={() => setShowOffline(true)} variant="ghost" size="sm" className="w-full justify-start">
+                  <Button onClick={() => setShowLikedSongs(true)} variant="ghost" size="sm" className="w-full justify-start">
                     <Heart className="h-4 w-4 mr-2" />
+                    Liked Songs
+                  </Button>
+                  <Button onClick={() => setShowOffline(true)} variant="ghost" size="sm" className="w-full justify-start">
+                    <MusicIcon className="h-4 w-4 mr-2" />
                     Offline Songs
                   </Button>
                   <Button onClick={() => setShowDownloads(true)} variant="ghost" size="sm" className="w-full justify-start">
                     <Download className="h-4 w-4 mr-2" />
                     Downloads
                   </Button>
-                  {currentSong && (
-                    <Button onClick={toggleFullscreen} variant="ghost" size="sm" className="w-full justify-start">
-                      <Maximize className="h-4 w-4 mr-2" />
-                      Fullscreen
-                    </Button>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </div>
         
-        {/* Search Bar - Only show when not viewing content */}
-        {!viewingContent && (
-          <div className="flex gap-2 max-w-md">
-            <Input
-              placeholder="Search for songs, artists, albums, playlists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-              style={{ fontSize: '16px' }}
-            />
-            <Button onClick={handleSearch} disabled={isLoading}>
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* Search Bar */}
+        <div className="flex gap-2 max-w-md">
+          <Input
+            placeholder="Search for songs, artists, albums, playlists..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="flex-1"
+            style={{ fontSize: '16px' }}
+          />
+          <Button onClick={handleSearch} disabled={isLoading}>
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
       <div className={`flex-1 overflow-auto p-6 ${currentSong ? 'pb-24' : 'pb-6'}`}>
-        {viewingContent ? (
-          <SongList 
-            songs={viewingContent.songs}
-            onPlaySong={playSong}
-            currentSong={currentSong}
-            onToggleLike={toggleLike}
-            likedSongs={likedSongs}
-            isPlaying={isPlaying}
-          />
-        ) : searchResults.songs.length > 0 || searchResults.albums.length > 0 || searchResults.artists.length > 0 || searchResults.playlists.length > 0 ? (
+        {isSearchMode ? (
           <SearchTabs
             searchResults={searchResults}
             onPlaySong={playSong}
-            onPlayAlbum={handlePlayAlbum}
-            onPlayArtist={handlePlayArtist}
-            onPlayPlaylist={handlePlayPlaylist}
+            onOpenBottomSheet={handleOpenBottomSheet}
             isLoading={isLoading}
             currentSong={currentSong}
             searchQuery={searchQuery}
@@ -438,15 +373,19 @@ const Music = () => {
             isPlaying={isPlaying}
           />
         ) : (
-          <div className="text-center py-12">
-            <MusicIcon size={64} className="mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Search for Music</h3>
-            <p className="text-muted-foreground">Find your favorite songs, albums, artists, and playlists</p>
-          </div>
+          <MusicHomepage
+            onPlaySong={playSong}
+            onOpenBottomSheet={handleOpenBottomSheet}
+            currentSong={currentSong}
+            onToggleLike={toggleLike}
+            likedSongs={likedSongs}
+            isPlaying={isPlaying}
+            setPlaylist={setPlaylist}
+          />
         )}
       </div>
 
-      {/* Audio Player - Only show when not in fullscreen */}
+      {/* Audio Player */}
       {currentSong && !isFullscreen && (
         <AudioPlayer
           song={currentSong}
@@ -458,12 +397,15 @@ const Music = () => {
           duration={duration}
           onTimeUpdate={handleTimeUpdate}
           onDurationUpdate={handleDurationUpdate}
-          volume={volume}
+          volume={isMuted ? 0 : volume}
           onVolumeChange={setVolume}
           isRepeat={isRepeat}
           isShuffle={isShuffle}
           onToggleRepeat={() => setIsRepeat(!isRepeat)}
           onToggleShuffle={() => setIsShuffle(!isShuffle)}
+          onToggleFullscreen={toggleFullscreen}
+          onToggleMute={toggleMute}
+          isMuted={isMuted}
         />
       )}
 
@@ -487,11 +429,27 @@ const Music = () => {
           duration={duration}
           onTimeUpdate={handleTimeUpdate}
           onDurationUpdate={handleDurationUpdate}
-          volume={volume}
+          volume={isMuted ? 0 : volume}
           onVolumeChange={setVolume}
           onToggleLike={toggleLike}
           likedSongs={likedSongs}
           suggestedSongs={suggestedSongs}
+          onToggleMute={toggleMute}
+          isMuted={isMuted}
+        />
+      )}
+
+      {/* Bottom Sheet for Content */}
+      {bottomSheetContent && (
+        <ContentBottomSheet
+          content={bottomSheetContent}
+          onClose={handleCloseBottomSheet}
+          onPlaySong={playSong}
+          onToggleLike={toggleLike}
+          likedSongs={likedSongs}
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          setPlaylist={setPlaylist}
         />
       )}
 
@@ -515,71 +473,19 @@ const Music = () => {
           setPlaylist={setPlaylist}
         />
       )}
-    </div>
-  );
-};
 
-// New SongList component
-const SongList = ({ songs, onPlaySong, currentSong, onToggleLike, likedSongs, isPlaying }) => {
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="space-y-2">
-      {songs.map((song, index) => (
-        <div
-          key={song.id}
-          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-            currentSong?.id === song.id
-              ? "bg-primary/20 border border-primary/30"
-              : "hover:bg-muted/50"
-          }`}
-          onClick={() => onPlaySong(song)}
-        >
-          <div className="relative">
-            <img
-              src={song.image[0]?.url}
-              alt={song.name}
-              className="w-12 h-12 rounded object-cover"
-            />
-            {currentSong?.id === song.id && (
-              <div className="absolute inset-0 bg-black/30 rounded flex items-center justify-center">
-                {isPlaying ? (
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                ) : (
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                )}
-              </div>
-            )}
-          </div>
-          <span className="text-sm text-muted-foreground w-8">{index + 1}</span>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">{song.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {formatDuration(song.duration)}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleLike(song.id);
-              }}
-              className={likedSongs.includes(song.id) ? "text-red-500" : ""}
-            >
-              <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
-            </Button>
-          </div>
-        </div>
-      ))}
+      {/* Liked Songs Manager */}
+      {showLikedSongs && (
+        <LikedSongsManager
+          onClose={() => setShowLikedSongs(false)}
+          onPlaySong={playSong}
+          likedSongs={likedSongs}
+          onToggleLike={toggleLike}
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          setPlaylist={setPlaylist}
+        />
+      )}
     </div>
   );
 };
