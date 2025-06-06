@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Play, Heart, Music, Trash2 } from 'lucide-react';
+import { X, Play, Heart, Music } from 'lucide-react';
 import LazyImage from '@/components/ui/lazy-image';
 
 interface Song {
@@ -89,7 +89,11 @@ const ContentBottomSheet = ({
         className={`fixed bottom-0 left-0 right-0 bg-background rounded-t-2xl z-50 transition-transform duration-300 ${
           isVisible ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ height: '80vh' }}
+        style={{
+          height: '80vh',
+          overflow: "scroll",
+          boxShadow: "0px 2px 1px #888, 0px 1px 6px #888"
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
