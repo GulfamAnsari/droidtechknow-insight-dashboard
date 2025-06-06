@@ -30,14 +30,32 @@ interface AudioPlayerProps {
   onPlayPause: () => void;
   onNext: () => void;
   onPrevious: () => void;
+  currentTime: number;
+  onTimeUpdate: (time: number) => void;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
+  isRepeat: boolean;
+  isShuffle: boolean;
+  onToggleRepeat: () => void;
+  onToggleShuffle: () => void;
 }
 
-const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: AudioPlayerProps) => {
+const AudioPlayer = ({ 
+  song, 
+  isPlaying, 
+  onPlayPause, 
+  onNext, 
+  onPrevious,
+  currentTime,
+  onTimeUpdate,
+  volume,
+  onVolumeChange,
+  isRepeat,
+  isShuffle,
+  onToggleRepeat,
+  onToggleShuffle
+}: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState([70]);
-  const [isRepeat, setIsRepeat] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -47,6 +65,7 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
       
       if (audioUrl) {
         audioRef.current.src = audioUrl;
+        audioRef.current.currentTime = currentTime;
         if (isPlaying) {
           audioRef.current.play();
         }
@@ -66,13 +85,19 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = volume[0] / 100;
+      audioRef.current.volume = volume / 100;
     }
   }, [volume]);
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = currentTime;
+    }
+  }, [currentTime]);
+
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      onTimeUpdate(audioRef.current.currentTime);
     }
   };
 
@@ -80,7 +105,22 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
     if (audioRef.current && song) {
       const newTime = (value[0] / 100) * song.duration;
       audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
+      onTimeUpdate(newTime);
+    }
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    onVolumeChange(value[0]);
+  };
+
+  const handleAudioEnded = () => {
+    if (isRepeat) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+    } else {
+      onNext();
     }
   };
 
@@ -97,8 +137,7 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
-        onEnded={onNext}
-        loop={isRepeat}
+        onEnded={handleAudioEnded}
       />
       
       <div className="max-w-screen-xl mx-auto">
@@ -138,7 +177,7 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
             <Button 
               size="sm" 
               variant="ghost"
-              onClick={() => setIsShuffle(!isShuffle)}
+              onClick={onToggleShuffle}
               className={isShuffle ? "text-primary" : ""}
             >
               <Shuffle className="h-4 w-4" />
@@ -155,7 +194,7 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
             <Button 
               size="sm" 
               variant="ghost"
-              onClick={() => setIsRepeat(!isRepeat)}
+              onClick={onToggleRepeat}
               className={isRepeat ? "text-primary" : ""}
             >
               <Repeat className="h-4 w-4" />
@@ -166,8 +205,8 @@ const AudioPlayer = ({ song, isPlaying, onPlayPause, onNext, onPrevious }: Audio
           <div className="flex items-center gap-2 w-32">
             <Volume2 className="h-4 w-4" />
             <Slider
-              value={volume}
-              onValueChange={setVolume}
+              value={[volume]}
+              onValueChange={handleVolumeChange}
               max={100}
               step={1}
               className="flex-1"

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,12 @@ const Music = () => {
   const [showDownloads, setShowDownloads] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [volume, setVolume] = useState(70);
+  const [likedSongs, setLikedSongs] = useState<string[]>(() => {
+    const saved = localStorage.getItem('likedSongs');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   // Pagination states - simplified to track just current pages
   const [currentPages, setCurrentPages] = useState({
@@ -65,7 +72,12 @@ const Music = () => {
   const { data: searchResults, isLoading: searchLoading, refetch } = useQuery({
     queryKey: ['search', searchQuery, currentPages],
     queryFn: async () => {
-      if (!searchQuery.trim()) return null;
+      if (!searchQuery.trim()) return {
+        songs: { data: { results: allResults.songs } },
+        albums: { data: { results: allResults.albums } },
+        artists: { data: { results: allResults.artists } },
+        playlists: { data: { results: allResults.playlists } }
+      };
       
       const limit = 20;
       
@@ -81,32 +93,62 @@ const Music = () => {
       const newArtists = artistsRes?.data?.results || [];
       const newPlaylists = playlistsRes?.data?.results || [];
 
-      // If it's the first page (0), replace all results, otherwise append
+      // Update accumulated results
+      setAllResults(prev => ({
+        songs: currentPages.songs === 0 ? newSongs : [...prev.songs, ...newSongs],
+        albums: currentPages.albums === 0 ? newAlbums : [...prev.albums, ...newAlbums],
+        artists: currentPages.artists === 0 ? newArtists : [...prev.artists, ...newArtists],
+        playlists: currentPages.playlists === 0 ? newPlaylists : [...prev.playlists, ...newPlaylists]
+      }));
+
+      // Return current state for immediate use
+      const updatedResults = {
+        songs: currentPages.songs === 0 ? newSongs : [...allResults.songs, ...newSongs],
+        albums: currentPages.albums === 0 ? newAlbums : [...allResults.albums, ...newAlbums],
+        artists: currentPages.artists === 0 ? newArtists : [...allResults.artists, ...newArtists],
+        playlists: currentPages.playlists === 0 ? newPlaylists : [...allResults.playlists, ...newPlaylists]
+      };
+      
       if (currentPages.songs === 0 && currentPages.albums === 0 && currentPages.artists === 0 && currentPages.playlists === 0) {
-        setAllResults({
-          songs: newSongs,
-          albums: newAlbums,
-          artists: newArtists,
-          playlists: newPlaylists
-        });
-      } else {
-        setAllResults(prev => ({
-          songs: currentPages.songs === 0 ? newSongs : [...prev.songs, ...newSongs],
-          albums: currentPages.albums === 0 ? newAlbums : [...prev.albums, ...newAlbums],
-          artists: currentPages.artists === 0 ? newArtists : [...prev.artists, ...newArtists],
-          playlists: currentPages.playlists === 0 ? newPlaylists : [...prev.playlists, ...newPlaylists]
-        }));
+        setPlaylist(updatedResults.songs);
       }
       
-      setPlaylist(allResults.songs.length > 0 ? allResults.songs : newSongs);
       return {
-        songs: { data: { results: allResults.songs.length > 0 ? allResults.songs : newSongs } },
-        albums: { data: { results: allResults.albums.length > 0 ? allResults.albums : newAlbums } },
-        artists: { data: { results: allResults.artists.length > 0 ? allResults.artists : newArtists } },
-        playlists: { data: { results: allResults.playlists.length > 0 ? allResults.playlists : newPlaylists } }
+        songs: { data: { results: updatedResults.songs } },
+        albums: { data: { results: updatedResults.albums } },
+        artists: { data: { results: updatedResults.artists } },
+        playlists: { data: { results: updatedResults.playlists } }
       };
     },
     enabled: false
+  });
+
+  // Get song suggestions based on liked songs
+  const { data: suggestedSongs } = useQuery({
+    queryKey: ['suggestions', likedSongs],
+    queryFn: async () => {
+      if (likedSongs.length === 0) return [];
+      
+      const suggestions = [];
+      for (const songId of likedSongs.slice(0, 3)) {
+        try {
+          const response = await httpClient.get(`https://saavn.dev/api/songs/${songId}/suggestions`, { skipAuth: true });
+          if (response?.data) {
+            suggestions.push(...response.data);
+          }
+        } catch (error) {
+          console.log('Error fetching suggestions for', songId);
+        }
+      }
+      
+      // Remove duplicates and limit to 20 songs
+      const uniqueSuggestions = suggestions.filter((song, index, self) => 
+        index === self.findIndex(s => s.id === song.id)
+      ).slice(0, 20);
+      
+      return uniqueSuggestions;
+    },
+    enabled: likedSongs.length > 0
   });
 
   const handleSearch = () => {
@@ -182,6 +224,15 @@ const Music = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  const toggleLike = (songId: string) => {
+    const newLikedSongs = likedSongs.includes(songId)
+      ? likedSongs.filter(id => id !== songId)
+      : [...likedSongs, songId];
+    
+    setLikedSongs(newLikedSongs);
+    localStorage.setItem('likedSongs', JSON.stringify(newLikedSongs));
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
@@ -235,12 +286,7 @@ const Music = () => {
           <TabsContent value="search">
             {searchResults ? (
               <SearchTabs
-                searchResults={{
-                  songs: { data: { results: allResults.songs } },
-                  albums: { data: { results: allResults.albums } },
-                  artists: { data: { results: allResults.artists } },
-                  playlists: { data: { results: allResults.playlists } }
-                }}
+                searchResults={searchResults}
                 onPlaySong={(song) => playSong(song)}
                 onPlayAlbum={(albumId) => console.log('Play album:', albumId)}
                 onPlayArtist={(artistId) => console.log('Play artist:', artistId)}
@@ -249,6 +295,8 @@ const Music = () => {
                 currentSong={currentSong}
                 searchQuery={searchQuery}
                 onLoadMore={handleLoadMore}
+                onToggleLike={toggleLike}
+                likedSongs={likedSongs}
               />
             ) : (
               <div className="text-center py-12">
@@ -298,6 +346,14 @@ const Music = () => {
           onPlayPause={togglePlayPause}
           onNext={playNext}
           onPrevious={playPrevious}
+          currentTime={currentTime}
+          onTimeUpdate={setCurrentTime}
+          volume={volume}
+          onVolumeChange={setVolume}
+          isRepeat={isRepeat}
+          isShuffle={isShuffle}
+          onToggleRepeat={() => setIsRepeat(!isRepeat)}
+          onToggleShuffle={() => setIsShuffle(!isShuffle)}
         />
       )}
 
@@ -317,6 +373,13 @@ const Music = () => {
           playlist={playlist}
           currentIndex={currentIndex}
           onPlaySong={(song) => playSong(song)}
+          currentTime={currentTime}
+          onTimeUpdate={setCurrentTime}
+          volume={volume}
+          onVolumeChange={setVolume}
+          onToggleLike={toggleLike}
+          likedSongs={likedSongs}
+          suggestedSongs={suggestedSongs || []}
         />
       )}
 

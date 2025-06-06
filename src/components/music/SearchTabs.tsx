@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download } from "lucide-react";
+import { Play, Download, Heart } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 import { useQuery } from "@tanstack/react-query";
 import httpClient from "@/utils/httpClient";
@@ -73,6 +74,8 @@ interface SearchTabsProps {
   currentSong: Song;
   searchQuery: string;
   onLoadMore: (type: "songs" | "albums" | "artists" | "playlists") => void;
+  onToggleLike: (songId: string) => void;
+  likedSongs: string[];
 }
 
 const SearchTabs = ({
@@ -84,7 +87,9 @@ const SearchTabs = ({
   isLoading,
   currentSong,
   searchQuery,
-  onLoadMore
+  onLoadMore,
+  onToggleLike,
+  likedSongs
 }: SearchTabsProps) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null);
   const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
@@ -183,13 +188,12 @@ const SearchTabs = ({
     type: "songs" | "albums" | "artists" | "playlists"
   ) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop <= clientHeight + 100) {
-      // Load more when near bottom
+    if (scrollHeight - scrollTop <= clientHeight + 100 && !isLoading) {
       onLoadMore(type);
     }
   };
 
-  if (isLoading) {
+  if (isLoading && (!searchResults || Object.values(searchResults).every(result => !result?.data?.results?.length))) {
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -213,45 +217,55 @@ const SearchTabs = ({
         <h2 className="text-xl font-bold mb-4">
           {albumData.data.name} - Songs
         </h2>
-        {albumData.data.songs.map((song: Song) => (
-          <Card key={song.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <LazyImage
-                  src={song.image[1]?.url || song.image[0]?.url}
-                  alt={song.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{song.name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                      "Unknown Artist"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDuration(song.duration)}
-                  </p>
+        <div className="space-y-2 h-96 overflow-y-auto">
+          {albumData.data.songs.map((song: Song) => (
+            <Card key={song.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <LazyImage
+                    src={song.image[1]?.url || song.image[0]?.url}
+                    alt={song.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{song.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                        "Unknown Artist"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDuration(song.duration)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onToggleLike(song.id)}
+                      className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                    >
+                      <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onPlaySong(song)}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => downloadSong(song)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onPlaySong(song)}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => downloadSong(song)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -270,45 +284,55 @@ const SearchTabs = ({
         <h2 className="text-xl font-bold mb-4">
           {artistData.data.name} - Top Songs
         </h2>
-        {artistData.data.topSongs.map((song: Song) => (
-          <Card key={song.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <LazyImage
-                  src={song.image[1]?.url || song.image[0]?.url}
-                  alt={song.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{song.name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                      "Unknown Artist"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDuration(song.duration)}
-                  </p>
+        <div className="space-y-2 h-96 overflow-y-auto">
+          {artistData.data.topSongs.map((song: Song) => (
+            <Card key={song.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <LazyImage
+                    src={song.image[1]?.url || song.image[0]?.url}
+                    alt={song.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{song.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                        "Unknown Artist"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDuration(song.duration)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onToggleLike(song.id)}
+                      className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                    >
+                      <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onPlaySong(song)}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => downloadSong(song)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onPlaySong(song)}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => downloadSong(song)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -327,45 +351,55 @@ const SearchTabs = ({
         <h2 className="text-xl font-bold mb-4">
           {playlistData.data.name} - Songs
         </h2>
-        {playlistData.data.songs.map((song: Song) => (
-          <Card key={song.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <LazyImage
-                  src={song.image[1]?.url || song.image[0]?.url}
-                  alt={song.name}
-                  className="w-16 h-16 rounded-lg object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{song.name}</h3>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                      "Unknown Artist"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDuration(song.duration)}
-                  </p>
+        <div className="space-y-2 h-96 overflow-y-auto">
+          {playlistData.data.songs.map((song: Song) => (
+            <Card key={song.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <LazyImage
+                    src={song.image[1]?.url || song.image[0]?.url}
+                    alt={song.name}
+                    className="w-16 h-16 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{song.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                        "Unknown Artist"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDuration(song.duration)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onToggleLike(song.id)}
+                      className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                    >
+                      <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onPlaySong(song)}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => downloadSong(song)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onPlaySong(song)}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => downloadSong(song)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -378,8 +412,6 @@ const SearchTabs = ({
         <TabsTrigger value="artists">Artists</TabsTrigger>
         <TabsTrigger value="playlists">Playlists</TabsTrigger>
       </TabsList>
-
-
 
       <TabsContent value="songs" className="space-y-4">
         <div
@@ -416,6 +448,14 @@ const SearchTabs = ({
                     <Button
                       size="sm"
                       variant="ghost"
+                      onClick={() => onToggleLike(song.id)}
+                      className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                    >
+                      <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => onPlaySong(song)}
                     >
                       <Play className="h-4 w-4" />
@@ -432,6 +472,11 @@ const SearchTabs = ({
               </CardContent>
             </Card>
           ))}
+          {isLoading && (
+            <div className="flex justify-center items-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
       </TabsContent>
 
@@ -460,6 +505,11 @@ const SearchTabs = ({
               </CardContent>
             </Card>
           ))}
+          {isLoading && (
+            <div className="col-span-full flex justify-center items-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
       </TabsContent>
 
@@ -487,6 +537,11 @@ const SearchTabs = ({
               </CardContent>
             </Card>
           ))}
+          {isLoading && (
+            <div className="col-span-full flex justify-center items-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
       </TabsContent>
 
@@ -517,6 +572,11 @@ const SearchTabs = ({
               </CardContent>
             </Card>
           ))}
+          {isLoading && (
+            <div className="col-span-full flex justify-center items-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          )}
         </div>
       </TabsContent>
     </Tabs>

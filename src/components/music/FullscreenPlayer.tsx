@@ -1,6 +1,8 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Play,
   Pause,
@@ -11,7 +13,8 @@ import {
   Shuffle,
   X,
   Download,
-  List
+  List,
+  Heart
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 
@@ -48,6 +51,13 @@ interface FullscreenPlayerProps {
   playlist: Song[];
   currentIndex: number;
   onPlaySong: any;
+  currentTime: number;
+  onTimeUpdate: (time: number) => void;
+  volume: number;
+  onVolumeChange: (volume: number) => void;
+  onToggleLike: (songId: string) => void;
+  likedSongs: string[];
+  suggestedSongs: Song[];
 }
 
 const FullscreenPlayer = ({
@@ -63,20 +73,23 @@ const FullscreenPlayer = ({
   onToggleShuffle,
   playlist,
   currentIndex,
-  onPlaySong
+  onPlaySong,
+  currentTime,
+  onTimeUpdate,
+  volume,
+  onVolumeChange,
+  onToggleLike,
+  likedSongs,
+  suggestedSongs
 }: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState([70]);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<"up" | "down" | null>(
-    null
-  );
-  const [showList, setshowList] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+  const [showList, setShowList] = useState(false);
+  const [activeTab, setActiveTab] = useState("playlist");
+
   useEffect(() => {
     if (audioRef.current && song) {
       const audioUrl =
@@ -86,7 +99,8 @@ const FullscreenPlayer = ({
 
       if (audioUrl) {
         audioRef.current.src = audioUrl;
-        audioRef.current.volume = volume[0] / 100;
+        audioRef.current.volume = volume / 100;
+        audioRef.current.currentTime = currentTime;
         if (isPlaying) {
           audioRef.current.play();
         }
@@ -106,9 +120,15 @@ const FullscreenPlayer = ({
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = volume[0] / 100;
+      audioRef.current.volume = volume / 100;
     }
   }, [volume]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = currentTime;
+    }
+  }, [currentTime]);
 
   // Auto-scroll to current song
   useEffect(() => {
@@ -123,11 +143,11 @@ const FullscreenPlayer = ({
         });
       }
     }
-  }, [currentIndex, playlist]);
+  }, [currentIndex, playlist, showList]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
+      onTimeUpdate(audioRef.current.currentTime);
     }
   };
 
@@ -135,8 +155,12 @@ const FullscreenPlayer = ({
     if (audioRef.current && song) {
       const newTime = (value[0] / 100) * song.duration;
       audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
+      onTimeUpdate(newTime);
     }
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    onVolumeChange(value[0]);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -151,20 +175,20 @@ const FullscreenPlayer = ({
     const deltaX = touch.clientX - touchStart.x;
     const deltaY = touch.clientY - touchStart.y;
 
-    // Check if it's a vertical swipe (more vertical than horizontal)
-    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+    // Check if it's a horizontal swipe (more horizontal than vertical)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
       setIsSwipeAnimating(true);
-      if (deltaY < 0) {
-        // Swipe up - next song
-        setSwipeDirection("up");
+      if (deltaX < 0) {
+        // Swipe left - next song
+        setSwipeDirection("left");
         setTimeout(() => {
           onNext();
           setIsSwipeAnimating(false);
           setSwipeDirection(null);
         }, 200);
       } else {
-        // Swipe down - previous song
-        setSwipeDirection("down");
+        // Swipe right - previous song
+        setSwipeDirection("right");
         setTimeout(() => {
           onPrevious();
           setIsSwipeAnimating(false);
@@ -226,71 +250,71 @@ const FullscreenPlayer = ({
   };
 
   const handleSongClick = (song) => {
-    // This would need to be passed from parent component
-    // For now, we'll just play/pause if it's the current song
     onPlaySong(song);
   };
 
-  const getPlaylist = (playlist) => {
+  const renderSongList = (songs: Song[], title: string) => {
     return (
-      playlist.length > 1 && (
-        <div className="flex-1 max-w-md ml-8">
-          <h3 className="text-xl font-bold mb-4 text-center">Playlist</h3>
-          <div
-            ref={playlistRef}
-            className=" overflow-y-auto bg-black/20 rounded-lg p-4 space-y-2"
-            style={{ height: '90vh'}}
-          >
-            {playlist.map((playlistSong, index) => (
-              <div
-                key={playlistSong.id}
-                data-song-index={index}
-                className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                  index === currentIndex
-                    ? "bg-white/20 border border-white/30"
-                    : "hover:bg-white/10"
-                }`}
-                onClick={() => handleSongClick(playlistSong)}
-              >
-                <LazyImage
-                  src={playlistSong.image[0]?.url}
-                  alt={playlistSong.name}
-                  className="w-10 h-10 rounded object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {playlistSong.name}
-                  </p>
-                  <p className="truncate text-xs text-white/60">
-                    {playlistSong.artists?.primary
-                      ?.map((a) => a.name)
-                      .join(", ")}
-                  </p>
-                </div>
-                {index === currentIndex && (
-                  <div className="text-primary">
-                    {isPlaying ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                  </div>
-                )}
+      <div className="flex-1 max-w-md ml-8">
+        <h3 className="text-xl font-bold mb-4 text-center">{title}</h3>
+        <div
+          ref={activeTab === "playlist" ? playlistRef : undefined}
+          className="overflow-y-auto bg-black/20 rounded-lg p-4 space-y-2"
+          style={{ height: '80vh' }}
+        >
+          {songs.map((listSong, index) => (
+            <div
+              key={listSong.id}
+              data-song-index={activeTab === "playlist" ? index : undefined}
+              className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
+                listSong.id === song.id
+                  ? "bg-white/20 border border-white/30"
+                  : "hover:bg-white/10"
+              }`}
+              onClick={() => handleSongClick(listSong)}
+            >
+              <LazyImage
+                src={listSong.image[0]?.url}
+                alt={listSong.name}
+                className="w-10 h-10 rounded object-cover"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {listSong.name}
+                </p>
+                <p className="truncate text-xs text-white/60">
+                  {listSong.artists?.primary
+                    ?.map((a) => a.name)
+                    .join(", ")}
+                </p>
               </div>
-            ))}
-          </div>
+              {listSong.id === song.id && (
+                <div className="text-primary">
+                  {isPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      )
+      </div>
     );
   };
 
+  // Calculate positions for prev/next song previews
+  const prevSong = playlist[currentIndex - 1] || playlist[playlist.length - 1];
+  const nextSong = playlist[currentIndex + 1] || playlist[0];
+
   return (
     <div
-      className={`fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col items-center justify-center text-white transition-transform duration-200 ${
+      className={`fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col items-center justify-center text-white transition-transform duration-200 overflow-hidden ${
         isSwipeAnimating
-          ? swipeDirection === "up"
-            ? "animate-slide-up"
-            : "animate-slide-down"
+          ? swipeDirection === "left"
+            ? "animate-slide-left"
+            : "animate-slide-right"
           : ""
       }`}
       onTouchStart={handleTouchStart}
@@ -303,7 +327,7 @@ const FullscreenPlayer = ({
       />
 
       <Button
-        onClick={() => setshowList(!showList)}
+        onClick={() => setShowList(!showList)}
         variant="ghost"
         size="sm"
         className="absolute top-4 right-12 text-white hover:bg-white/20"
@@ -323,14 +347,49 @@ const FullscreenPlayer = ({
 
       {/* Swipe instructions */}
       <div className="absolute top-4 left-4 text-sm text-white/60">
-        Swipe up/down to change songs
+        Swipe left/right to change songs
       </div>
+
+      {/* Previous Song Preview (Left) */}
+      {prevSong && !showList && (
+        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75">
+          <LazyImage
+            src={prevSong.image[1]?.url || prevSong.image[0]?.url}
+            alt={prevSong.name}
+            className="w-32 h-32 rounded-lg object-cover"
+          />
+        </div>
+      )}
+
+      {/* Next Song Preview (Right) */}
+      {nextSong && !showList && (
+        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-30 scale-75">
+          <LazyImage
+            src={nextSong.image[1]?.url || nextSong.image[0]?.url}
+            alt={nextSong.name}
+            className="w-32 h-32 rounded-lg object-cover"
+          />
+        </div>
+      )}
 
       {/* Main Content Container */}
       <div className="flex-1 flex items-center justify-center w-full max-w-6xl px-4">
         {/* Left Side - Album Art and Controls */}
         {showList ? (
-          getPlaylist(playlist)
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 max-w-md ml-8">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="playlist">Playlist</TabsTrigger>
+              <TabsTrigger value="suggestions">Suggested</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="playlist">
+              {renderSongList(playlist, "Current Playlist")}
+            </TabsContent>
+            
+            <TabsContent value="suggestions">
+              {renderSongList(suggestedSongs, "Suggested Songs")}
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="flex-1 flex flex-col items-center">
             {/* Album Art */}
@@ -427,13 +486,25 @@ const FullscreenPlayer = ({
               <div className="flex items-center gap-3 flex-1">
                 <Volume2 className="h-5 w-5 text-white/60" />
                 <Slider
-                  value={volume}
-                  onValueChange={setVolume}
+                  value={[volume]}
+                  onValueChange={handleVolumeChange}
                   max={100}
                   step={1}
                   className="flex-1"
                 />
               </div>
+
+              {/* Like Button */}
+              <Button
+                onClick={() => onToggleLike(song.id)}
+                variant="ghost"
+                size="sm"
+                className={`text-white hover:bg-white/20 ${
+                  likedSongs.includes(song.id) ? "text-red-500" : ""
+                }`}
+              >
+                <Heart className={`h-5 w-5 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+              </Button>
 
               {/* Download */}
               <Button

@@ -6,34 +6,34 @@ const SwipeAnimations = () => {
     // Add custom CSS animations for swipe gestures
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes slide-up {
+      @keyframes slide-left {
         0% {
-          transform: translateY(0);
+          transform: translateX(0);
           opacity: 1;
         }
         100% {
-          transform: translateY(-20px);
+          transform: translateX(-20px);
           opacity: 0.8;
         }
       }
       
-      @keyframes slide-down {
+      @keyframes slide-right {
         0% {
-          transform: translateY(0);
+          transform: translateX(0);
           opacity: 1;
         }
         100% {
-          transform: translateY(20px);
+          transform: translateX(20px);
           opacity: 0.8;
         }
       }
       
-      .animate-slide-up {
-        animation: slide-up 0.2s ease-out forwards;
+      .animate-slide-left {
+        animation: slide-left 0.2s ease-out forwards;
       }
       
-      .animate-slide-down {
-        animation: slide-down 0.2s ease-out forwards;
+      .animate-slide-right {
+        animation: slide-right 0.2s ease-out forwards;
       }
     `;
     document.head.appendChild(style);
