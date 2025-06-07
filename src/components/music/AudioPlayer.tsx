@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -73,11 +74,7 @@ const AudioPlayer = ({
   onToggleFullscreen,
   onToggleMute,
   isMuted
-}: AudioPlayerProps & { 
-  onToggleFullscreen: () => void;
-  onToggleMute: () => void;
-  isMuted: boolean;
-}) => {
+}: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -204,6 +201,9 @@ const AudioPlayer = ({
 
         {/* Mobile controls */}
         <div className="flex items-center gap-2 md:hidden">
+          <Button size="sm" variant="ghost" onClick={onPrevious}>
+            <SkipBack className="h-4 w-4" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={onPlayPause}>
             {isPlaying ? (
               <Pause className="h-4 w-4" />
@@ -213,6 +213,9 @@ const AudioPlayer = ({
           </Button>
           <Button size="sm" variant="ghost" onClick={onNext}>
             <SkipForward className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onToggleFullscreen}>
+            <Maximize className="h-4 w-4" />
           </Button>
         </div>
 

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { MusicProvider } from "@/contexts/MusicContext";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
@@ -16,6 +17,7 @@ import Todo from "./pages/Todo";
 import Notepad from "./pages/Notepad";
 import MyFiles from "./pages/MyFiles";
 import Music from "./pages/Music";
+import SongsList from "./pages/SongsList";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -32,31 +34,34 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              
-              {/* Protected routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<DashboardLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="articles" element={<Articles />} />
-                  <Route path="feedback" element={<Feedback />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="todo" element={<Todo />} />
-                  <Route path="notepad" element={<Notepad />} />
-                  <Route path="myfiles" element={<MyFiles />} />
-                  <Route path="music" element={<Music />} />
+        <MusicProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                
+                {/* Protected routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<DashboardLayout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="articles" element={<Articles />} />
+                    <Route path="feedback" element={<Feedback />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="todo" element={<Todo />} />
+                    <Route path="notepad" element={<Notepad />} />
+                    <Route path="myfiles" element={<MyFiles />} />
+                    <Route path="music" element={<Music />} />
+                    <Route path="music/songs" element={<SongsList />} />
+                  </Route>
                 </Route>
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </MusicProvider>
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
