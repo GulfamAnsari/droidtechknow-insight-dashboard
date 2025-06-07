@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -294,7 +295,7 @@ const FullscreenPlayer = ({
               onClick={() => handleSongClick(listSong)}
             >
               <LazyImage
-                src={listSong.image[0]?.url}
+                src={listSong.image?.[0]?.url}
                 alt={listSong.name}
                 className="w-10 h-10 rounded object-cover"
               />
