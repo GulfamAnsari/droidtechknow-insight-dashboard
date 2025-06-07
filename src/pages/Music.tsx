@@ -124,7 +124,8 @@ const Music = () => {
       }));
 
       if (type === "songs") {
-        setPlaylist((prev) => [...prev, ...newResults]);
+        const updatedSongs = [...playlist, ...newResults];
+        setPlaylist(updatedSongs);
       }
     } catch (error) {
       console.error(`Load more ${type} failed:`, error);
@@ -346,6 +347,7 @@ const Music = () => {
           likedSongs={likedSongs}
           onToggleMute={toggleMute}
           isMuted={isMuted}
+          suggestedSongs={[]}
         />
       )}
     </div>

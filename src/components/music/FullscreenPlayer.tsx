@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -60,6 +59,8 @@ interface FullscreenPlayerProps {
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
   suggestedSongs: Song[];
+  onToggleMute: () => void;
+  isMuted: boolean;
 }
 
 const FullscreenPlayer = ({
@@ -84,7 +85,9 @@ const FullscreenPlayer = ({
   onVolumeChange,
   onToggleLike,
   likedSongs,
-  suggestedSongs
+  suggestedSongs,
+  onToggleMute,
+  isMuted
 }: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
@@ -483,7 +486,14 @@ const FullscreenPlayer = ({
             <div className="flex flex-col gap-4 w-full max-w-md px-4">
               {/* Volume Control */}
               <div className="flex items-center gap-3">
-                <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
+                <Button
+                  onClick={onToggleMute}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                >
+                  <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
+                </Button>
                 <Slider
                   value={[volume]}
                   onValueChange={handleVolumeChange}
