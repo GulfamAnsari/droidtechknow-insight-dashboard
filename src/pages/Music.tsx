@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import {
   Search,
   Music as MusicIcon,
   Download,
-  MoreHorizontal,
   Heart,
   ArrowLeft,
   Settings
@@ -26,12 +24,10 @@ import SearchTabs from "@/components/music/SearchTabs";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
 import MusicHomepage from "@/components/music/MusicHomepage";
+import SongsModal from "@/components/music/SongsModal";
 
 const Music = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [floatingPlayer, setFloatingPlayer] = useState(false);
   
   const {
     currentSong,
@@ -58,6 +54,8 @@ const Music = () => {
     setIsMuted,
     setIsFullscreen,
     setIsSearchMode,
+    setShowSongsModal,
+    setSongsModalData,
     playSong,
     playNext,
     playPrevious,
@@ -83,19 +81,6 @@ const Music = () => {
     artists: 0,
     playlists: 0
   });
-
-  // Restore search state when coming back from songs page
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.fromSongsPage && state?.searchQuery) {
-      setSearchQuery(state.searchQuery);
-      setIsSearchMode(true);
-      if (state.searchResults) {
-        setSearchResults(state.searchResults);
-        setCurrentPages(state.currentPages || { songs: 0, albums: 0, artists: 0, playlists: 0 });
-      }
-    }
-  }, [location.state, setIsSearchMode]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -176,32 +161,22 @@ const Music = () => {
 
   const handleNavigateToSongs = (type: 'liked' | 'offline') => {
     const name = type === 'liked' ? 'Liked Songs' : 'Offline Songs';
-    navigate('/music/songs', { 
-      state: { 
-        type, 
-        name,
-        image: undefined,
-        fromMusicPage: true,
-        searchQuery: isSearchMode ? searchQuery : undefined,
-        searchResults: isSearchMode ? searchResults : undefined,
-        currentPages: isSearchMode ? currentPages : undefined
-      } 
+    setSongsModalData({ 
+      type, 
+      name,
+      image: undefined
     });
+    setShowSongsModal(true);
   };
 
   const handleNavigateToContent = (type: 'album' | 'artist' | 'playlist', item: any) => {
-    navigate('/music/songs', { 
-      state: { 
-        type, 
-        id: item.id, 
-        name: item.name || item.title,
-        image: item.image?.[1]?.url || item.image?.[0]?.url,
-        fromMusicPage: true,
-        searchQuery: isSearchMode ? searchQuery : undefined,
-        searchResults: isSearchMode ? searchResults : undefined,
-        currentPages: isSearchMode ? currentPages : undefined
-      } 
+    setSongsModalData({ 
+      type, 
+      id: item.id, 
+      name: item.name || item.title,
+      image: item.image?.[1]?.url || item.image?.[0]?.url
     });
+    setShowSongsModal(true);
   };
 
   return (
@@ -253,7 +228,7 @@ const Music = () => {
                       className="w-full justify-start"
                     >
                       <Heart className="h-4 w-4 mr-2" />
-                      Liked Songs
+                      Liked Songs ({likedSongs.length})
                     </Button>
                     <Button
                       onClick={() => handleNavigateToSongs('offline')}
@@ -262,16 +237,7 @@ const Music = () => {
                       className="w-full justify-start"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Offline Songs
-                    </Button>
-                    <Button
-                      onClick={() => setFloatingPlayer(!floatingPlayer)}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                    >
-                      <MusicIcon className="h-4 w-4 mr-2" />
-                      {floatingPlayer ? "Disable" : "Enable"} Floating Player
+                      Offline Songs ({offlineSongs.length})
                     </Button>
                   </div>
                 </DropdownMenuContent>
@@ -295,7 +261,7 @@ const Music = () => {
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
             onToggleLike={toggleLike}
-            likedSongs={likedSongs}
+            likedSongs={likedSongs.map(song => song.id)}
             isPlaying={isPlaying}
           />
         ) : (
@@ -304,12 +270,15 @@ const Music = () => {
             onNavigateToContent={handleNavigateToContent}
             currentSong={currentSong}
             onToggleLike={toggleLike}
-            likedSongs={likedSongs}
+            likedSongs={likedSongs.map(song => song.id)}
             isPlaying={isPlaying}
             setPlaylist={setPlaylist}
           />
         )}
       </div>
+
+      {/* Songs Modal */}
+      <SongsModal />
 
       {/* Audio Player */}
       {currentSong && !isFullscreen && (
@@ -357,8 +326,11 @@ const Music = () => {
           onDurationUpdate={handleDurationUpdate}
           volume={isMuted ? 0 : volume}
           onVolumeChange={setVolume}
-          onToggleLike={toggleLike}
-          likedSongs={likedSongs}
+          onToggleLike={(songId: string) => {
+            const song = playlist.find(s => s.id === songId);
+            if (song) toggleLike(song);
+          }}
+          likedSongs={likedSongs.map(song => song.id)}
           onToggleMute={toggleMute}
           isMuted={isMuted}
           suggestedSongs={[]}

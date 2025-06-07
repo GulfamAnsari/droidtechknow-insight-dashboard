@@ -79,13 +79,21 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (audioRef.current && song) {
-      const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                      song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                      song.downloadUrl?.[0]?.url;
+      let audioUrl = '';
       
-      if (audioUrl) {
+      // Check if it's an offline song with blob URL
+      if (song.downloadUrl?.[0]?.url?.startsWith('blob:')) {
+        audioUrl = song.downloadUrl[0].url;
+      } else {
+        audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
+                   song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
+                   song.downloadUrl?.[0]?.url || '';
+      }
+      
+      if (audioUrl && audioRef.current.src !== audioUrl) {
         audioRef.current.src = audioUrl;
         audioRef.current.volume = volume / 100;
+        audioRef.current.currentTime = currentTime;
         if (isPlaying) {
           audioRef.current.play();
         }
@@ -108,6 +116,13 @@ const AudioPlayer = ({
       audioRef.current.volume = volume / 100;
     }
   }, [volume]);
+
+  // Sync current time from context
+  useEffect(() => {
+    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 1) {
+      audioRef.current.currentTime = currentTime;
+    }
+  }, [currentTime]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -187,7 +202,7 @@ const AudioPlayer = ({
           onClick={handleMobilePlayerClick}
         >
           <LazyImage
-            src={song.image[0]?.url}
+            src={song.image?.[0]?.url}
             alt={song.name}
             className="w-12 h-12 rounded object-cover"
           />
