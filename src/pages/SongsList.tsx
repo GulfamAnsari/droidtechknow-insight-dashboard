@@ -14,6 +14,10 @@ interface LocationState {
   image?: string;
   query?: string;
   searchType?: 'songs' | 'albums' | 'artists' | 'playlists';
+  fromMusicPage?: boolean;
+  searchQuery?: string;
+  searchResults?: any;
+  currentPages?: any;
 }
 
 const SongsList = () => {
@@ -89,6 +93,13 @@ const SongsList = () => {
           const request = indexedDB.open('OfflineMusicDB', 1);
           request.onsuccess = function(event) {
             const db = (event.target as IDBOpenDBRequest).result;
+            
+            if (!db.objectStoreNames.contains('songs')) {
+              setSongs([]);
+              setLoading(false);
+              return;
+            }
+            
             const transaction = db.transaction(['songs'], 'readonly');
             const store = transaction.objectStore('songs');
             const getAllRequest = store.getAll();
@@ -97,6 +108,16 @@ const SongsList = () => {
               setSongs(getAllRequest.result || []);
               setLoading(false);
             };
+            
+            getAllRequest.onerror = function() {
+              setSongs([]);
+              setLoading(false);
+            };
+          };
+          
+          request.onerror = function() {
+            setSongs([]);
+            setLoading(false);
           };
           return;
         
@@ -169,19 +190,18 @@ const SongsList = () => {
       
       if (!audioUrl) return;
 
-      // Download audio
-      const audioResponse = await fetch(audioUrl);
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, 'https://');
+      const audioResponse = await fetch(secureAudioUrl);
       const audioBlob = await audioResponse.blob();
       
-      // Download image
       const imageUrl = song.image?.[0]?.url;
       let imageBlob = null;
       if (imageUrl) {
-        const imageResponse = await fetch(imageUrl);
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, 'https://');
+        const imageResponse = await fetch(secureImageUrl);
         imageBlob = await imageResponse.blob();
       }
 
-      // Store in IndexedDB
       const request = indexedDB.open('OfflineMusicDB', 1);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -198,10 +218,11 @@ const SongsList = () => {
         store.put({
           ...song,
           audioBlob: audioBlob,
-          cachedImageUrl: imageBlob ? URL.createObjectURL(imageBlob) : undefined
+          imageBlob: imageBlob
         });
         
         addToOffline(song);
+        console.log('Song downloaded successfully');
       };
     } catch (error) {
       console.error('Download failed:', error);
@@ -211,6 +232,21 @@ const SongsList = () => {
   const downloadAllSongs = async () => {
     for (const song of songs) {
       await downloadSong(song);
+    }
+  };
+
+  const handleBack = () => {
+    if (state?.fromMusicPage) {
+      navigate('/music', {
+        state: {
+          fromSongsPage: true,
+          searchQuery: state.searchQuery,
+          searchResults: state.searchResults,
+          currentPages: state.currentPages
+        }
+      });
+    } else {
+      navigate(-1);
     }
   };
 
@@ -234,7 +270,7 @@ const SongsList = () => {
       <div className="p-6 border-b">
         <div className="flex items-center gap-4 mb-4">
           <Button
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             variant="ghost"
             size="sm"
           >
@@ -242,7 +278,7 @@ const SongsList = () => {
             Back
           </Button>
           
-          {songs.length > 0 && (
+          {songs.length > 0 && state.type !== 'offline' && (
             <Button
               onClick={downloadAllSongs}
               variant="outline"
@@ -332,16 +368,18 @@ const SongsList = () => {
                     <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
                   </Button>
                   
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      downloadSong(song);
-                    }}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+                  {state.type !== 'offline' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadSong(song);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

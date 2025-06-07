@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import MusicHomepage from "@/components/music/MusicHomepage";
 
 const Music = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [floatingPlayer, setFloatingPlayer] = useState(false);
   
@@ -82,6 +83,19 @@ const Music = () => {
     artists: 0,
     playlists: 0
   });
+
+  // Restore search state when coming back from songs page
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.fromSongsPage && state?.searchQuery) {
+      setSearchQuery(state.searchQuery);
+      setIsSearchMode(true);
+      if (state.searchResults) {
+        setSearchResults(state.searchResults);
+        setCurrentPages(state.currentPages || { songs: 0, albums: 0, artists: 0, playlists: 0 });
+      }
+    }
+  }, [location.state, setIsSearchMode]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -166,7 +180,11 @@ const Music = () => {
       state: { 
         type, 
         name,
-        image: undefined
+        image: undefined,
+        fromMusicPage: true,
+        searchQuery: isSearchMode ? searchQuery : undefined,
+        searchResults: isSearchMode ? searchResults : undefined,
+        currentPages: isSearchMode ? currentPages : undefined
       } 
     });
   };
@@ -177,18 +195,11 @@ const Music = () => {
         type, 
         id: item.id, 
         name: item.name || item.title,
-        image: item.image?.[1]?.url || item.image?.[0]?.url
-      } 
-    });
-  };
-
-  const handleNavigateToSearchResults = (type: 'songs' | 'albums' | 'artists' | 'playlists') => {
-    navigate('/music/songs', { 
-      state: { 
-        type: 'search',
-        searchType: type,
-        query: searchQuery,
-        name: `${type.charAt(0).toUpperCase() + type.slice(1)} - "${searchQuery}"`
+        image: item.image?.[1]?.url || item.image?.[0]?.url,
+        fromMusicPage: true,
+        searchQuery: isSearchMode ? searchQuery : undefined,
+        searchResults: isSearchMode ? searchResults : undefined,
+        currentPages: isSearchMode ? currentPages : undefined
       } 
     });
   };
@@ -199,7 +210,7 @@ const Music = () => {
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center gap-4 mb-4">
-          {/* Back button, Search Bar, and Action buttons in one row */}
+          {/* Search Bar and Action buttons in one row */}
           <div className="flex items-center gap-2 flex-1">
             {isSearchMode && (
               <Button
@@ -227,21 +238,6 @@ const Music = () => {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() => handleNavigateToSongs('liked')}
-                variant="outline"
-                size="sm"
-              >
-                <Heart className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={() => handleNavigateToSongs('offline')}
-                variant="outline"
-                size="sm"
-              >
-                <MusicIcon className="h-4 w-4" />
-              </Button>
-              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -249,13 +245,32 @@ const Music = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <div className="p-2">
+                  <div className="p-2 space-y-2">
+                    <Button
+                      onClick={() => handleNavigateToSongs('liked')}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <Heart className="h-4 w-4 mr-2" />
+                      Liked Songs
+                    </Button>
+                    <Button
+                      onClick={() => handleNavigateToSongs('offline')}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Offline Songs
+                    </Button>
                     <Button
                       onClick={() => setFloatingPlayer(!floatingPlayer)}
                       variant="ghost"
                       size="sm"
                       className="w-full justify-start"
                     >
+                      <MusicIcon className="h-4 w-4 mr-2" />
                       {floatingPlayer ? "Disable" : "Enable"} Floating Player
                     </Button>
                   </div>
@@ -275,7 +290,6 @@ const Music = () => {
             searchResults={searchResults}
             onPlaySong={playSong}
             onNavigateToContent={handleNavigateToContent}
-            onNavigateToSearchResults={handleNavigateToSearchResults}
             isLoading={isLoading}
             currentSong={currentSong}
             searchQuery={searchQuery}
