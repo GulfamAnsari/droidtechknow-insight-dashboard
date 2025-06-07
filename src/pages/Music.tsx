@@ -11,7 +11,8 @@ import {
   Download,
   MoreHorizontal,
   Heart,
-  ArrowLeft
+  ArrowLeft,
+  Settings
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,6 +30,7 @@ import MusicHomepage from "@/components/music/MusicHomepage";
 const Music = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [floatingPlayer, setFloatingPlayer] = useState(false);
   
   const {
     currentSong,
@@ -195,86 +197,67 @@ const Music = () => {
       <SwipeAnimations />
       {/* Header */}
       <div className="p-6 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mb-4">
+          {/* Back button, Search Bar, and Action buttons in one row */}
+          <div className="flex items-center gap-2 flex-1">
             {isSearchMode && (
               <Button
                 onClick={() => setIsSearchMode(false)}
                 variant="ghost"
                 size="sm"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-          </div>
-          {/* Search Bar */}
-          <div className="flex gap-2 max-w-md">
-            <Input
-              placeholder="Search for songs, artists, albums, playlists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1"
-              style={{ fontSize: "16px" }}
-            />
-            <Button onClick={handleSearch} disabled={isLoading}>
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
+            
+            <div className="flex gap-2 flex-1 max-w-md">
+              <Input
+                placeholder="Search for songs, artists, albums, playlists..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+                style={{ fontSize: "16px" }}
+              />
+              <Button onClick={handleSearch} disabled={isLoading}>
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
 
-          {/* Controls Row */}
-          <div className="flex items-center gap-2">
-            {/* Desktop Controls */}
-            <div className="hidden md:flex gap-2">
+            {/* Action buttons */}
+            <div className="flex items-center gap-2">
               <Button
                 onClick={() => handleNavigateToSongs('liked')}
                 variant="outline"
                 size="sm"
               >
-                <Heart className="h-4 w-4 mr-2" />
-                Liked
+                <Heart className="h-4 w-4" />
               </Button>
               <Button
                 onClick={() => handleNavigateToSongs('offline')}
                 variant="outline"
                 size="sm"
               >
-                <MusicIcon className="h-4 w-4 mr-2" />
-                Offline
+                <MusicIcon className="h-4 w-4" />
               </Button>
-            </div>
-
-            {/* Mobile Controls */}
-            <div className="md:hidden">
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
+                    <Settings className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="space-y-1 p-2 bg-background border z-50"
-                >
-                  <Button
-                    onClick={() => handleNavigateToSongs('liked')}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                  >
-                    <Heart className="h-4 w-4 mr-2" />
-                    Liked Songs
-                  </Button>
-                  <Button
-                    onClick={() => handleNavigateToSongs('offline')}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                  >
-                    <MusicIcon className="h-4 w-4 mr-2" />
-                    Offline Songs
-                  </Button>
+                <DropdownMenuContent align="end">
+                  <div className="p-2">
+                    <Button
+                      onClick={() => setFloatingPlayer(!floatingPlayer)}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                    >
+                      {floatingPlayer ? "Disable" : "Enable"} Floating Player
+                    </Button>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

@@ -3,31 +3,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Heart } from 'lucide-react';
-import httpClient from '@/utils/httpClient';
+import { musicApi, Song } from '@/services/musicApi';
 import LazyImage from '@/components/ui/lazy-image';
-
-interface Song {
-  id: string;
-  name: string;
-  artists: {
-    primary: {
-      name: string;
-    }[];
-  };
-  image: {
-    quality: string;
-    url: string;
-  }[];
-  downloadUrl: {
-    quality: string;
-    url: string;
-  }[];
-  duration: number;
-}
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
-  onOpenBottomSheet: (content: any) => void;
+  onNavigateToContent: (type: 'album' | 'artist' | 'playlist', item: any) => void;
   currentSong: Song | null;
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
@@ -37,7 +18,7 @@ interface MusicHomepageProps {
 
 const MusicHomepage = ({
   onPlaySong,
-  onOpenBottomSheet,
+  onNavigateToContent,
   currentSong,
   onToggleLike,
   likedSongs,
@@ -58,16 +39,16 @@ const MusicHomepage = ({
       setLoading(true);
       
       // Load trending songs
-      const trendingResponse = await httpClient.get('https://saavn.dev/api/search/songs?query=trending&limit=10', { skipAuth: true });
-      setTrendingSongs(trendingResponse?.data?.results || []);
+      const trendingSongs = await musicApi.getTrendingSongs();
+      setTrendingSongs(trendingSongs);
 
       // Load top charts
-      const chartsResponse = await httpClient.get('https://saavn.dev/api/search/playlists?query=new&limit=50', { skipAuth: true });
-      setTopCharts(chartsResponse?.data?.results || []);
+      const charts = await musicApi.searchByType('playlists', 'bollywood', 0, 50);
+      setTopCharts(charts);
 
       // Load popular artists
-      const artistsResponse = await httpClient.get('https://saavn.dev/api/search/artists?query=popular artists&limit=50', { skipAuth: true });
-      setPopularArtists(artistsResponse?.data?.results || []);
+      const artists = await musicApi.getPopularArtists();
+      setPopularArtists(artists);
 
     } catch (error) {
       console.error('Error loading homepage data:', error);
@@ -81,28 +62,15 @@ const MusicHomepage = ({
     onPlaySong(song);
   };
 
-  const handleOpenContent = async (type: 'artist' | 'playlist', item: any) => {
+  const handleMoodChange = async (mood: string) => {
     try {
-      let response;
-      let songs = [];
-
-      if (type === 'artist') {
-        response = await httpClient.get(`https://saavn.dev/api/artists/${item.id}/songs`, { skipAuth: true });
-        songs = response?.data?.songs || [];
-      } else if (type === 'playlist') {
-        response = await httpClient.get(`https://saavn.dev/api/playlists?id=${item.id}`, { skipAuth: true });
-        songs = response?.data?.songs || [];
+      const songs = await musicApi.searchByType('songs', `${mood} song`, 0, 10);
+      if (songs.length > 0) {
+        setPlaylist(songs);
+        onPlaySong(songs[0]);
       }
-
-      onOpenBottomSheet({
-        type,
-        id: item.id,
-        name: item.name || item.title,
-        songs,
-        image: item.image?.[1]?.url || item.image?.[0]?.url,
-      });
     } catch (error) {
-      console.error(`Error loading ${type}:`, error);
+      console.error(`Error loading ${mood}:`, error);
     }
   };
 
@@ -118,21 +86,6 @@ const MusicHomepage = ({
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
-  }
-
-  const handleMoodChange = async (moods) => {
-    try {
-
-      const response = await httpClient.get(`https://saavn.dev/api/search/songs?query=${moods} song&limit=10`, { skipAuth: true });
-      const songs = response?.data?.results || [];
-      onOpenBottomSheet({
-        type: "mood",
-        name: moods,
-        songs,
-      });
-    } catch (error) {
-      console.error(`Error loading ${moods}:`, error);
-    }
   }
 
   return (
@@ -153,7 +106,7 @@ const MusicHomepage = ({
             >
               <div className="relative">
                 <LazyImage
-                  src={song.image[0]?.url}
+                  src={song.image?.[0]?.url}
                   alt={song.name}
                   className="w-12 h-12 rounded object-cover"
                 />
@@ -195,15 +148,15 @@ const MusicHomepage = ({
         </div>
       </section>
 
-      {/* Moods  */}
+      {/* Moods */}
       <section>
-        <h2 className="text-2xl font-bold mb-4">Select your Moond</h2>
+        <h2 className="text-2xl font-bold mb-4">Select your Mood</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {["Romantic", "Happy", "Sad", "Calm", "Relax", "Slow", "Dance"].map((moods, i) => (
+          {["Romantic", "Happy", "Sad", "Calm", "Relax", "Slow", "Dance"].map((mood, i) => (
             <Card
               key={i}
               className="cursor-pointer hover:shadow-sm transition-shadow group"
-              onClick={() => handleMoodChange(moods)}
+              onClick={() => handleMoodChange(mood)}
             >
               <CardContent className="p-3">
                 <div className="relative mb-2">
@@ -211,23 +164,24 @@ const MusicHomepage = ({
                     <Play className="h-6 w-6 text-white" />
                   </div>
                 </div>
-                <h3 className="font-medium text-sm truncate text-center">{moods}</h3>
+                <h3 className="font-medium text-sm truncate text-center">{mood}</h3>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
+
       {/* Popular Artists */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Popular Artists</h2>
-        <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-3">
           {popularArtists.map((artist) => (
             <Card
               key={artist.id}
               className="cursor-pointer hover:shadow-lg transition-shadow group"
-              onClick={() => handleOpenContent('artist', artist)}
+              onClick={() => onNavigateToContent('artist', artist)}
             >
-              <CardContent className="p-3">
+              <CardContent className="p-2">
                 <div className="relative mb-2">
                   <LazyImage
                     src={artist.image?.[1]?.url || artist.image?.[0]?.url}
@@ -235,11 +189,10 @@ const MusicHomepage = ({
                     className="w-full aspect-square rounded-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-6 w-6 text-white" />
+                    <Play className="h-4 w-4 text-white" />
                   </div>
                 </div>
-                <h3 className="font-medium text-sm truncate text-center">{artist.name}</h3>
-                <p className="text-xs text-muted-foreground text-center">Artist</p>
+                <h3 className="font-medium text-xs truncate text-center">{artist.name}</h3>
               </CardContent>
             </Card>
           ))}
@@ -249,14 +202,14 @@ const MusicHomepage = ({
       {/* Top Charts */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Top Charts</h2>
-        <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-10 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-3">
           {topCharts.map((chart) => (
             <Card
               key={chart.id}
               className="cursor-pointer hover:shadow-md transition-shadow group"
-              onClick={() => handleOpenContent('playlist', chart)}
+              onClick={() => onNavigateToContent('playlist', chart)}
             >
-              <CardContent className="p-3">
+              <CardContent className="p-2">
                 <div className="relative mb-2">
                   <LazyImage
                     src={chart.image?.[1]?.url || chart.image?.[0]?.url}
@@ -264,11 +217,10 @@ const MusicHomepage = ({
                     className="w-full aspect-square rounded-lg object-cover"
                   />
                   <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-6 w-6 text-white" />
+                    <Play className="h-4 w-4 text-white" />
                   </div>
                 </div>
-                <h3 className="font-medium text-sm truncate">{chart.name || chart.title}</h3>
-                <p className="text-xs text-muted-foreground truncate">{chart.subtitle || 'Playlist'}</p>
+                <h3 className="font-medium text-xs truncate">{chart.name || chart.title}</h3>
               </CardContent>
             </Card>
           ))}

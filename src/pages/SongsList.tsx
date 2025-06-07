@@ -6,12 +6,6 @@ import { ArrowLeft, Play, Heart, Download, Music, MoreVertical } from 'lucide-re
 import { musicApi, Song } from '@/services/musicApi';
 import { useMusicContext } from '@/contexts/MusicContext';
 import LazyImage from '@/components/ui/lazy-image';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuItem
-} from '@/components/ui/dropdown-menu';
 
 interface LocationState {
   type: 'album' | 'artist' | 'playlist' | 'liked' | 'offline' | 'search';
@@ -60,7 +54,7 @@ const SongsList = () => {
         case 'album':
           if (state.id) {
             newSongs = await musicApi.getAlbumSongs(state.id);
-            setHasMore(false); // Albums don't have pagination
+            setHasMore(false);
           }
           break;
         
@@ -74,22 +68,37 @@ const SongsList = () => {
         case 'playlist':
           if (state.id) {
             newSongs = await musicApi.getPlaylistSongs(state.id);
-            setHasMore(false); // Playlists don't have pagination
+            setHasMore(false);
           }
           break;
         
         case 'liked':
           for (const songId of likedSongs) {
-            const song = await musicApi.getSong(songId);
-            if (song) newSongs.push(song);
+            try {
+              const song = await musicApi.getSong(songId);
+              if (song) newSongs.push(song);
+            } catch (error) {
+              console.log('Failed to fetch liked song:', songId);
+            }
           }
           setHasMore(false);
           break;
         
         case 'offline':
-          newSongs = offlineSongs;
-          setHasMore(false);
-          break;
+          // Load from IndexedDB
+          const request = indexedDB.open('OfflineMusicDB', 1);
+          request.onsuccess = function(event) {
+            const db = (event.target as IDBOpenDBRequest).result;
+            const transaction = db.transaction(['songs'], 'readonly');
+            const store = transaction.objectStore('songs');
+            const getAllRequest = store.getAll();
+            
+            getAllRequest.onsuccess = function() {
+              setSongs(getAllRequest.result || []);
+              setLoading(false);
+            };
+          };
+          return;
         
         case 'search':
           if (state.query && state.searchType) {
@@ -165,7 +174,7 @@ const SongsList = () => {
       const audioBlob = await audioResponse.blob();
       
       // Download image
-      const imageUrl = song.image[0]?.url;
+      const imageUrl = song.image?.[0]?.url;
       let imageBlob = null;
       if (imageUrl) {
         const imageResponse = await fetch(imageUrl);
@@ -173,41 +182,35 @@ const SongsList = () => {
       }
 
       // Store in IndexedDB
-      const request = indexedDB.open('MusicApp', 1);
+      const request = indexedDB.open('OfflineMusicDB', 1);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('songs')) {
           db.createObjectStore('songs', { keyPath: 'id' });
         }
-        if (!db.objectStoreNames.contains('images')) {
-          db.createObjectStore('images', { keyPath: 'id' });
-        }
       };
       
       request.onsuccess = () => {
         const db = request.result;
-        const transaction = db.transaction(['songs', 'images'], 'readwrite');
+        const transaction = db.transaction(['songs'], 'readwrite');
+        const store = transaction.objectStore('songs');
         
-        // Store song
-        const songStore = transaction.objectStore('songs');
-        songStore.put({
+        store.put({
           ...song,
-          audioBlob: audioBlob
+          audioBlob: audioBlob,
+          cachedImageUrl: imageBlob ? URL.createObjectURL(imageBlob) : undefined
         });
-        
-        // Store image
-        if (imageBlob) {
-          const imageStore = transaction.objectStore('images');
-          imageStore.put({
-            id: song.id,
-            imageBlob: imageBlob
-          });
-        }
         
         addToOffline(song);
       };
     } catch (error) {
       console.error('Download failed:', error);
+    }
+  };
+
+  const downloadAllSongs = async () => {
+    for (const song of songs) {
+      await downloadSong(song);
     }
   };
 
@@ -238,6 +241,17 @@ const SongsList = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+          
+          {songs.length > 0 && (
+            <Button
+              onClick={downloadAllSongs}
+              variant="outline"
+              size="sm"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download All
+            </Button>
+          )}
         </div>
         
         <div className="flex items-center gap-4">
@@ -280,7 +294,7 @@ const SongsList = () => {
               >
                 <div className="relative">
                   <LazyImage
-                    src={song.image[0]?.url}
+                    src={song.image?.[0]?.url}
                     alt={song.name}
                     className="w-12 h-12 rounded object-cover"
                   />
@@ -306,37 +320,28 @@ const SongsList = () => {
                     {formatDuration(song.duration)}
                   </span>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleLike(song.id);
-                        }}
-                      >
-                        <Heart className={`h-4 w-4 mr-2 ${likedSongs.includes(song.id) ? "fill-current text-red-500" : ""}`} />
-                        {likedSongs.includes(song.id) ? "Unlike" : "Like"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadSong(song);
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(song.id);
+                    }}
+                    className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                  >
+                    <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                  </Button>
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadSong(song);
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Play, Heart, Trash2, Music, Trash } from 'lucide-react';
@@ -22,6 +21,7 @@ interface Song {
   }[];
   duration: number;
   audioBlob?: Blob;
+  cachedImageUrl?: string;
 }
 
 interface OfflineManagerProps {
@@ -257,7 +257,7 @@ const OfflineManager = ({
                 >
                   <div className="relative">
                     <LazyImage
-                      src={song.cachedImageUrl || song.image[0]?.url}
+                      src={song.cachedImageUrl || song.image?.[0]?.url}
                       alt={song.name}
                       className="w-12 h-12 rounded object-cover"
                     />
