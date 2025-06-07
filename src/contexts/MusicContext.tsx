@@ -91,7 +91,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
   const [showSongsModal, setShowSongsModal] = useState(false);
   const [songsModalData, setSongsModalData] = useState<any>(null);
   
-  // User data
+  // User data - Store complete Song objects
   const [likedSongs, setLikedSongs] = useState<Song[]>(() => {
     const saved = localStorage.getItem("likedSongs");
     return saved ? JSON.parse(saved) : [];

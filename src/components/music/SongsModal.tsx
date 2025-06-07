@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { X, Play, Heart, Download, Music, PlayCircle, Loader2 } from 'lucide-react';
 import { musicApi, Song } from '@/services/musicApi';
 import { useMusicContext } from '@/contexts/MusicContext';
@@ -111,7 +112,20 @@ const SongsModal = () => {
         const getAllRequest = store.getAll();
         
         getAllRequest.onsuccess = function() {
-          resolve(getAllRequest.result || []);
+          const offlineData = getAllRequest.result || [];
+          // Convert blob URLs for offline songs
+          const songsWithBlobUrls = offlineData.map((song: any) => ({
+            ...song,
+            downloadUrl: song.audioBlob ? [{
+              quality: '320kbps',
+              url: URL.createObjectURL(song.audioBlob)
+            }] : song.downloadUrl,
+            image: song.imageBlob ? [{
+              quality: '500x500',
+              url: URL.createObjectURL(song.imageBlob)
+            }] : song.image
+          }));
+          resolve(songsWithBlobUrls);
         };
         
         getAllRequest.onerror = function() {
@@ -169,7 +183,7 @@ const SongsModal = () => {
 
   const downloadSong = async (song: Song) => {
     try {
-      setDownloadProgress(song.id, 0);
+      setDownloadProgress(song.id, 10);
       
       const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
                       song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
@@ -182,24 +196,14 @@ const SongsModal = () => {
 
       const secureAudioUrl = audioUrl.replace(/^http:\/\//i, 'https://');
       
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setDownloadProgress(song.id, prev => {
-          const current = prev[song.id] || 0;
-          if (current >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return { ...prev, [song.id]: current + 10 };
-        });
-      }, 200);
-
+      // Download audio with progress tracking
+      setDownloadProgress(song.id, 30);
       const audioResponse = await fetch(secureAudioUrl);
       const audioBlob = await audioResponse.blob();
       
-      clearInterval(progressInterval);
-      setDownloadProgress(song.id, 100);
+      setDownloadProgress(song.id, 70);
       
+      // Download image
       const imageUrl = song.image?.[0]?.url;
       let imageBlob = null;
       if (imageUrl) {
@@ -208,6 +212,9 @@ const SongsModal = () => {
         imageBlob = await imageResponse.blob();
       }
 
+      setDownloadProgress(song.id, 90);
+
+      // Store in IndexedDB
       const request = indexedDB.open('OfflineMusicDB', 1);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -228,6 +235,8 @@ const SongsModal = () => {
         });
         
         addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
         }, 2000);
@@ -237,7 +246,7 @@ const SongsModal = () => {
       setDownloadProgress(song.id, -1);
       setTimeout(() => {
         setDownloadProgress(song.id, 0);
-      }, 2000);
+      }, 3000);
     }
   };
 
@@ -294,16 +303,6 @@ const SongsModal = () => {
                     <PlayCircle className="h-4 w-4 mr-2" />
                     Play All
                   </Button>
-                  {songsModalData.type !== 'offline' && (
-                    <Button
-                      onClick={() => songs.forEach(song => downloadSong(song))}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download All
-                    </Button>
-                  )}
                 </div>
               )}
             </div>
@@ -399,10 +398,12 @@ const SongsModal = () => {
                           {downloadProgress[song.id] > 0 ? (
                             downloadProgress[song.id] === -1 ? (
                               <X className="h-4 w-4 text-red-500" />
+                            ) : downloadProgress[song.id] === 100 ? (
+                              <Download className="h-4 w-4 text-green-500" />
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-col items-center gap-1 min-w-[40px]">
                                 <Loader2 className="h-3 w-3 animate-spin" />
-                                <span className="text-xs">{downloadProgress[song.id]}%</span>
+                                <Progress value={downloadProgress[song.id]} className="w-8 h-1" />
                               </div>
                             )
                           ) : isOffline(song.id) ? (

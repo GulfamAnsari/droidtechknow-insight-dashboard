@@ -91,10 +91,14 @@ const AudioPlayer = ({
       }
       
       if (audioUrl && audioRef.current.src !== audioUrl) {
+        const wasPlaying = !audioRef.current.paused;
+        const currentTimeBackup = audioRef.current.currentTime;
+        
         audioRef.current.src = audioUrl;
         audioRef.current.volume = volume / 100;
         audioRef.current.currentTime = currentTime;
-        if (isPlaying) {
+        
+        if (wasPlaying || isPlaying) {
           audioRef.current.play();
         }
       }
@@ -113,13 +117,13 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
+      audioRef.current.volume = isMuted ? 0 : volume / 100;
     }
-  }, [volume]);
+  }, [volume, isMuted]);
 
-  // Sync current time from context
+  // Sync current time from context but avoid setting if close to current
   useEffect(() => {
-    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 1) {
+    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 2) {
       audioRef.current.currentTime = currentTime;
     }
   }, [currentTime]);
