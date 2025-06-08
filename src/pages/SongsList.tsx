@@ -38,7 +38,7 @@ const SongsList = () => {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -50,7 +50,7 @@ const SongsList = () => {
     if (!state) return;
     
     setLoading(true);
-    setPage(0);
+    setPage(1);
     let newSongs: Song[] = [];
 
     try {

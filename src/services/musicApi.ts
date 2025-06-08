@@ -125,7 +125,7 @@ class MusicApiService {
   async getArtistSongs(artistId: string, page: number = 1): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=50`,
+        `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=10`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
@@ -177,7 +177,7 @@ class MusicApiService {
   async getTrendingSongs(): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=trending&limit=20&page=1`,
+        `https://saavn.dev/api/search/songs?query=trending&limit=10&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];
@@ -190,7 +190,7 @@ class MusicApiService {
   async getTopSongs(): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=top%20bollywood&limit=20&page=1`,
+        `https://saavn.dev/api/search/songs?query=top%20bollywood&limit=10&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];
@@ -203,7 +203,7 @@ class MusicApiService {
   async getPopularArtists(): Promise<Artist[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/artists?query=popular artists&limit=20&page=1`,
+        `https://saavn.dev/api/search/artists?query=popular artists&limit=50&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];

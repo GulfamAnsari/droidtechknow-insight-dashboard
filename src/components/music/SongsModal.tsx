@@ -27,7 +27,7 @@ const SongsModal = () => {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -41,7 +41,7 @@ const SongsModal = () => {
     if (!songsModalData) return;
     
     setLoading(true);
-    setPage(0);
+    setPage(1);
     let newSongs: Song[] = [];
 
     try {
@@ -49,27 +49,27 @@ const SongsModal = () => {
         case 'album':
           if (songsModalData.id) {
             newSongs = await musicApi.getAlbumSongs(songsModalData.id);
-            setHasMore(false);
+            setHasMore(true);
           }
           break;
         
         case 'artist':
           if (songsModalData.id) {
             newSongs = await musicApi.getArtistSongs(songsModalData.id, 1);
-            setHasMore(newSongs.length >= 50);
+            setHasMore(true);
           }
           break;
         
         case 'playlist':
           if (songsModalData.id) {
             newSongs = await musicApi.getPlaylistSongs(songsModalData.id);
-            setHasMore(false);
+            setHasMore(true);
           }
           break;
         
         case 'liked':
           newSongs = likedSongs;
-          setHasMore(false);
+          setHasMore(true);
           break;
         
         case 'offline':
@@ -79,8 +79,8 @@ const SongsModal = () => {
         
         case 'search':
           if (songsModalData.query && songsModalData.searchType) {
-            newSongs = await musicApi.searchByType(songsModalData.searchType, songsModalData.query, 1);
-            setHasMore(newSongs.length >= 20);
+            newSongs = await musicApi.searchByType(songsModalData.searchType, songsModalData.query, page);
+            setHasMore(true);
           }
           break;
       }
@@ -167,7 +167,7 @@ const SongsModal = () => {
         setPlaylist([...songs, ...newSongs]);
       }
       
-      if (newSongs.length < 20) {
+      if (newSongs.length < 10) {
         setHasMore(false);
       }
     } catch (error) {
