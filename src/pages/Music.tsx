@@ -14,6 +14,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { musicApi, Song } from "@/services/musicApi";
@@ -27,7 +28,7 @@ import SongsModal from "@/components/music/SongsModal";
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const {
     currentSong,
     isPlaying,
@@ -58,7 +59,7 @@ const Music = () => {
     playSong,
     playNext,
     playPrevious,
-    toggleLike,
+    toggleLike
   } = useMusicContext();
 
   // Search states
@@ -109,7 +110,12 @@ const Music = () => {
     const nextPage = currentPages[type] + 1;
 
     try {
-      const newResults = await musicApi.searchByType(type, searchQuery, nextPage, 20);
+      const newResults = await musicApi.searchByType(
+        type,
+        searchQuery,
+        nextPage,
+        20
+      );
 
       setSearchResults((prev) => ({
         ...prev,
@@ -158,20 +164,23 @@ const Music = () => {
     setDuration(dur);
   };
 
-  const handleNavigateToSongs = (type: 'liked' | 'offline') => {
-    const name = type === 'liked' ? 'Liked Songs' : 'Offline Songs';
-    setSongsModalData({ 
-      type, 
+  const handleNavigateToSongs = (type: "liked" | "offline") => {
+    const name = type === "liked" ? "Liked Songs" : "Offline Songs";
+    setSongsModalData({
+      type,
       name,
       image: undefined
     });
     setShowSongsModal(true);
   };
 
-  const handleNavigateToContent = (type: 'album' | 'artist' | 'playlist', item: any) => {
-    setSongsModalData({ 
-      type, 
-      id: item.id, 
+  const handleNavigateToContent = (
+    type: "album" | "artist" | "playlist",
+    item: any
+  ) => {
+    setSongsModalData({
+      type,
+      id: item.id,
       name: item.name || item.title,
       image: item.image?.[1]?.url || item.image?.[0]?.url
     });
@@ -179,9 +188,10 @@ const Music = () => {
   };
 
   const handleToggleLikeById = (songId: string) => {
-    const song = playlist.find(s => s.id === songId) || 
-                 likedSongs.find(s => s.id === songId) ||
-                 offlineSongs.find(s => s.id === songId);
+    const song =
+      playlist.find((s) => s.id === songId) ||
+      likedSongs.find((s) => s.id === songId) ||
+      offlineSongs.find((s) => s.id === songId);
     if (song) {
       toggleLike(song);
     }
@@ -191,73 +201,68 @@ const Music = () => {
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
       {/* Header */}
-      <div className="p-6 border-b">
+      <div className="pt-4 pr-6 pl-6 border-b bg-background">
         <div className="flex items-center gap-4 mb-4">
-          {/* Search Bar and Action buttons in one row */}
-          <div className="flex items-center gap-2 flex-1">
-            {isSearchMode && (
-              <Button
-                onClick={() => setIsSearchMode(false)}
-                variant="ghost"
-                size="sm"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            
-            <div className="flex gap-2 flex-1 max-w-md">
-              <Input
-                placeholder="Search for songs, artists, albums, playlists..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-                style={{ fontSize: "16px" }}
-              />
-              <Button onClick={handleSearch} disabled={isLoading}>
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+          {/* Back Button (optional) */}
+          {isSearchMode && (
+            <Button
+              onClick={() => setIsSearchMode(false)}
+              variant="ghost"
+              size="icon"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <div className="p-2 space-y-2">
-                    <Button
-                      onClick={() => handleNavigateToSongs('liked')}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                    >
-                      <Heart className="h-4 w-4 mr-2" />
-                      Liked Songs ({likedSongs.length})
-                    </Button>
-                    <Button
-                      onClick={() => handleNavigateToSongs('offline')}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Offline Songs ({offlineSongs.length})
-                    </Button>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+          {/* Search Bar */}
+          <div className="flex items-center gap-2 flex-1">
+            <Input
+              placeholder="Search for songs, artists, albums, playlists..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full text-sm"
+            />
+            <Button
+              onClick={handleSearch}
+              size="icon"
+              variant="default"
+              disabled={isLoading}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
+
+          {/* Action Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleNavigateToSongs("liked")}
+                className="gap-2"
+              >
+                <Heart className="h-4 w-4" />
+                Liked Songs ({likedSongs.length})
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleNavigateToSongs("offline")}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Offline Songs ({offlineSongs.length})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* Main Content */}
       <div
-        className={`flex-1 overflow-auto p-6 ${currentSong ? "pb-24" : "pb-6"}`}
+        className={`bg-background flex-1 overflow-auto p-6 ${currentSong ? "pb-24" : "pb-6"}`}
       >
         {isSearchMode ? (
           <SearchTabs
@@ -269,7 +274,7 @@ const Music = () => {
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
             onToggleLike={handleToggleLikeById}
-            likedSongs={likedSongs.map(song => song.id)}
+            likedSongs={likedSongs.map((song) => song.id)}
             isPlaying={isPlaying}
           />
         ) : (
@@ -278,7 +283,7 @@ const Music = () => {
             onNavigateToContent={handleNavigateToContent}
             currentSong={currentSong}
             onToggleLike={handleToggleLikeById}
-            likedSongs={likedSongs.map(song => song.id)}
+            likedSongs={likedSongs.map((song) => song.id)}
             isPlaying={isPlaying}
             setPlaylist={setPlaylist}
           />
@@ -335,10 +340,10 @@ const Music = () => {
           volume={isMuted ? 0 : volume}
           onVolumeChange={setVolume}
           onToggleLike={(songId: string) => {
-            const song = playlist.find(s => s.id === songId);
+            const song = playlist.find((s) => s.id === songId);
             if (song) toggleLike(song);
           }}
-          likedSongs={likedSongs.map(song => song.id)}
+          likedSongs={likedSongs.map((song) => song.id)}
           onToggleMute={toggleMute}
           isMuted={isMuted}
           suggestedSongs={[]}
