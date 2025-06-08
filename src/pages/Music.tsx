@@ -178,6 +178,15 @@ const Music = () => {
     setShowSongsModal(true);
   };
 
+  const handleToggleLikeById = (songId: string) => {
+    const song = playlist.find(s => s.id === songId) || 
+                 likedSongs.find(s => s.id === songId) ||
+                 offlineSongs.find(s => s.id === songId);
+    if (song) {
+      toggleLike(song);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />
@@ -259,7 +268,7 @@ const Music = () => {
             currentSong={currentSong}
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
-            onToggleLike={toggleLike}
+            onToggleLike={handleToggleLikeById}
             likedSongs={likedSongs.map(song => song.id)}
             isPlaying={isPlaying}
           />
@@ -268,7 +277,7 @@ const Music = () => {
             onPlaySong={playSong}
             onNavigateToContent={handleNavigateToContent}
             currentSong={currentSong}
-            onToggleLike={toggleLike}
+            onToggleLike={handleToggleLikeById}
             likedSongs={likedSongs.map(song => song.id)}
             isPlaying={isPlaying}
             setPlaylist={setPlaylist}
