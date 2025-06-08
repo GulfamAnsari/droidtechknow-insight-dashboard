@@ -58,7 +58,7 @@ export interface SearchResults {
 }
 
 class MusicApiService {
-  async search(query: string, page: number = 0, limit: number = 20): Promise<SearchResults> {
+  async search(query: string, page: number = 1, limit: number = 20): Promise<SearchResults> {
     try {
       const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.all([
         httpClient.get(
@@ -94,7 +94,7 @@ class MusicApiService {
   async searchByType(
     type: "songs" | "albums" | "artists" | "playlists",
     query: string,
-    page: number = 0,
+    page: number = 1,
     limit: number = 20
   ) {
     try {
@@ -122,7 +122,7 @@ class MusicApiService {
     }
   }
 
-  async getArtistSongs(artistId: string, page: number = 0): Promise<Song[]> {
+  async getArtistSongs(artistId: string, page: number = 1): Promise<Song[]> {
     try {
       const response = await httpClient.get(
         `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=50`,
@@ -177,7 +177,7 @@ class MusicApiService {
   async getTrendingSongs(): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=trending&limit=20&page=0`,
+        `https://saavn.dev/api/search/songs?query=trending&limit=20&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];
@@ -190,7 +190,7 @@ class MusicApiService {
   async getTopSongs(): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=top%20bollywood&limit=20&page=0`,
+        `https://saavn.dev/api/search/songs?query=top%20bollywood&limit=20&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];
@@ -203,7 +203,7 @@ class MusicApiService {
   async getPopularArtists(): Promise<Artist[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/artists?query=popular&limit=20&page=0`,
+        `https://saavn.dev/api/search/artists?query=popular artists&limit=20&page=1`,
         { skipAuth: true }
       );
       return response?.data?.results || [];

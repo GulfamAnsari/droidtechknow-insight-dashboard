@@ -79,7 +79,7 @@ const SongsModal = () => {
         
         case 'search':
           if (songsModalData.query && songsModalData.searchType) {
-            newSongs = await musicApi.searchByType(songsModalData.searchType, songsModalData.query, 0);
+            newSongs = await musicApi.searchByType(songsModalData.searchType, songsModalData.query, 1);
             setHasMore(newSongs.length >= 20);
           }
           break;

@@ -64,7 +64,7 @@ const MusicHomepage = ({
 
   const handleMoodChange = async (mood: string) => {
     try {
-      const songs = await musicApi.searchByType('songs', `${mood} song`, 0, 10);
+      const songs = await musicApi.searchByType('songs', `${mood} song`, 1, 10);
       if (songs.length > 0) {
         setPlaylist(songs);
         onPlaySong(songs[0]);

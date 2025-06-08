@@ -90,7 +90,7 @@ const Music = () => {
     setSearchResults({ songs: [], albums: [], artists: [], playlists: [] });
 
     try {
-      const results = await musicApi.search(searchQuery, 0, 20);
+      const results = await musicApi.search(searchQuery, 1, 20);
       setSearchResults(results);
       setPlaylist(results.songs);
     } catch (error) {

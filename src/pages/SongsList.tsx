@@ -116,7 +116,7 @@ const SongsList = () => {
         
         case 'search':
           if (state.query && state.searchType) {
-            newSongs = await musicApi.searchByType(state.searchType, state.query, 0);
+            newSongs = await musicApi.searchByType(state.searchType, state.query, 1);
             setHasMore(newSongs.length >= 20);
           }
           break;
