@@ -64,7 +64,7 @@ const SongsList = () => {
         
         case 'artist':
           if (state.id) {
-            newSongs = await musicApi.getArtistSongs(state.id, 0);
+            newSongs = await musicApi.getArtistSongs(state.id, 1);
             setHasMore(newSongs.length >= 50);
           }
           break;

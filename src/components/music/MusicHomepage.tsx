@@ -43,7 +43,7 @@ const MusicHomepage = ({
       setTrendingSongs(trendingSongs);
 
       // Load top charts
-      const charts = await musicApi.searchByType('playlists', 'bollywood', 0, 50);
+      const charts = await musicApi.searchByType('playlists', 'bollywood', 1, 50);
       setTopCharts(charts);
 
       // Load popular artists

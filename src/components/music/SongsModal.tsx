@@ -55,7 +55,7 @@ const SongsModal = () => {
         
         case 'artist':
           if (songsModalData.id) {
-            newSongs = await musicApi.getArtistSongs(songsModalData.id, 0);
+            newSongs = await musicApi.getArtistSongs(songsModalData.id, 1);
             setHasMore(newSongs.length >= 50);
           }
           break;
