@@ -21,7 +21,7 @@ app.get('/api/playlist', async (req, res) => {
     return res.status(400).json({ status: 'error', message: 'Missing listid parameter' });
   }
 
-  const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&_format=json&cc=in&_marker=0&api_version=4&listid=${encodeURIComponent(listid)}`;
+  const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&_format=json&cc=in&_marker=0%3F_marker%3D0&listid=${encodeURIComponent(listid)}`;
 
   try {
     const response = await fetch(url, {
