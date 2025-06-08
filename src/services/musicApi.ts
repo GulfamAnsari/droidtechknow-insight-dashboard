@@ -112,7 +112,7 @@ class MusicApiService {
   async getAlbumSongs(albumId: string): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/albums/${albumId}`,
+        `https://saavn.dev/api/albums?id${albumId}`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
@@ -138,7 +138,7 @@ class MusicApiService {
   async getPlaylistSongs(playlistId: string): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/playlists/${playlistId}`,
+        `https://saavn.dev/api/playlists?id=${playlistId}`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
