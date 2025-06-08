@@ -77,14 +77,7 @@ const SongsList = () => {
           break;
         
         case 'liked':
-          for (const songId of likedSongs) {
-            try {
-              const song = await musicApi.getSong(songId);
-              if (song) newSongs.push(song);
-            } catch (error) {
-              console.log('Failed to fetch liked song:', songId);
-            }
-          }
+          newSongs = likedSongs;
           setHasMore(false);
           break;
         
@@ -256,6 +249,10 @@ const SongsList = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isLiked = (songId: string) => {
+    return likedSongs.some(song => song.id === songId);
+  };
+
   if (!state) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -361,11 +358,11 @@ const SongsList = () => {
                     variant="ghost"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleLike(song.id);
+                      toggleLike(song);
                     }}
-                    className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                    className={isLiked(song.id) ? "text-red-500" : ""}
                   >
-                    <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                    <Heart className={`h-4 w-4 ${isLiked(song.id) ? "fill-current" : ""}`} />
                   </Button>
                   
                   {state.type !== 'offline' && (
