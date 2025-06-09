@@ -183,43 +183,47 @@ const AudioPlayer = ({
   if (!song) return null;
 
   useEffect(() => {
-    if ("mediaSession" in navigator && audioRef.current) {
-      const metadata = new MediaMetadata({
-        title: song.name,
-        artist: song.artists?.primary?.map((a) => a.name).join(", ") ||
-                "Unknown Artist",
-        artwork: [
-          {
-            src: song.image?.[0]?.url,
-            sizes: "500x500",
-            type: "image/jpeg"
-          }
-        ]
-      });
+  if ('mediaSession' in navigator && audioRef.current && song) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.name,
+      artist: song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist",
+      artwork: [
+        {
+          src: song.image?.[0]?.url,
+          sizes: "500x500",
+          type: "image/jpeg"
+        }
+      ],
+    });
 
-      navigator.mediaSession.setActionHandler("seekbackward", () => {
-        audioRef.current.currentTime = Math.max(
-          audioRef.current.currentTime - 10,
-          0
-        );
-      });
+    // Play / Pause handlers sync with your React handlers
+    navigator.mediaSession.setActionHandler("play", () => {
+      if (!isPlaying) onPlayPause();
+      audioRef.current.play();
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      if (isPlaying) onPlayPause();
+      audioRef.current.pause();
+    });
 
-      navigator.mediaSession.setActionHandler("seekforward", () => {
-        audioRef.current.currentTime = Math.min(
-          audioRef.current.currentTime + 10,
-          audioRef.current.duration
-        );
-      });
+    navigator.mediaSession.setActionHandler("seekbackward", () => {
+      audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 10, 0);
+    });
+    navigator.mediaSession.setActionHandler("seekforward", () => {
+      audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 10, audioRef.current.duration);
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      onPrevious();
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      onNext();
+    });
 
-      navigator.mediaSession.setActionHandler("previoustrack", () => {
-        audioRef.current.currentTime = 0;
-      });
+    // Update playback state so UI on lock screen updates (optional but helpful)
+    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+  }
+}, [song, isPlaying, onPlayPause, onNext, onPrevious]);
 
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        audioRef.current.currentTime = 0;
-      });
-    }
-  }, []);
 
   return (
     <div
