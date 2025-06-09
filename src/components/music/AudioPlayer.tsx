@@ -222,6 +222,14 @@ const AudioPlayer = ({
         );
       });
 
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.fastSeek && 'fastSeek' in audioRef.current) {
+          audioRef.current.fastSeek(details.seekTime);
+        } else {
+          audioRef.current.currentTime = details.seekTime;
+        }
+      });
+
       navigator.mediaSession.setActionHandler("previoustrack", () => {
         if (onPrevious) onPrevious();
       });
