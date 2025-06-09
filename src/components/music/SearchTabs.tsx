@@ -119,7 +119,7 @@ const SearchTabs = ({
         toast({
           title: "Success",
           description: song?.name + " is downloaded",
-          variant: "success",
+          variant: "success"
         });
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
@@ -128,9 +128,9 @@ const SearchTabs = ({
     } catch (error) {
       console.error("Download failed:", error);
       toast({
-          title: "Failed",
-          description: song?.name + " failed to download",
-          variant: "destructive",
+        title: "Failed",
+        description: song?.name + " failed to download",
+        variant: "destructive"
       });
       setDownloadProgress(song.id, -1);
       setTimeout(() => {
@@ -142,21 +142,31 @@ const SearchTabs = ({
     return likedSongs.some((song) => song.id === songId);
   };
 
-  
-
   return (
     <Tabs defaultValue="songs" className="w-full mb-6">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="songs">
+      <TabsList className="flex justify-start border-b border-border bg-transparent p-0 gap-4 overflow-x-auto rounded-none">
+        <TabsTrigger
+          value="songs"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-transparent border-b-2 border-transparent rounded-none data-[state=active]:border-primary data-[state=active]:text-primary"
+        >
           Songs ({searchResults.songs.length})
         </TabsTrigger>
-        <TabsTrigger value="albums">
+        <TabsTrigger
+          value="albums"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-transparent border-b-2 border-transparent rounded-none data-[state=active]:border-primary data-[state=active]:text-primary"
+        >
           Albums ({searchResults.albums.length})
         </TabsTrigger>
-        <TabsTrigger value="artists">
+        <TabsTrigger
+          value="artists"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-transparent border-b-2 border-transparent rounded-none data-[state=active]:border-primary data-[state=active]:text-primary"
+        >
           Artists ({searchResults.artists.length})
         </TabsTrigger>
-        <TabsTrigger value="playlists">
+        <TabsTrigger
+          value="playlists"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-transparent border-b-2 border-transparent rounded-none data-[state=active]:border-primary data-[state=active]:text-primary"
+        >
           Playlists ({searchResults.playlists.length})
         </TabsTrigger>
       </TabsList>
@@ -227,7 +237,6 @@ const SearchTabs = ({
                 }}
                 disabled={downloadProgress[song.id] > 0}
               >
-                
                 {downloadProgress[song.id] > 0 ? (
                   downloadProgress[song.id] === -1 ? (
                     <X className="h-4 w-4 text-red-500" />
