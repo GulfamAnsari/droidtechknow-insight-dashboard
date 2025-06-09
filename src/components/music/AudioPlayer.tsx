@@ -198,11 +198,11 @@ const AudioPlayer = ({
         ]
       });
 
-      // Play / Pause handlers sync with your React handlers
       navigator.mediaSession.setActionHandler("play", () => {
         if (!isPlaying) onPlayPause();
         audioRef.current.play();
       });
+
       navigator.mediaSession.setActionHandler("pause", () => {
         if (isPlaying) onPlayPause();
         audioRef.current.pause();
@@ -214,20 +214,22 @@ const AudioPlayer = ({
           0
         );
       });
+
       navigator.mediaSession.setActionHandler("seekforward", () => {
         audioRef.current.currentTime = Math.min(
           audioRef.current.currentTime + 10,
           audioRef.current.duration
         );
       });
+
       navigator.mediaSession.setActionHandler("previoustrack", () => {
-        onPrevious();
-      });
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        onNext();
+        if (onPrevious) onPrevious();
       });
 
-      // Update playback state so UI on lock screen updates (optional but helpful)
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        if (onNext) onNext();
+      });
+
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
     }
   }, [song, isPlaying, onPlayPause, onNext, onPrevious]);
