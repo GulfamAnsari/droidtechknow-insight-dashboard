@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -79,25 +78,27 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (audioRef.current && song) {
-      let audioUrl = '';
-      
+      let audioUrl = "";
+
       // Check if it's an offline song with blob URL
-      if (song.downloadUrl?.[0]?.url?.startsWith('blob:')) {
+      if (song.downloadUrl?.[0]?.url?.startsWith("blob:")) {
         audioUrl = song.downloadUrl[0].url;
       } else {
-        audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                   song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                   song.downloadUrl?.[0]?.url || '';
+        audioUrl =
+          song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+          song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+          song.downloadUrl?.[0]?.url ||
+          "";
       }
-      
+
       if (audioUrl && audioRef.current.src !== audioUrl) {
         const wasPlaying = !audioRef.current.paused;
         const currentTimeBackup = audioRef.current.currentTime;
-        
+
         audioRef.current.src = audioUrl;
         audioRef.current.volume = volume / 100;
         audioRef.current.currentTime = currentTime;
-        
+
         if (wasPlaying || isPlaying) {
           audioRef.current.play();
         }
@@ -123,7 +124,10 @@ const AudioPlayer = ({
 
   // Sync current time from context but avoid setting if close to current
   useEffect(() => {
-    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 2) {
+    if (
+      audioRef.current &&
+      Math.abs(audioRef.current.currentTime - currentTime) > 2
+    ) {
       audioRef.current.currentTime = currentTime;
     }
   }, [currentTime]);
@@ -166,7 +170,7 @@ const AudioPlayer = ({
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleMobilePlayerClick = () => {
@@ -178,15 +182,57 @@ const AudioPlayer = ({
 
   if (!song) return null;
 
+  useEffect(() => {
+    if ("mediaSession" in navigator && audioRef.current) {
+      const metadata = new MediaMetadata({
+        title: song.name,
+        artist: song.artists?.primary?.map((a) => a.name).join(", ") ||
+                "Unknown Artist",
+        artwork: [
+          {
+            src: song.image?.[0]?.url,
+            sizes: "500x500",
+            type: "image/jpeg"
+          }
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler("seekbackward", () => {
+        audioRef.current.currentTime = Math.max(
+          audioRef.current.currentTime - 10,
+          0
+        );
+      });
+
+      navigator.mediaSession.setActionHandler("seekforward", () => {
+        audioRef.current.currentTime = Math.min(
+          audioRef.current.currentTime + 10,
+          audioRef.current.duration
+        );
+      });
+
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        audioRef.current.currentTime = 0;
+      });
+
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        audioRef.current.currentTime = 0;
+      });
+    }
+  }, []);
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40" style={{ zIndex: 99 }}>
+    <div
+      className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40"
+      style={{ zIndex: 99 }}
+    >
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleAudioEnded}
       />
-      
+
       {/* Progress bar */}
       <div className="px-4 pt-2">
         <Slider
@@ -201,7 +247,7 @@ const AudioPlayer = ({
       {/* Player controls */}
       <div className="flex items-center gap-3 p-4">
         {/* Song info - clickable on mobile */}
-        <div 
+        <div
           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer md:cursor-default"
           onClick={handleMobilePlayerClick}
         >
@@ -213,7 +259,8 @@ const AudioPlayer = ({
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-medium">{song.name}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+              {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                "Unknown Artist"}
             </p>
           </div>
         </div>
@@ -240,14 +287,19 @@ const AudioPlayer = ({
 
         {/* Desktop controls */}
         <div className="hidden md:flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={onToggleShuffle} className={isShuffle ? "text-primary" : ""}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onToggleShuffle}
+            className={isShuffle ? "text-primary" : ""}
+          >
             <Shuffle className="h-4 w-4" />
           </Button>
-          
+
           <Button size="sm" variant="ghost" onClick={onPrevious}>
             <SkipBack className="h-4 w-4" />
           </Button>
-          
+
           <Button size="sm" onClick={onPlayPause}>
             {isPlaying ? (
               <Pause className="h-4 w-4" />
@@ -255,12 +307,17 @@ const AudioPlayer = ({
               <Play className="h-4 w-4" />
             )}
           </Button>
-          
+
           <Button size="sm" variant="ghost" onClick={onNext}>
             <SkipForward className="h-4 w-4" />
           </Button>
-          
-          <Button size="sm" variant="ghost" onClick={onToggleRepeat} className={isRepeat ? "text-primary" : ""}>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onToggleRepeat}
+            className={isRepeat ? "text-primary" : ""}
+          >
             <Repeat className="h-4 w-4" />
           </Button>
         </div>
