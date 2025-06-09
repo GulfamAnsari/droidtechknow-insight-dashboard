@@ -145,7 +145,7 @@ const SearchTabs = ({
   
 
   return (
-    <Tabs defaultValue="songs" className="w-full">
+    <Tabs defaultValue="songs" className="w-full mb-6">
       <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="songs">
           Songs ({searchResults.songs.length})
@@ -267,7 +267,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="albums" className="mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
           {searchResults.albums.map((album) => (
             <div
               key={album.id}
@@ -307,7 +307,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="artists" className="mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
           {searchResults.artists.map((artist) => (
             <div
               key={artist.id}
@@ -346,7 +346,7 @@ const SearchTabs = ({
       </TabsContent>
 
       <TabsContent value="playlists" className="mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
           {searchResults.playlists.map((playlist) => (
             <div
               key={playlist.id}

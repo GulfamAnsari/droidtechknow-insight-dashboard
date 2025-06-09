@@ -268,7 +268,7 @@ const SongsModal = () => {
         toast({
           title: "Success",
           description: song?.name + " is downloaded",
-          variant: "success",
+          variant: "success"
         });
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
@@ -277,9 +277,9 @@ const SongsModal = () => {
     } catch (error) {
       console.error("Download failed:", error);
       toast({
-          title: "Failed",
-          description: song?.name + " failed to download",
-          variant: "destructive",
+        title: "Failed",
+        description: song?.name + " failed to download",
+        variant: "destructive"
       });
       setDownloadProgress(song.id, -1);
       setTimeout(() => {
@@ -314,30 +314,11 @@ const SongsModal = () => {
       <div className="fixed inset-0 bg-black/50 z-40" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-background rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] h-full flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="bg-background rounded-2xl border border-white/10 w-full max-w-4xl lg:max-h-[78vh] h-full flex flex-col overflow-hidden pb-[100px] sm:pb-0">
           {/* Header */}
-          <div className="p-6 border-b shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <Button onClick={handleClose} variant="ghost" size="sm">
-                <X className="h-4 w-4 mr-2" />
-                Close
-              </Button>
 
-              {songs.length > 0 && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => playAllSongs(songs)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <PlayCircle className="h-4 w-4 mr-2" />
-                    Play All
-                  </Button>
-                </div>
-              )}
-            </div>
-
+          <div className="flex  flex-col-reverse sm:flex-row justify-between gap-4 border-b p-6">
             <div className="flex items-center gap-4">
               {songsModalData.image && (
                 <LazyImage
@@ -349,6 +330,26 @@ const SongsModal = () => {
               <div>
                 <h1 className="text-2xl font-bold">{songsModalData.name}</h1>
                 <p className="text-muted-foreground">{songs.length} songs</p>
+              </div>
+            </div>
+            <div className=" shrink-0">
+              <div className="flex items-center justify-end mb-4 gap-4">
+                {songs.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => playAllSongs(songs)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Play All
+                    </Button>
+                  </div>
+                )}
+                <Button onClick={handleClose} variant="secondary" size="sm">
+                  <X className="h-4 w-4 mr-2" />
+                  Close
+                </Button>
               </div>
             </div>
           </div>
@@ -464,7 +465,7 @@ const SongsModal = () => {
 
             {/* Load More Button */}
             {hasMore && !loading && (
-              <div className="flex justify-center mt-6 mb-8">
+              <div className="flex justify-center mt-4">
                 <Button
                   onClick={loadMore}
                   disabled={loadingMore}
