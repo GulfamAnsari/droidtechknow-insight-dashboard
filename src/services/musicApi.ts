@@ -137,11 +137,17 @@ class MusicApiService {
 
   async getPlaylistSongs(playlistId: string): Promise<Song[]> {
     try {
-      const response = await httpClient.get(
-        `https://saavn.dev/api/playlists?id=${playlistId}`,
+      // const response = await httpClient.get(
+      //   `https://saavn.dev/api/playlists?id=${playlistId}`,
+      //   { skipAuth: true }
+      // );
+      // return response?.data?.songs || [];
+      let response = await httpClient.get(
+        `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&_format=json&cc=in&_marker=0%3F_marker%3D0&listid=${playlistId}`,
         { skipAuth: true }
       );
-      return response?.data?.songs || [];
+      response = await response.json();
+      return response?.songs || [];
     } catch (error) {
       console.error("Get playlist songs failed:", error);
       return [];

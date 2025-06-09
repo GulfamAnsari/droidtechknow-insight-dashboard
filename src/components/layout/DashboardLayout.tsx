@@ -59,7 +59,7 @@ const DashboardLayout = () => {
       {/* Global Header */}
       {/* <header className="h-14 border-b flex items-center justify-end px-4 bg-background"> */}
 
-      <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+      <header className="h-14 border-b flex items-center justify-between px-4 bg-background bg-sidebar">
         <div className="text-lg font-semibold">
           {user && `Welcome, ${user.username}`}
         </div>
