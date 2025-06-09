@@ -13,6 +13,8 @@ import {
 import { musicApi, Song } from "@/services/musicApi";
 import { useMusicContext } from "@/contexts/MusicContext";
 import LazyImage from "@/components/ui/lazy-image";
+import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 const SongsModal = () => {
   const {
@@ -37,7 +39,7 @@ const SongsModal = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-
+  const { toast } = useToast();
   useEffect(() => {
     if (showSongsModal && songsModalData) {
       loadInitialSongs();
@@ -263,13 +265,22 @@ const SongsModal = () => {
 
         addToOffline(song);
         setDownloadProgress(song.id, 100);
-
+        toast({
+          title: "Success",
+          description: song?.name + " is downloaded",
+          variant: "success",
+        });
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
         }, 2000);
       };
     } catch (error) {
       console.error("Download failed:", error);
+      toast({
+          title: "Failed",
+          description: song?.name + " failed to download",
+          variant: "destructive",
+      });
       setDownloadProgress(song.id, -1);
       setTimeout(() => {
         setDownloadProgress(song.id, 0);

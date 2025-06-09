@@ -1,9 +1,12 @@
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Play, Heart, Download } from "lucide-react";
+import { Play, Heart, Download, X, Loader2 } from "lucide-react";
 import { Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
+import { useMusicContext } from "@/contexts/MusicContext";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 interface SearchTabsProps {
   searchResults: {
@@ -13,7 +16,10 @@ interface SearchTabsProps {
     playlists: any[];
   };
   onPlaySong: (song: Song) => void;
-  onNavigateToContent: (type: 'album' | 'artist' | 'playlist', item: any) => void;
+  onNavigateToContent: (
+    type: "album" | "artist" | "playlist",
+    item: any
+  ) => void;
   isLoading: boolean;
   currentSong: Song | null;
   searchQuery: string;
@@ -32,68 +38,127 @@ const SearchTabs = ({
   searchQuery,
   onLoadMore,
   onToggleLike,
-  likedSongs,
   isPlaying
 }: SearchTabsProps) => {
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const {
+    toggleLike,
+    likedSongs,
+    downloadProgress,
+    offlineSongs,
+    setDownloadProgress,
+    addToOffline
+  } = useMusicContext();
+
+  const isOffline = (songId: string) => {
+    return offlineSongs.some((song) => song.id === songId);
+  };
+
+  const { toast } = useToast();
   const downloadSong = async (song: Song) => {
     try {
-      const audioUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                      song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                      song.downloadUrl?.[0]?.url;
-      
-      if (!audioUrl) return;
+      setDownloadProgress(song.id, 10);
 
-      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, 'https://');
+      const audioUrl =
+        song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+        song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+        song.downloadUrl?.[0]?.url;
+
+      if (!audioUrl) {
+        setDownloadProgress(song.id, -1);
+        return;
+      }
+
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+      // Download audio with progress tracking
+      setDownloadProgress(song.id, 30);
       const audioResponse = await fetch(secureAudioUrl);
       const audioBlob = await audioResponse.blob();
-      
+
+      setDownloadProgress(song.id, 70);
+
+      // Download image
       const imageUrl = song.image?.[0]?.url;
       let imageBlob = null;
       if (imageUrl) {
-        const secureImageUrl = imageUrl.replace(/^http:\/\//i, 'https://');
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
         const imageResponse = await fetch(secureImageUrl);
         imageBlob = await imageResponse.blob();
       }
 
-      const request = indexedDB.open('OfflineMusicDB', 1);
+      setDownloadProgress(song.id, 90);
+
+      // Store in IndexedDB
+      const request = indexedDB.open("OfflineMusicDB", 1);
       request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains('songs')) {
-          db.createObjectStore('songs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains("songs")) {
+          db.createObjectStore("songs", { keyPath: "id" });
         }
       };
-      
+
       request.onsuccess = () => {
         const db = request.result;
-        const transaction = db.transaction(['songs'], 'readwrite');
-        const store = transaction.objectStore('songs');
-        
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
+
         store.put({
           ...song,
           audioBlob: audioBlob,
           imageBlob: imageBlob
         });
-        
-        console.log('Song downloaded successfully');
+
+        addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        toast({
+          title: "Success",
+          description: song?.name + " is downloaded",
+          variant: "success",
+        });
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 2000);
       };
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error("Download failed:", error);
+      toast({
+          title: "Failed",
+          description: song?.name + " failed to download",
+          variant: "destructive",
+      });
+      setDownloadProgress(song.id, -1);
+      setTimeout(() => {
+        setDownloadProgress(song.id, 0);
+      }, 3000);
     }
   };
+  const isLiked = (songId: string) => {
+    return likedSongs.some((song) => song.id === songId);
+  };
+
+  
 
   return (
     <Tabs defaultValue="songs" className="w-full">
       <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="songs">Songs ({searchResults.songs.length})</TabsTrigger>
-        <TabsTrigger value="albums">Albums ({searchResults.albums.length})</TabsTrigger>
-        <TabsTrigger value="artists">Artists ({searchResults.artists.length})</TabsTrigger>
-        <TabsTrigger value="playlists">Playlists ({searchResults.playlists.length})</TabsTrigger>
+        <TabsTrigger value="songs">
+          Songs ({searchResults.songs.length})
+        </TabsTrigger>
+        <TabsTrigger value="albums">
+          Albums ({searchResults.albums.length})
+        </TabsTrigger>
+        <TabsTrigger value="artists">
+          Artists ({searchResults.artists.length})
+        </TabsTrigger>
+        <TabsTrigger value="playlists">
+          Playlists ({searchResults.playlists.length})
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="songs" className="space-y-2 mt-4">
@@ -123,30 +188,36 @@ const SearchTabs = ({
                 </div>
               )}
             </div>
-            <span className="text-sm text-muted-foreground w-8">{index + 1}</span>
+            <span className="text-sm text-muted-foreground w-8">
+              {index + 1}
+            </span>
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium">{song.name}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {song.artists?.primary?.map(a => a.name).join(", ") || "Unknown Artist"}
+                {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                  "Unknown Artist"}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
                 {formatDuration(song.duration)}
               </span>
-              
+
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleLike(song.id);
+                  toggleLike(song);
                 }}
-                className={likedSongs.includes(song.id) ? "text-red-500" : ""}
+                className={isLiked(song.id) ? "text-red-500" : ""}
               >
-                <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                <Heart
+                  className={`h-4 w-4 ${
+                    isLiked(song.id) ? "fill-current" : ""
+                  }`}
+                />
               </Button>
-              
               <Button
                 size="sm"
                 variant="ghost"
@@ -154,24 +225,45 @@ const SearchTabs = ({
                   e.stopPropagation();
                   downloadSong(song);
                 }}
+                disabled={downloadProgress[song.id] > 0}
               >
-                <Download className="h-4 w-4" />
+                
+                {downloadProgress[song.id] > 0 ? (
+                  downloadProgress[song.id] === -1 ? (
+                    <X className="h-4 w-4 text-red-500" />
+                  ) : downloadProgress[song.id] === 100 ? (
+                    <Download className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 min-w-[40px]">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Progress
+                        value={downloadProgress[song.id]}
+                        className="w-8 h-1"
+                      />
+                    </div>
+                  )
+                ) : isOffline(song.id) ? (
+                  <Download className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
         ))}
-        
-        {searchResults.songs.length > 0 && searchResults.songs.length % 20 === 0 && (
-          <div className="flex justify-center mt-4">
-            <Button 
-              onClick={() => onLoadMore("songs")} 
-              disabled={isLoading}
-              variant="outline"
-            >
-              {isLoading ? "Loading..." : "Load More Songs"}
-            </Button>
-          </div>
-        )}
+
+        {searchResults.songs.length > 0 &&
+          searchResults.songs.length % 20 === 0 && (
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={() => onLoadMore("songs")}
+                disabled={isLoading}
+                variant="outline"
+              >
+                {isLoading ? "Loading..." : "Load More Songs"}
+              </Button>
+            </div>
+          )}
       </TabsContent>
 
       <TabsContent value="albums" className="mt-4">
@@ -180,7 +272,7 @@ const SearchTabs = ({
             <div
               key={album.id}
               className="cursor-pointer hover:shadow-md transition-shadow group"
-              onClick={() => onNavigateToContent('album', album)}
+              onClick={() => onNavigateToContent("album", album)}
             >
               <div className="relative mb-2">
                 <LazyImage
@@ -193,22 +285,25 @@ const SearchTabs = ({
                 </div>
               </div>
               <h3 className="font-medium text-sm truncate">{album.name}</h3>
-              <p className="text-xs text-muted-foreground truncate">{album.primaryArtists}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {album.primaryArtists}
+              </p>
             </div>
           ))}
         </div>
-        
-        {searchResults.albums.length > 0 && searchResults.albums.length % 20 === 0 && (
-          <div className="flex justify-center mt-4">
-            <Button 
-              onClick={() => onLoadMore("albums")} 
-              disabled={isLoading}
-              variant="outline"
-            >
-              {isLoading ? "Loading..." : "Load More Albums"}
-            </Button>
-          </div>
-        )}
+
+        {searchResults.albums.length > 0 &&
+          searchResults.albums.length % 20 === 0 && (
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={() => onLoadMore("albums")}
+                disabled={isLoading}
+                variant="outline"
+              >
+                {isLoading ? "Loading..." : "Load More Albums"}
+              </Button>
+            </div>
+          )}
       </TabsContent>
 
       <TabsContent value="artists" className="mt-4">
@@ -217,7 +312,7 @@ const SearchTabs = ({
             <div
               key={artist.id}
               className="cursor-pointer hover:shadow-md transition-shadow group"
-              onClick={() => onNavigateToContent('artist', artist)}
+              onClick={() => onNavigateToContent("artist", artist)}
             >
               <div className="relative mb-2">
                 <LazyImage
@@ -229,22 +324,25 @@ const SearchTabs = ({
                   <Play className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <h3 className="font-medium text-sm truncate text-center">{artist.name}</h3>
+              <h3 className="font-medium text-sm truncate text-center">
+                {artist.name}
+              </h3>
             </div>
           ))}
         </div>
-        
-        {searchResults.artists.length > 0 && searchResults.artists.length % 20 === 0 && (
-          <div className="flex justify-center mt-4">
-            <Button 
-              onClick={() => onLoadMore("artists")} 
-              disabled={isLoading}
-              variant="outline"
-            >
-              {isLoading ? "Loading..." : "Load More Artists"}
-            </Button>
-          </div>
-        )}
+
+        {searchResults.artists.length > 0 &&
+          searchResults.artists.length % 20 === 0 && (
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={() => onLoadMore("artists")}
+                disabled={isLoading}
+                variant="outline"
+              >
+                {isLoading ? "Loading..." : "Load More Artists"}
+              </Button>
+            </div>
+          )}
       </TabsContent>
 
       <TabsContent value="playlists" className="mt-4">
@@ -253,7 +351,7 @@ const SearchTabs = ({
             <div
               key={playlist.id}
               className="cursor-pointer hover:shadow-md transition-shadow group"
-              onClick={() => onNavigateToContent('playlist', playlist)}
+              onClick={() => onNavigateToContent("playlist", playlist)}
             >
               <div className="relative mb-2">
                 <LazyImage
@@ -265,23 +363,28 @@ const SearchTabs = ({
                   <Play className="h-6 w-6 text-white" />
                 </div>
               </div>
-              <h3 className="font-medium text-sm truncate">{playlist.name || playlist.title}</h3>
-              <p className="text-xs text-muted-foreground truncate">{playlist.subtitle}</p>
+              <h3 className="font-medium text-sm truncate">
+                {playlist.name || playlist.title}
+              </h3>
+              <p className="text-xs text-muted-foreground truncate">
+                {playlist.subtitle}
+              </p>
             </div>
           ))}
         </div>
-        
-        {searchResults.playlists.length > 0 && searchResults.playlists.length % 20 === 0 && (
-          <div className="flex justify-center mt-4">
-            <Button 
-              onClick={() => onLoadMore("playlists")} 
-              disabled={isLoading}
-              variant="outline"
-            >
-              {isLoading ? "Loading..." : "Load More Playlists"}
-            </Button>
-          </div>
-        )}
+
+        {searchResults.playlists.length > 0 &&
+          searchResults.playlists.length % 20 === 0 && (
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={() => onLoadMore("playlists")}
+                disabled={isLoading}
+                variant="outline"
+              >
+                {isLoading ? "Loading..." : "Load More Playlists"}
+              </Button>
+            </div>
+          )}
       </TabsContent>
     </Tabs>
   );
