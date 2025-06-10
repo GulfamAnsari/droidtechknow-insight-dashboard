@@ -276,6 +276,7 @@ const Music = () => {
             onToggleLike={handleToggleLikeById}
             likedSongs={likedSongs.map((song) => song.id)}
             isPlaying={isPlaying}
+            currentIndex={currentIndex}
           />
         ) : (
           <MusicHomepage

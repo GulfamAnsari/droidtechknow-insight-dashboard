@@ -1,12 +1,13 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Play, Heart, Download, X, Loader2 } from "lucide-react";
+import { Play, Heart, Download, X, Loader2, Pause, SquareUserRound, Music, Music2, AudioLines } from "lucide-react";
 import { Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect, useRef } from "react";
 
 interface SearchTabsProps {
   searchResults: {
@@ -27,6 +28,7 @@ interface SearchTabsProps {
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
   isPlaying: boolean;
+  currentIndex: any;
 }
 
 const SearchTabs = ({
@@ -38,7 +40,8 @@ const SearchTabs = ({
   searchQuery,
   onLoadMore,
   onToggleLike,
-  isPlaying
+  isPlaying,
+  currentIndex
 }: SearchTabsProps) => {
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -59,6 +62,7 @@ const SearchTabs = ({
     return offlineSongs.some((song) => song.id === songId);
   };
 
+  const playlistRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const downloadSong = async (song: Song) => {
     try {
@@ -142,6 +146,22 @@ const SearchTabs = ({
     return likedSongs.some((song) => song.id === songId);
   };
 
+  // Auto-scroll to current song
+    useEffect(() => {
+      const playlist = searchResults?.songs;
+      if (playlistRef.current && playlist.length > 0) {
+        const currentSongElement = playlistRef.current.querySelector(
+          `[data-song-index="${currentIndex}"]`
+        );
+        if (currentSongElement) {
+          currentSongElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+          });
+        }
+      }
+    }, [currentIndex]);
+
   return (
     <Tabs defaultValue="songs" className="w-full mb-6">
       <TabsList className="flex justify-start border-b border-border bg-transparent p-0 gap-4 overflow-x-auto rounded-none">
@@ -171,7 +191,7 @@ const SearchTabs = ({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="songs" className="space-y-2 mt-4">
+      <TabsContent value="songs" className="space-y-2 mt-4" ref={playlistRef}>
         {searchResults.songs.map((song, index) => (
           <div
             key={song.id}
@@ -181,6 +201,7 @@ const SearchTabs = ({
                 : "hover:bg-muted/50"
             }`}
             onClick={() => onPlaySong(song)}
+            data-song-index={index}
           >
             <div className="relative">
               <LazyImage
@@ -191,7 +212,9 @@ const SearchTabs = ({
               {currentSong?.id === song.id && (
                 <div className="absolute inset-0 bg-black/30 rounded flex items-center justify-center">
                   {isPlaying ? (
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    <div className="w-3 h-3 animate-pulse">
+                      <AudioLines className="w-3 h-3 text-white" />
+                    </div>
                   ) : (
                     <Play className="w-3 h-3 text-white" />
                   )}
