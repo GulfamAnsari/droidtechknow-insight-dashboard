@@ -209,7 +209,7 @@ const Music = () => {
   useEffect(() => {
     if (currentSong) {
       musicApi.getSuggestedSongs(currentSong).then((songs) => {
-        setsuggestedSongs([...suggestedSongs, ...songs]);
+        setsuggestedSongs([songs]);
       });
     }
   }, [currentSong]);
