@@ -40,6 +40,20 @@ const Notepad = () => {
     }
   }, []);
   
+  // Auto-save to localStorage whenever content changes
+  useEffect(() => {
+    if (noteContent) {
+      localStorage.setItem(NOTEPAD_STORAGE_KEY, noteContent);
+    }
+  }, [noteContent]);
+
+  // Auto-save title whenever it changes
+  useEffect(() => {
+    if (noteTitle) {
+      localStorage.setItem(NOTEPAD_TITLE_KEY, noteTitle);
+    }
+  }, [noteTitle]);
+  
   // Save note to localStorage
   const saveNote = () => {
     localStorage.setItem(NOTEPAD_TITLE_KEY, noteTitle);
@@ -65,7 +79,7 @@ const Notepad = () => {
         
         <div className="p-3 border-t flex justify-between items-center bg-muted/30">
           <p className="text-xs text-muted-foreground">
-            {noteContent.length} characters
+            {noteContent.length} characters • Auto-saved
           </p>
           
           <Button

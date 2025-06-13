@@ -8,7 +8,8 @@ import {
   Download,
   Music,
   PlayCircle,
-  Loader2
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import { useMusicContext } from "@/contexts/MusicContext";
@@ -31,7 +32,9 @@ const SongsModal = () => {
     toggleLike,
     addToOffline,
     setDownloadProgress,
-    playAllSongs
+    playAllSongs,
+    downloadAllSongs,
+    deleteAllOfflineSongs
   } = useMusicContext();
 
   const [songs, setSongs] = useState<Song[]>([]);
@@ -292,6 +295,36 @@ const SongsModal = () => {
     setShowSongsModal(false);
   };
 
+  const handleDeleteAllOffline = async () => {
+    try {
+      await deleteAllOfflineSongs();
+      setSongs([]);
+      toast({
+        title: "Success",
+        description: "All offline songs deleted successfully",
+        variant: "success"
+      });
+    } catch (error) {
+      console.error("Delete all failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete offline songs",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (songs.length > 0) {
+      await downloadAllSongs(songs);
+      toast({
+        title: "Download Started",
+        description: `Downloading ${songs.length} songs...`,
+        variant: "success"
+      });
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -317,8 +350,7 @@ const SongsModal = () => {
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="bg-background rounded-2xl border border-white/10 w-full max-w-4xl lg:max-h-[78vh] h-full flex flex-col overflow-hidden pb-[100px] sm:pb-0">
           {/* Header */}
-
-          <div className="flex  flex-col-reverse sm:flex-row justify-between gap-4 border-b p-6">
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 border-b p-6">
             <div className="flex items-center gap-4">
               {songsModalData.image && (
                 <LazyImage
@@ -332,7 +364,7 @@ const SongsModal = () => {
                 <p className="text-muted-foreground">{songs.length} songs</p>
               </div>
             </div>
-            <div className=" shrink-0">
+            <div className="shrink-0">
               <div className="flex items-center justify-end mb-4 gap-4">
                 {songs.length > 0 && (
                   <div className="flex gap-2">
@@ -344,6 +376,26 @@ const SongsModal = () => {
                       <PlayCircle className="h-4 w-4 mr-2" />
                       Play All
                     </Button>
+                    {songsModalData.type !== "offline" && (
+                      <Button
+                        onClick={handleDownloadAll}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download All
+                      </Button>
+                    )}
+                    {songsModalData.type === "offline" && (
+                      <Button
+                        onClick={handleDeleteAllOffline}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete All
+                      </Button>
+                    )}
                   </div>
                 )}
                 <Button onClick={handleClose} variant="secondary" size="sm">

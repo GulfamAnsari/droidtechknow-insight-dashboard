@@ -59,7 +59,9 @@ const Music = () => {
     playSong,
     playNext,
     playPrevious,
-    toggleLike
+    toggleLike,
+    downloadAllSongs,
+    deleteAllOfflineSongs
   } = useMusicContext();
 
   // Search states
@@ -187,13 +189,18 @@ const Music = () => {
     setShowSongsModal(true);
   };
 
-  const handleToggleLikeById = (songId: string) => {
-    const song =
-      playlist.find((s) => s.id === songId) ||
-      likedSongs.find((s) => s.id === songId) ||
-      offlineSongs.find((s) => s.id === songId);
+  const handleToggleLike = (songId: string) => {
+    const song = playlist.find((s) => s.id === songId) || 
+                 likedSongs.find((s) => s.id === songId) || 
+                 offlineSongs.find((s) => s.id === songId);
     if (song) {
       toggleLike(song);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (playlist.length > 0) {
+      await downloadAllSongs(playlist);
     }
   };
 
@@ -255,6 +262,15 @@ const Music = () => {
                 <Download className="h-4 w-4" />
                 Offline Songs ({offlineSongs.length})
               </DropdownMenuItem>
+              {playlist.length > 0 && (
+                <DropdownMenuItem
+                  onClick={handleDownloadAll}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download All ({playlist.length})
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -273,7 +289,7 @@ const Music = () => {
             currentSong={currentSong}
             searchQuery={searchQuery}
             onLoadMore={handleLoadMore}
-            onToggleLike={handleToggleLikeById}
+            onToggleLike={handleToggleLike}
             likedSongs={likedSongs.map((song) => song.id)}
             isPlaying={isPlaying}
             currentIndex={currentIndex}
@@ -283,7 +299,7 @@ const Music = () => {
             onPlaySong={playSong}
             onNavigateToContent={handleNavigateToContent}
             currentSong={currentSong}
-            onToggleLike={handleToggleLikeById}
+            onToggleLike={handleToggleLike}
             likedSongs={likedSongs.map((song) => song.id)}
             isPlaying={isPlaying}
             setPlaylist={setPlaylist}

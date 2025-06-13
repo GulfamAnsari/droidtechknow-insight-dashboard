@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Song } from '@/services/musicApi';
 
@@ -56,6 +55,8 @@ interface MusicContextType {
   playNext: () => void;
   playPrevious: () => void;
   playAllSongs: (songs: Song[]) => void;
+  downloadAllSongs: (songs: Song[]) => Promise<void>;
+  deleteAllOfflineSongs: () => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -197,6 +198,109 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     }
   };
 
+  const downloadAllSongs = async (songs: Song[]) => {
+    for (const song of songs) {
+      try {
+        setDownloadProgress(song.id, 10);
+
+        const audioUrl =
+          song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+          song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+          song.downloadUrl?.[0]?.url;
+
+        if (!audioUrl) {
+          setDownloadProgress(song.id, -1);
+          continue;
+        }
+
+        const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+        setDownloadProgress(song.id, 30);
+        const audioResponse = await fetch(secureAudioUrl);
+        const audioBlob = await audioResponse.blob();
+
+        setDownloadProgress(song.id, 70);
+
+        const imageUrl = song.image?.[0]?.url;
+        let imageBlob = null;
+        if (imageUrl) {
+          const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+          const imageResponse = await fetch(secureImageUrl);
+          imageBlob = await imageResponse.blob();
+        }
+
+        setDownloadProgress(song.id, 90);
+
+        const request = indexedDB.open("OfflineMusicDB", 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains("songs")) {
+            db.createObjectStore("songs", { keyPath: "id" });
+          }
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction(["songs"], "readwrite");
+          const store = transaction.objectStore("songs");
+
+          store.put({
+            ...song,
+            audioBlob: audioBlob,
+            imageBlob: imageBlob
+          });
+
+          addToOffline(song);
+          setDownloadProgress(song.id, 100);
+          
+          setTimeout(() => {
+            setDownloadProgress(song.id, 0);
+          }, 2000);
+        };
+      } catch (error) {
+        console.error("Download failed for song:", song.name, error);
+        setDownloadProgress(song.id, -1);
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 3000);
+      }
+    }
+  };
+
+  const deleteAllOfflineSongs = async () => {
+    return new Promise<void>((resolve) => {
+      const request = indexedDB.open("OfflineMusicDB", 1);
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        
+        if (!db.objectStoreNames.contains("songs")) {
+          setOfflineSongs([]);
+          resolve();
+          return;
+        }
+        
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
+        
+        const clearRequest = store.clear();
+        
+        clearRequest.onsuccess = () => {
+          setOfflineSongs([]);
+          resolve();
+        };
+        
+        clearRequest.onerror = () => {
+          resolve();
+        };
+      };
+      
+      request.onerror = () => {
+        resolve();
+      };
+    });
+  };
+
   const value: MusicContextType = {
     // Player state
     currentSong,
@@ -244,6 +348,8 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     playNext,
     playPrevious,
     playAllSongs,
+    downloadAllSongs,
+    deleteAllOfflineSongs,
   };
 
   return (

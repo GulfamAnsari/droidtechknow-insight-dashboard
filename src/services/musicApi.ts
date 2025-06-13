@@ -1,4 +1,3 @@
-
 import httpClient from "@/utils/httpClient";
 
 export interface Song {
@@ -18,6 +17,11 @@ export interface Song {
     url: string;
   }[];
   duration: number;
+  album?: {
+    id: string;
+    name: string;
+  };
+  year?: string;
 }
 
 export interface Album {
@@ -176,6 +180,55 @@ class MusicApiService {
       return response?.data || [];
     } catch (error) {
       console.error("Get suggestions failed:", error);
+      return [];
+    }
+  }
+
+  async getSuggestedSongs(currentSong: Song): Promise<Song[]> {
+    try {
+      let allSuggestions: Song[] = [];
+      
+      // Get suggestions based on current song
+      const directSuggestions = await this.getSuggestions(currentSong.id);
+      allSuggestions = [...allSuggestions, ...directSuggestions];
+
+      // Get songs from same album if available
+      if (currentSong.album?.id) {
+        const albumSongs = await this.getAlbumSongs(currentSong.album.id);
+        allSuggestions = [...allSuggestions, ...albumSongs.filter(song => song.id !== currentSong.id)];
+      }
+
+      // Get songs from same artists
+      if (currentSong.artists?.primary?.length > 0) {
+        for (const artist of currentSong.artists.primary.slice(0, 2)) { // Limit to first 2 artists
+          const artistResults = await this.search(artist.name, 1, 10);
+          allSuggestions = [...allSuggestions, ...artistResults.songs.filter(song => song.id !== currentSong.id)];
+        }
+      }
+
+      // Search by year if available
+      if (currentSong.year) {
+        const yearResults = await this.search(`year:${currentSong.year}`, 1, 10);
+        allSuggestions = [...allSuggestions, ...yearResults.songs.filter(song => song.id !== currentSong.id)];
+      }
+
+      // Search by keywords from song name
+      const keywords = currentSong.name.split(' ').filter(word => word.length > 3).slice(0, 3);
+      for (const keyword of keywords) {
+        const keywordResults = await this.search(keyword, 1, 5);
+        allSuggestions = [...allSuggestions, ...keywordResults.songs.filter(song => song.id !== currentSong.id)];
+      }
+
+      // Remove duplicates and current song
+      const uniqueSuggestions = allSuggestions.filter((song, index, self) => 
+        song.id !== currentSong.id && 
+        index === self.findIndex(s => s.id === song.id)
+      );
+
+      // Return first 20 suggestions
+      return uniqueSuggestions.slice(0, 20);
+    } catch (error) {
+      console.error("Get suggested songs failed:", error);
       return [];
     }
   }
