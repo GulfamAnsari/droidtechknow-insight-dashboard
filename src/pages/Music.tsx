@@ -36,6 +36,7 @@ const Music = () => {
   const isMobile = useIsMobile();
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
+  const [activeTab, setActiveTab] = useState("playlist");
 
   const {
     currentSong,
@@ -72,7 +73,6 @@ const Music = () => {
     deleteAllOfflineSongs,
   } = useMusicContext();
 
-  // Search states
   const [searchResults, setSearchResults] = useState<{
     songs: Song[];
     albums: any[];
@@ -313,7 +313,7 @@ const Music = () => {
                 setShowPlaylist(!showPlaylist);
                 if (showSuggested) setShowSuggested(false);
               }}
-              variant={showPlaylist ? "default" : "outline"}
+              variant={showPlaylist || isPlaying ? "default" : "outline"}
               size="sm"
               className="gap-2"
             >
@@ -397,25 +397,24 @@ const Music = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <MusicIcon className="h-5 w-5" />
-                  Now Playing
+                  Music Queue
                 </h2>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      setShowSuggested(!showSuggested);
-                    }}
-                    variant={showSuggested ? "default" : "outline"}
-                    size="sm"
-                  >
-                    <Lightbulb className="h-4 w-4 mr-1" />
-                    Suggested
-                  </Button>
-                </div>
               </div>
+              
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="playlist">
+                    Now Playing ({playlist.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="suggestions">
+                    Suggested ({suggestedSongs.length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              {!showSuggested ? (
+              {activeTab === "playlist" ? (
                 <div className="p-2">
                   {playlist.map((playlistSong, index) => (
                     <div

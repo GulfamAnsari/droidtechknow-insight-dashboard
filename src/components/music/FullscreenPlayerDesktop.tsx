@@ -75,7 +75,7 @@ const FullscreenPlayerDesktop = ({
   suggestedSongs,
   onLoadMoreSongs
 }: FullscreenPlayerDesktopProps) => {
-  const [showPlaylist, setShowPlaylist] = useState(false);
+  const [showPlaylist, setShowPlaylist] = useState(true);
   const [activeTab, setActiveTab] = useState("playlist");
 
   const formatTime = (seconds: number) => {
@@ -91,25 +91,22 @@ const FullscreenPlayerDesktop = ({
     }
   };
 
-  const handleSongClick = (clickedSong: Song, songs: Song[]) => {
-    const songIndex = songs.findIndex(s => s.id === clickedSong.id);
-    if (songIndex !== -1) {
-      onPlaySong(clickedSong);
-    }
+  const handleSongClick = (clickedSong: Song) => {
+    onPlaySong(clickedSong);
   };
 
-  const renderSongList = (songs: Song[], title: string) => {
+  const renderSongList = (songs: Song[], isPlaylistTab: boolean = false) => {
     return (
       <div className="p-2">
         {songs.map((listSong, index) => (
           <div
             key={listSong.id}
             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-              (activeTab === "playlist" && currentIndex === index) || listSong.id === song.id
+              (isPlaylistTab && currentIndex === index) || listSong.id === song.id
                 ? "bg-primary/20 border border-primary/30"
                 : "hover:bg-background/50"
             }`}
-            onClick={() => handleSongClick(listSong, songs)}
+            onClick={() => handleSongClick(listSong)}
           >
             <LazyImage
               src={listSong.image?.[0]?.url}
@@ -129,7 +126,7 @@ const FullscreenPlayerDesktop = ({
             </span>
           </div>
         ))}
-        {activeTab === "playlist" && onLoadMoreSongs && (
+        {isPlaylistTab && onLoadMoreSongs && (
           <div className="p-3">
             <Button
               onClick={onLoadMoreSongs}
@@ -158,16 +155,6 @@ const FullscreenPlayerDesktop = ({
           className="absolute top-4 left-4"
         >
           <X className="h-6 w-6" />
-        </Button>
-
-        {/* Now Playing Toggle Button */}
-        <Button
-          onClick={() => setShowPlaylist(!showPlaylist)}
-          variant="ghost"
-          size="icon"
-          className={`absolute top-4 right-4 ${showPlaylist ? "text-primary" : ""}`}
-        >
-          <List className="h-6 w-6" />
         </Button>
 
         {/* Album Art */}
@@ -266,6 +253,15 @@ const FullscreenPlayerDesktop = ({
               className="w-24"
             />
           </div>
+
+          <Button
+            onClick={() => setShowPlaylist(!showPlaylist)}
+            variant="ghost"
+            size="icon"
+            className={showPlaylist ? "text-primary" : ""}
+          >
+            <List className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
@@ -290,13 +286,13 @@ const FullscreenPlayerDesktop = ({
               
               <TabsContent value="playlist" className="mt-4">
                 <ScrollArea className="h-[calc(100vh-200px)]">
-                  {renderSongList(playlist, "Current Playlist")}
+                  {renderSongList(playlist, true)}
                 </ScrollArea>
               </TabsContent>
               
               <TabsContent value="suggestions" className="mt-4">
                 <ScrollArea className="h-[calc(100vh-200px)]">
-                  {renderSongList(suggestedSongs, "Suggested Songs")}
+                  {renderSongList(suggestedSongs, false)}
                 </ScrollArea>
               </TabsContent>
             </Tabs>
