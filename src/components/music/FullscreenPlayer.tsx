@@ -88,7 +88,7 @@ const FullscreenPlayer = ({
   likedSongs,
   suggestedSongs,
   onToggleMute,
-  isMuted
+  isMuted,
 }: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);

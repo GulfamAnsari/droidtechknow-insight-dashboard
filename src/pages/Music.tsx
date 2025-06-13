@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, act } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,7 @@ const Music = () => {
     playlists: 0
   });
 
+  const playlistRef = useRef(null);
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([])
 
   const handleSearch = async () => {
@@ -263,12 +264,27 @@ const Music = () => {
   }, [isFullscreen, setIsFullscreen, setShowSongsModal]);
 
   useEffect(() => {
-    if (currentSong) {
+    if (currentSong && (activeTab == 'suggestions' || isMobile)) {
       musicApi.getSuggestedSongs(currentSong, suggestedSongs).then((songs) => {
         setSuggestedSongs(songs || []);
       });
     }
-  }, [currentSong]);
+  }, [currentSong, isMobile, activeTab]);
+
+  // Auto-scroll to current song
+  useEffect(() => {
+    if (playlistRef.current && playlist.length > 0) {
+      const currentSongElement = playlistRef.current.querySelector(
+        `[data-song-index="${currentIndex}"]`
+      );
+      if (currentSongElement) {
+        currentSongElement.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+      }
+    }
+  }, [currentIndex, playlist]);
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
@@ -408,12 +424,13 @@ const Music = () => {
             
             <div className="flex-1 overflow-y-auto mb-16">
               {activeTab === "playlist" ? (
-                <div className="p-2">
+                <div className="p-2" ref={activeTab === "playlist" || activeTab === "suggestions" ? playlistRef : undefined}>
                   {playlist.map((playlistSong, index) => (
                     <div
                       key={playlistSong.id}
+                      data-song-index={activeTab === "playlist" ? index : undefined}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                        currentIndex === index
+                        playlistSong?.id === currentSong?.id
                           ? "bg-primary/20 border border-primary/30"
                           : "hover:bg-background/50"
                       }`}
@@ -456,12 +473,17 @@ const Music = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-2">
-                  {suggestedSongs.map((suggestedSong) => (
+                <div className="p-2" ref={activeTab === "playlist" || activeTab === "suggestions" ? playlistRef : undefined}>
+                  {suggestedSongs.map((suggestedSong, index) => (
                     <div
                       key={suggestedSong.id}
-                      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-background/50"
+                      data-song-index={activeTab === "suggestions" ? index : undefined}
                       onClick={() => playSong(suggestedSong)}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        suggestedSong?.id === currentSong?.id
+                          ? "bg-primary/20 border border-primary/30"
+                          : "hover:bg-background/50"
+                      }`}
                     >
                       <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
                         <img
