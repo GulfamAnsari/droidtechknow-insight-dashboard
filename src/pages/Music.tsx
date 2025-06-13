@@ -266,6 +266,7 @@ const Music = () => {
   useEffect(() => {
     if (currentSong && (activeTab == 'suggestions' || isMobile)) {
       musicApi.getSuggestedSongs(currentSong, suggestedSongs).then((songs) => {
+        setPlaylist([...playlist, ...suggestedSongs]);
         setSuggestedSongs(songs || []);
       });
     }
