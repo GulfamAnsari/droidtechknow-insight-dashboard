@@ -64,6 +64,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     <div className="h-full flex flex-col">
       {/* Sidebar header - removed Home icon here */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
+        <span className="text-lg font-semibold">Navigation</span>
         <button
           onClick={() => setOpen(false)}
           className="text-sidebar-foreground hover:text-white"
@@ -103,15 +104,15 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   if (isMobile) {
     return (
       <>
-        {/* Side menu button in middle left */}
-        <div className="fixed left-0 top-1/2 transform -translate-y-1/2 z-40">
+        {/* Floating hamburger menu button - positioned in header left */}
+        <div className="fixed left-2 top-2 z-40">
           <Button 
-            variant="outline" 
+            variant="ghost" 
             size="icon" 
-            className="h-12 w-12 rounded-full shadow-lg bg-background border-primary"
+            className="h-10 w-10 rounded-md"
             onClick={() => setOpen(true)}
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           </Button>
         </div>
         

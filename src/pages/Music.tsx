@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,12 +23,15 @@ import { useMusicContext } from "@/contexts/MusicContext";
 import AudioPlayer from "@/components/music/AudioPlayer";
 import SearchTabs from "@/components/music/SearchTabs";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
+import FullscreenPlayerDesktop from "@/components/music/FullscreenPlayerDesktop";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
 import MusicHomepage from "@/components/music/MusicHomepage";
 import SongsModal from "@/components/music/SongsModal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const isMobile = useIsMobile();
 
   const {
     currentSong,
@@ -84,7 +88,7 @@ const Music = () => {
     playlists: 0
   });
 
-  const [suggestedSongs, setsuggestedSongs] = useState([])
+  const [suggestedSongs, setSuggestedSongs] = useState([])
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -97,7 +101,8 @@ const Music = () => {
     try {
       const results = await musicApi.search(searchQuery, 1, 20);
       setSearchResults(results);
-      setPlaylist(results.songs);
+      // Append new search results to existing playlist instead of replacing
+      setPlaylist(prev => [...prev, ...results.songs]);
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
@@ -209,7 +214,7 @@ const Music = () => {
   useEffect(() => {
     if (currentSong) {
       musicApi.getSuggestedSongs(currentSong).then((songs) => {
-        setsuggestedSongs([songs]);
+        setSuggestedSongs([songs]);
       });
     }
   }, [currentSong]);
@@ -287,33 +292,83 @@ const Music = () => {
       </div>
 
       {/* Main Content */}
-      <div
-        className={`bg-background flex-1 overflow-auto p-6 ${currentSong ? "pb-24" : "pb-6"}`}
-      >
-        {isSearchMode ? (
-          <SearchTabs
-            searchResults={searchResults}
-            onPlaySong={playSong}
-            onNavigateToContent={handleNavigateToContent}
-            isLoading={isLoading}
-            currentSong={currentSong}
-            searchQuery={searchQuery}
-            onLoadMore={handleLoadMore}
-            onToggleLike={handleToggleLike}
-            likedSongs={likedSongs.map((song) => song.id)}
-            isPlaying={isPlaying}
-            currentIndex={currentIndex}
-          />
-        ) : (
-          <MusicHomepage
-            onPlaySong={playSong}
-            onNavigateToContent={handleNavigateToContent}
-            currentSong={currentSong}
-            onToggleLike={handleToggleLike}
-            likedSongs={likedSongs.map((song) => song.id)}
-            isPlaying={isPlaying}
-            setPlaylist={setPlaylist}
-          />
+      <div className="flex flex-1 overflow-hidden">
+        <div
+          className={`bg-background flex-1 overflow-auto p-6 ${currentSong ? "pb-24" : "pb-6"}`}
+        >
+          {isSearchMode ? (
+            <SearchTabs
+              searchResults={searchResults}
+              onPlaySong={playSong}
+              onNavigateToContent={handleNavigateToContent}
+              isLoading={isLoading}
+              currentSong={currentSong}
+              searchQuery={searchQuery}
+              onLoadMore={handleLoadMore}
+              onToggleLike={handleToggleLike}
+              likedSongs={likedSongs.map((song) => song.id)}
+              isPlaying={isPlaying}
+              currentIndex={currentIndex}
+            />
+          ) : (
+            <MusicHomepage
+              onPlaySong={playSong}
+              onNavigateToContent={handleNavigateToContent}
+              currentSong={currentSong}
+              onToggleLike={handleToggleLike}
+              likedSongs={likedSongs.map((song) => song.id)}
+              isPlaying={isPlaying}
+              setPlaylist={setPlaylist}
+            />
+          )}
+        </div>
+
+        {/* Desktop Playlist Sidebar - Show when not in fullscreen and on desktop */}
+        {!isMobile && !isFullscreen && currentSong && playlist.length > 0 && (
+          <div className="w-80 border-l bg-muted/30 flex flex-col">
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <MusicIcon className="h-5 w-5" />
+                Now Playing ({playlist.length})
+              </h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-2">
+              {playlist.map((playlistSong, index) => (
+                <div
+                  key={playlistSong.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                    currentIndex === index
+                      ? "bg-primary/20 border border-primary/30"
+                      : "hover:bg-background/50"
+                  }`}
+                  onClick={() => playSong(playlistSong)}
+                >
+                  <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                    <img
+                      src={playlistSong.image?.[0]?.url}
+                      alt={playlistSong.name}
+                      className="w-10 h-10 rounded object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {playlistSong.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {playlistSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {Math.floor(playlistSong.duration / 60)}:{(playlistSong.duration % 60).toString().padStart(2, "0")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -346,35 +401,69 @@ const Music = () => {
 
       {/* Fullscreen Player */}
       {isFullscreen && currentSong && (
-        <FullscreenPlayer
-          song={currentSong}
-          isPlaying={isPlaying}
-          onPlayPause={togglePlayPause}
-          onNext={playNext}
-          onPrevious={playPrevious}
-          onClose={() => setIsFullscreen(false)}
-          isRepeat={isRepeat}
-          isShuffle={isShuffle}
-          onToggleRepeat={() => setIsRepeat(!isRepeat)}
-          onToggleShuffle={() => setIsShuffle(!isShuffle)}
-          playlist={playlist}
-          currentIndex={currentIndex}
-          onPlaySong={playSong}
-          currentTime={currentTime}
-          duration={duration}
-          onTimeUpdate={handleTimeUpdate}
-          onDurationUpdate={handleDurationUpdate}
-          volume={isMuted ? 0 : volume}
-          onVolumeChange={setVolume}
-          onToggleLike={(songId: string) => {
-            const song = playlist.find((s) => s.id === songId);
-            if (song) toggleLike(song);
-          }}
-          likedSongs={likedSongs.map((song) => song.id)}
-          onToggleMute={toggleMute}
-          isMuted={isMuted}
-          suggestedSongs={suggestedSongs}
-        />
+        <>
+          {isMobile ? (
+            <FullscreenPlayer
+              song={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={togglePlayPause}
+              onNext={playNext}
+              onPrevious={playPrevious}
+              onClose={() => setIsFullscreen(false)}
+              isRepeat={isRepeat}
+              isShuffle={isShuffle}
+              onToggleRepeat={() => setIsRepeat(!isRepeat)}
+              onToggleShuffle={() => setIsShuffle(!isShuffle)}
+              playlist={playlist}
+              currentIndex={currentIndex}
+              onPlaySong={playSong}
+              currentTime={currentTime}
+              duration={duration}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationUpdate={handleDurationUpdate}
+              volume={isMuted ? 0 : volume}
+              onVolumeChange={setVolume}
+              onToggleLike={(songId: string) => {
+                const song = playlist.find((s) => s.id === songId);
+                if (song) toggleLike(song);
+              }}
+              likedSongs={likedSongs.map((song) => song.id)}
+              onToggleMute={toggleMute}
+              isMuted={isMuted}
+              suggestedSongs={suggestedSongs}
+            />
+          ) : (
+            <FullscreenPlayerDesktop
+              song={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={togglePlayPause}
+              onNext={playNext}
+              onPrevious={playPrevious}
+              onClose={() => setIsFullscreen(false)}
+              isRepeat={isRepeat}
+              isShuffle={isShuffle}
+              onToggleRepeat={() => setIsRepeat(!isRepeat)}
+              onToggleShuffle={() => setIsShuffle(!isShuffle)}
+              playlist={playlist}
+              currentIndex={currentIndex}
+              onPlaySong={playSong}
+              currentTime={currentTime}
+              duration={duration}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationUpdate={handleDurationUpdate}
+              volume={isMuted ? 0 : volume}
+              onVolumeChange={setVolume}
+              onToggleLike={(songId: string) => {
+                const song = playlist.find((s) => s.id === songId);
+                if (song) toggleLike(song);
+              }}
+              likedSongs={likedSongs.map((song) => song.id)}
+              onToggleMute={toggleMute}
+              isMuted={isMuted}
+              suggestedSongs={suggestedSongs}
+            />
+          )}
+        </>
       )}
     </div>
   );

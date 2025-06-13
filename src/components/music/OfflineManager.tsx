@@ -1,7 +1,19 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Play, Heart, Trash2, Music, Trash } from 'lucide-react';
 import LazyImage from '@/components/ui/lazy-image';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Song {
   id: string;
@@ -223,10 +235,28 @@ const OfflineManager = ({
           <div className="flex gap-2">
             {offlineSongs.length > 0 && (
               <>
-                <Button onClick={deleteAllOfflineSongs} variant="outline" size="sm" className="text-red-500">
-                  <Trash className="h-4 w-4 mr-2" />
-                  Delete All
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-500">
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete All Offline Songs</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete all {offlineSongs.length} offline songs? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={deleteAllOfflineSongs} className="bg-red-500 hover:bg-red-600 text-white">
+                        Delete All
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button onClick={playAllOfflineSongs} variant="outline" size="sm">
                   <Play className="h-4 w-4 mr-2" />
                   Play All
