@@ -103,25 +103,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   // For mobile devices use Drawer component
   if (isMobile) {
     return (
-      <>
-        {/* Floating hamburger menu button - positioned in header left */}
-        <div className="fixed left-2 top-2 z-40">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-10 w-10 rounded-md"
-            onClick={() => setOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerContent className="h-[90vh] fixed inset-y-0 left-0 w-72">
-            <SidebarContent />
-          </DrawerContent>
-        </Drawer>
-      </>
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerContent className="h-[90vh] fixed inset-y-0 left-0 w-72">
+          <SidebarContent />
+        </DrawerContent>
+      </Drawer>
     );
   }
 

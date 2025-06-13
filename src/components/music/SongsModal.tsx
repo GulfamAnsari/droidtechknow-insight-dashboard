@@ -43,6 +43,23 @@ const SongsModal = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && showSongsModal) {
+        setShowSongsModal(false);
+      }
+    };
+
+    if (showSongsModal) {
+      document.addEventListener("keydown", handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscKey);
+    };
+  }, [showSongsModal, setShowSongsModal]);
+
   useEffect(() => {
     if (showSongsModal && songsModalData) {
       loadInitialSongs();

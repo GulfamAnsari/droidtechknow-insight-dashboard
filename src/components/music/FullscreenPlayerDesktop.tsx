@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   X,
   Play,
@@ -72,6 +73,7 @@ const FullscreenPlayerDesktop = ({
   suggestedSongs
 }: FullscreenPlayerDesktopProps) => {
   const [showPlaylist, setShowPlaylist] = useState(true);
+  const [activeTab, setActiveTab] = useState("playlist");
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -84,6 +86,41 @@ const FullscreenPlayerDesktop = ({
       const newTime = (value[0] / 100) * duration;
       onTimeUpdate(newTime);
     }
+  };
+
+  const renderSongList = (songs: Song[], title: string) => {
+    return (
+      <div className="p-2">
+        {songs.map((listSong, index) => (
+          <div
+            key={listSong.id}
+            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+              (activeTab === "playlist" && currentIndex === index) || listSong.id === song.id
+                ? "bg-primary/20 border border-primary/30"
+                : "hover:bg-background/50"
+            }`}
+            onClick={() => onPlaySong(listSong)}
+          >
+            <LazyImage
+              src={listSong.image?.[0]?.url}
+              alt={listSong.name}
+              className="w-10 h-10 rounded object-cover"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-medium">
+                {listSong.name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {listSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {Math.floor(listSong.duration / 60)}:{(listSong.duration % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -212,44 +249,34 @@ const FullscreenPlayerDesktop = ({
       {showPlaylist && (
         <div className="w-96 border-l bg-muted/30 flex flex-col">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <Music className="h-5 w-5" />
-              Now Playing ({playlist.length})
+              Music Queue
             </h2>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="playlist">
+                  Now Playing ({playlist.length})
+                </TabsTrigger>
+                <TabsTrigger value="suggestions">
+                  Suggested ({suggestedSongs.length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="playlist" className="mt-4">
+                <ScrollArea className="h-[calc(100vh-200px)]">
+                  {renderSongList(playlist, "Current Playlist")}
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="suggestions" className="mt-4">
+                <ScrollArea className="h-[calc(100vh-200px)]">
+                  {renderSongList(suggestedSongs, "Suggested Songs")}
+                </Scroll Area>
+              </TabsContent>
+            </Tabs>
           </div>
-          
-          <ScrollArea className="flex-1">
-            <div className="p-2">
-              {playlist.map((playlistSong, index) => (
-                <div
-                  key={playlistSong.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    currentIndex === index
-                      ? "bg-primary/20 border border-primary/30"
-                      : "hover:bg-background/50"
-                  }`}
-                  onClick={() => onPlaySong(playlistSong)}
-                >
-                  <LazyImage
-                    src={playlistSong.image?.[0]?.url}
-                    alt={playlistSong.name}
-                    className="w-10 h-10 rounded object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {playlistSong.name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {playlistSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {Math.floor(playlistSong.duration / 60)}:{(playlistSong.duration % 60).toString().padStart(2, "0")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
         </div>
       )}
     </div>
