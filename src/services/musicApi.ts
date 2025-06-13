@@ -6,6 +6,7 @@ export interface Song {
   artists: {
     primary: {
       name: string;
+      id: string;
     }[];
   };
   image: {
@@ -187,10 +188,6 @@ class MusicApiService {
   async getSuggestedSongs(currentSong: Song): Promise<Song[]> {
     try {
       let allSuggestions: Song[] = [];
-      
-      // Get suggestions based on current song
-      const directSuggestions = await this.getSuggestions(currentSong.id);
-      allSuggestions = [...allSuggestions, ...directSuggestions];
 
       // Get songs from same album if available
       if (currentSong.album?.id) {
@@ -201,22 +198,9 @@ class MusicApiService {
       // Get songs from same artists
       if (currentSong.artists?.primary?.length > 0) {
         for (const artist of currentSong.artists.primary.slice(0, 2)) { // Limit to first 2 artists
-          const artistResults = await this.search(artist.name, 1, 10);
-          allSuggestions = [...allSuggestions, ...artistResults.songs.filter(song => song.id !== currentSong.id)];
+          const artistResults = await this.getArtistSongs(artist.id);
+          allSuggestions = [...allSuggestions, ...artistResults.filter(song => song.id !== currentSong.id)];
         }
-      }
-
-      // Search by year if available
-      if (currentSong.year) {
-        const yearResults = await this.search(`year:${currentSong.year}`, 1, 10);
-        allSuggestions = [...allSuggestions, ...yearResults.songs.filter(song => song.id !== currentSong.id)];
-      }
-
-      // Search by keywords from song name
-      const keywords = currentSong.name.split(' ').filter(word => word.length > 3).slice(0, 3);
-      for (const keyword of keywords) {
-        const keywordResults = await this.search(keyword, 1, 5);
-        allSuggestions = [...allSuggestions, ...keywordResults.songs.filter(song => song.id !== currentSong.id)];
       }
 
       // Remove duplicates and current song
