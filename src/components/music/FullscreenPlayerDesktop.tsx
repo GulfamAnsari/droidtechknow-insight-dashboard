@@ -62,6 +62,8 @@ interface FullscreenPlayerProps {
   suggestedSongs: Song[];
   onToggleMute: () => void;
   isMuted: boolean;
+  setActiveTab: (tab: string) => void;
+  activeTab: string;
 }
 
 const FullscreenPlayer = ({
@@ -88,7 +90,9 @@ const FullscreenPlayer = ({
   likedSongs,
   suggestedSongs,
   onToggleMute,
-  isMuted
+  isMuted,
+  setActiveTab,
+  activeTab
 }: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
@@ -100,7 +104,6 @@ const FullscreenPlayer = ({
     null
   );
   const [showList, setShowList] = useState(false);
-  const [activeTab, setActiveTab] = useState("playlist");
 
   useEffect(() => {
     if (audioRef.current && song) {

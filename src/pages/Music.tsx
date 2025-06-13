@@ -264,13 +264,22 @@ const Music = () => {
   }, [isFullscreen, setIsFullscreen, setShowSongsModal]);
 
   useEffect(() => {
-    if (currentSong && (activeTab == 'suggestions' || isMobile)) {
+    if (currentSong && activeTab == 'suggestions') {
       musicApi.getSuggestedSongs(currentSong, suggestedSongs).then((songs) => {
-        setPlaylist([...playlist, ...suggestedSongs]);
+        const updatedPlaylist = [...playlist, ...suggestedSongs];
+
+        // Remove duplicates by song.id
+        const uniquePlaylist = updatedPlaylist.filter(
+          (song, index, self) =>
+            index === self.findIndex(s => s.id === song.id)
+        );
+
+        // Set the playlist
+        setPlaylist(uniquePlaylist);
         setSuggestedSongs(songs || []);
       });
     }
-  }, [currentSong, isMobile, activeTab]);
+  }, [currentSong, activeTab]);
 
   // Auto-scroll to current song
   useEffect(() => {
@@ -575,6 +584,8 @@ const Music = () => {
               onToggleMute={toggleMute}
               isMuted={isMuted}
               suggestedSongs={suggestedSongs}
+              setActiveTab={setActiveTab}
+              activeTab={activeTab}
             />
           ) : (
             <FullscreenPlayerDesktop
@@ -605,6 +616,8 @@ const Music = () => {
               onToggleMute={toggleMute}
               isMuted={isMuted}
               suggestedSongs={suggestedSongs}
+              setActiveTab={setActiveTab}
+              activeTab={activeTab}
             />
           )}
         </>
