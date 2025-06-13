@@ -21,7 +21,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
         <div className="flex items-center">
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground lg:hidden mr-3"
+            className="text-muted-foreground hover:text-foreground mr-3"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <span className="sr-only">Toggle sidebar</span>

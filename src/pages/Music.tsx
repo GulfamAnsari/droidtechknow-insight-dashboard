@@ -11,7 +11,8 @@ import {
   ArrowLeft,
   Settings,
   List,
-  Lightbulb
+  Lightbulb,
+  MoreHorizontal
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,7 +34,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useIsMobile();
-  const [showPlaylist, setShowPlaylist] = useState(true);
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
 
   const {
@@ -148,6 +149,35 @@ const Music = () => {
       console.error(`Load more ${type} failed:`, error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLoadMoreSongs = async () => {
+    if (searchQuery.trim()) {
+      const nextPage = currentPages.songs + 1;
+      try {
+        const newResults = await musicApi.searchByType(
+          "songs",
+          searchQuery,
+          nextPage,
+          20
+        );
+        
+        setSearchResults((prev) => ({
+          ...prev,
+          songs: [...prev.songs, ...newResults]
+        }));
+
+        setCurrentPages((prev) => ({
+          ...prev,
+          songs: nextPage
+        }));
+
+        const updatedSongs = [...playlist, ...newResults];
+        setPlaylist(updatedSongs);
+      } catch (error) {
+        console.error("Load more songs failed:", error);
+      }
     }
   };
 
@@ -276,6 +306,22 @@ const Music = () => {
             </Button>
           </div>
 
+          {/* Now Playing Toggle for Desktop */}
+          {!isMobile && currentSong && !isFullscreen && (
+            <Button
+              onClick={() => {
+                setShowPlaylist(!showPlaylist);
+                if (showSuggested) setShowSuggested(false);
+              }}
+              variant={showPlaylist ? "default" : "outline"}
+              size="sm"
+              className="gap-2"
+            >
+              <List className="h-4 w-4" />
+              Now Playing
+            </Button>
+          )}
+
           {/* Action Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -344,106 +390,112 @@ const Music = () => {
           )}
         </div>
 
-        {/* Desktop Playlist/Suggested Sidebar */}
-        {!isMobile && !isFullscreen && currentSong && (
-          <div className="w-96 border-l bg-muted/30 flex flex-col">
+        {/* Desktop Now Playing Sidebar */}
+        {!isMobile && !isFullscreen && currentSong && showPlaylist && (
+          <div className="w-80 border-l bg-muted/30 flex flex-col">
             <div className="p-4 border-b">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <MusicIcon className="h-5 w-5" />
-                  Music Queue
+                  Now Playing
                 </h2>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      setShowPlaylist(!showPlaylist);
-                      if (showSuggested) setShowSuggested(false);
-                    }}
-                    variant={showPlaylist ? "default" : "outline"}
-                    size="sm"
-                  >
-                    <List className="h-4 w-4 mr-1" />
-                    Now Playing ({playlist.length})
-                  </Button>
-                  <Button
-                    onClick={() => {
                       setShowSuggested(!showSuggested);
-                      if (showPlaylist) setShowPlaylist(false);
                     }}
                     variant={showSuggested ? "default" : "outline"}
                     size="sm"
                   >
                     <Lightbulb className="h-4 w-4 mr-1" />
-                    Suggested ({suggestedSongs.length})
+                    Suggested
                   </Button>
                 </div>
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-2">
-              {showPlaylist && playlist.map((playlistSong, index) => (
-                <div
-                  key={playlistSong.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    currentIndex === index
-                      ? "bg-primary/20 border border-primary/30"
-                      : "hover:bg-background/50"
-                  }`}
-                  onClick={() => playSong(playlistSong)}
-                >
-                  <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
-                    <img
-                      src={playlistSong.image?.[0]?.url}
-                      alt={playlistSong.name}
-                      className="w-10 h-10 rounded object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
+            <div className="flex-1 overflow-y-auto">
+              {!showSuggested ? (
+                <div className="p-2">
+                  {playlist.map((playlistSong, index) => (
+                    <div
+                      key={playlistSong.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                        currentIndex === index
+                          ? "bg-primary/20 border border-primary/30"
+                          : "hover:bg-background/50"
+                      }`}
+                      onClick={() => playSong(playlistSong)}
+                    >
+                      <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                        <img
+                          src={playlistSong.image?.[0]?.url}
+                          alt={playlistSong.name}
+                          className="w-10 h-10 rounded object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {playlistSong.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {playlistSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {Math.floor(playlistSong.duration / 60)}:{(playlistSong.duration % 60).toString().padStart(2, "0")}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="p-3">
+                    <Button
+                      onClick={handleLoadMoreSongs}
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                      disabled={!searchQuery.trim()}
+                    >
+                      <MoreHorizontal className="h-4 w-4 mr-2" />
+                      Load More Songs
+                    </Button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {playlistSong.name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {playlistSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {Math.floor(playlistSong.duration / 60)}:{(playlistSong.duration % 60).toString().padStart(2, "0")}
-                  </span>
                 </div>
-              ))}
-
-              {showSuggested && suggestedSongs.map((suggestedSong, index) => (
-                <div
-                  key={suggestedSong.id}
-                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-background/50"
-                  onClick={() => playSong(suggestedSong)}
-                >
-                  <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
-                    <img
-                      src={suggestedSong.image?.[0]?.url}
-                      alt={suggestedSong.name}
-                      className="w-10 h-10 rounded object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {suggestedSong.name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {suggestedSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {Math.floor(suggestedSong.duration / 60)}:{(suggestedSong.duration % 60).toString().padStart(2, "0")}
-                  </span>
+              ) : (
+                <div className="p-2">
+                  {suggestedSongs.map((suggestedSong) => (
+                    <div
+                      key={suggestedSong.id}
+                      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-background/50"
+                      onClick={() => playSong(suggestedSong)}
+                    >
+                      <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                        <img
+                          src={suggestedSong.image?.[0]?.url}
+                          alt={suggestedSong.name}
+                          className="w-10 h-10 rounded object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {suggestedSong.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {suggestedSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {Math.floor(suggestedSong.duration / 60)}:{(suggestedSong.duration % 60).toString().padStart(2, "0")}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -537,6 +589,7 @@ const Music = () => {
               onToggleMute={toggleMute}
               isMuted={isMuted}
               suggestedSongs={suggestedSongs}
+              onLoadMoreSongs={handleLoadMoreSongs}
             />
           )}
         </>

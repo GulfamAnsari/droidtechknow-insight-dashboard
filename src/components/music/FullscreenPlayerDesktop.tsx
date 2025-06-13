@@ -16,7 +16,8 @@ import {
   Repeat,
   Shuffle,
   List,
-  Music
+  Music,
+  MoreHorizontal
 } from "lucide-react";
 import { Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
@@ -45,6 +46,7 @@ interface FullscreenPlayerDesktopProps {
   onToggleMute: () => void;
   isMuted: boolean;
   suggestedSongs: Song[];
+  onLoadMoreSongs?: () => void;
 }
 
 const FullscreenPlayerDesktop = ({
@@ -70,9 +72,10 @@ const FullscreenPlayerDesktop = ({
   likedSongs,
   onToggleMute,
   isMuted,
-  suggestedSongs
+  suggestedSongs,
+  onLoadMoreSongs
 }: FullscreenPlayerDesktopProps) => {
-  const [showPlaylist, setShowPlaylist] = useState(true);
+  const [showPlaylist, setShowPlaylist] = useState(false);
   const [activeTab, setActiveTab] = useState("playlist");
 
   const formatTime = (seconds: number) => {
@@ -88,6 +91,13 @@ const FullscreenPlayerDesktop = ({
     }
   };
 
+  const handleSongClick = (clickedSong: Song, songs: Song[]) => {
+    const songIndex = songs.findIndex(s => s.id === clickedSong.id);
+    if (songIndex !== -1) {
+      onPlaySong(clickedSong);
+    }
+  };
+
   const renderSongList = (songs: Song[], title: string) => {
     return (
       <div className="p-2">
@@ -99,7 +109,7 @@ const FullscreenPlayerDesktop = ({
                 ? "bg-primary/20 border border-primary/30"
                 : "hover:bg-background/50"
             }`}
-            onClick={() => onPlaySong(listSong)}
+            onClick={() => handleSongClick(listSong, songs)}
           >
             <LazyImage
               src={listSong.image?.[0]?.url}
@@ -119,12 +129,25 @@ const FullscreenPlayerDesktop = ({
             </span>
           </div>
         ))}
+        {activeTab === "playlist" && onLoadMoreSongs && (
+          <div className="p-3">
+            <Button
+              onClick={onLoadMoreSongs}
+              variant="outline"
+              className="w-full"
+              size="sm"
+            >
+              <MoreHorizontal className="h-4 w-4 mr-2" />
+              Load More Songs
+            </Button>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex">
+    <div className="fixed inset-0 z-50 bg-gradient-to-b from-purple-900/20 to-blue-900/20 flex">
       {/* Main Player Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         {/* Close Button */}
@@ -135,6 +158,16 @@ const FullscreenPlayerDesktop = ({
           className="absolute top-4 left-4"
         >
           <X className="h-6 w-6" />
+        </Button>
+
+        {/* Now Playing Toggle Button */}
+        <Button
+          onClick={() => setShowPlaylist(!showPlaylist)}
+          variant="ghost"
+          size="icon"
+          className={`absolute top-4 right-4 ${showPlaylist ? "text-primary" : ""}`}
+        >
+          <List className="h-6 w-6" />
         </Button>
 
         {/* Album Art */}
@@ -233,22 +266,13 @@ const FullscreenPlayerDesktop = ({
               className="w-24"
             />
           </div>
-
-          <Button
-            onClick={() => setShowPlaylist(!showPlaylist)}
-            variant="ghost"
-            size="icon"
-            className={showPlaylist ? "text-primary" : ""}
-          >
-            <List className="h-5 w-5" />
-          </Button>
         </div>
       </div>
 
       {/* Playlist Sidebar */}
       {showPlaylist && (
-        <div className="w-96 border-l bg-muted/30 flex flex-col">
-          <div className="p-4 border-b">
+        <div className="w-96 border-l bg-background/80 backdrop-blur-sm flex flex-col">
+          <div className="p-4 border-b bg-background/50">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <Music className="h-5 w-5" />
               Music Queue
