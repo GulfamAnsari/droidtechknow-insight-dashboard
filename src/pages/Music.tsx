@@ -264,7 +264,7 @@ const Music = () => {
 
   useEffect(() => {
     if (currentSong) {
-      musicApi.getSuggestedSongs(currentSong).then((songs) => {
+      musicApi.getSuggestedSongs(currentSong, suggestedSongs).then((songs) => {
         setSuggestedSongs(songs || []);
       });
     }
@@ -392,15 +392,8 @@ const Music = () => {
 
         {/* Desktop Now Playing Sidebar */}
         {!isMobile && !isFullscreen && currentSong && showPlaylist && (
-          <div className="w-80 border-l bg-muted/30 flex flex-col">
+          <div className="w-80 border-l bg-muted/30 flex flex-col mb-6">
             <div className="p-4 border-b">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <MusicIcon className="h-5 w-5" />
-                  Music Queue
-                </h2>
-              </div>
-              
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="playlist">
@@ -413,7 +406,7 @@ const Music = () => {
               </Tabs>
             </div>
             
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto mb-16">
               {activeTab === "playlist" ? (
                 <div className="p-2">
                   {playlist.map((playlistSong, index) => (
@@ -578,6 +571,7 @@ const Music = () => {
               currentTime={currentTime}
               duration={duration}
               onTimeUpdate={handleTimeUpdate}
+              onDurationUpdate={handleDurationUpdate}
               volume={isMuted ? 0 : volume}
               onVolumeChange={setVolume}
               onToggleLike={(songId: string) => {
@@ -588,7 +582,6 @@ const Music = () => {
               onToggleMute={toggleMute}
               isMuted={isMuted}
               suggestedSongs={suggestedSongs}
-              onLoadMoreSongs={handleLoadMoreSongs}
             />
           )}
         </>
