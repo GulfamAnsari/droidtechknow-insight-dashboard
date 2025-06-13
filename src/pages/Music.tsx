@@ -61,7 +61,7 @@ const Music = () => {
     playPrevious,
     toggleLike,
     downloadAllSongs,
-    deleteAllOfflineSongs
+    deleteAllOfflineSongs,
   } = useMusicContext();
 
   // Search states
@@ -83,6 +83,8 @@ const Music = () => {
     artists: 0,
     playlists: 0
   });
+
+  const [suggestedSongs, setsuggestedSongs] = useState([])
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -203,6 +205,14 @@ const Music = () => {
       await downloadAllSongs(playlist);
     }
   };
+
+  useEffect(() => {
+    if (currentSong) {
+      musicApi.getSuggestedSongs(currentSong).then((songs) => {
+        setsuggestedSongs(songs);
+      });
+    }
+  }, [currentSong]);
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
@@ -363,7 +373,7 @@ const Music = () => {
           likedSongs={likedSongs.map((song) => song.id)}
           onToggleMute={toggleMute}
           isMuted={isMuted}
-          suggestedSongs={[]}
+          suggestedSongs={suggestedSongs}
         />
       )}
     </div>

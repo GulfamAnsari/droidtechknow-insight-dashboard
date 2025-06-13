@@ -226,7 +226,7 @@ class MusicApiService {
       );
 
       // Return first 20 suggestions
-      return uniqueSuggestions.slice(0, 20);
+      return uniqueSuggestions;
     } catch (error) {
       console.error("Get suggested songs failed:", error);
       return [];
