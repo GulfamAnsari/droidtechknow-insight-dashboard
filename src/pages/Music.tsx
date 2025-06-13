@@ -102,7 +102,8 @@ const Music = () => {
       const results = await musicApi.search(searchQuery, 1, 20);
       setSearchResults(results);
       // Append new search results to existing playlist instead of replacing
-      setPlaylist(prev => [...prev, ...results.songs]);
+      const updatedPlaylist = [...playlist, ...results.songs];
+      setPlaylist(updatedPlaylist);
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
@@ -450,7 +451,6 @@ const Music = () => {
               currentTime={currentTime}
               duration={duration}
               onTimeUpdate={handleTimeUpdate}
-              onDurationUpdate={handleDurationUpdate}
               volume={isMuted ? 0 : volume}
               onVolumeChange={setVolume}
               onToggleLike={(songId: string) => {
