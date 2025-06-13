@@ -273,7 +273,7 @@ const FullscreenPlayerDesktop = ({
               <TabsContent value="suggestions" className="mt-4">
                 <ScrollArea className="h-[calc(100vh-200px)]">
                   {renderSongList(suggestedSongs, "Suggested Songs")}
-                </Scroll Area>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </div>
