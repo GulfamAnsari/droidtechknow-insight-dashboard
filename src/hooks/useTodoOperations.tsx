@@ -4,7 +4,7 @@ import { useTodo } from '@/contexts/TodoContext';
 
 export const useTodoOperations = () => {
   const { state, dispatch } = useTodo();
-  const [isLoading, setIsLoading]= useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const createTodo = async (todoData: any) => {
     setIsLoading(true);
@@ -44,8 +44,8 @@ export const useTodoOperations = () => {
       
       if (response.ok) {
         const updatedTodo = await response.json();
-        // Update local state after successful API call
-        dispatch({ type: 'UPDATE_TODO', payload: { id: todoId, updates: updatedTodo } });
+        // Update local state after successful API call - use the complete todo object
+        dispatch({ type: 'UPDATE_TODO', payload: updatedTodo });
         return updatedTodo;
       } else {
         throw new Error('Failed to update todo');
