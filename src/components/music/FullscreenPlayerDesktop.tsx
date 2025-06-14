@@ -13,10 +13,14 @@ import {
   X,
   Download,
   List,
-  Heart
+  Heart,
+  Loader2
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { Progress } from "@radix-ui/react-progress";
+import { useMusicContext } from "@/contexts/MusicContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface Song {
   id: string;
@@ -104,6 +108,7 @@ const FullscreenPlayer = ({
     null
   );
   const [showList, setShowList] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -221,53 +226,86 @@ const FullscreenPlayer = ({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const saveToIndexedDB = async (song: Song) => {
-    try {
-      const request = indexedDB.open("OfflineMusicDB", 1);
+  const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
+    useMusicContext();
 
-      request.onupgradeneeded = function (event) {
-        const db = (event.target as IDBOpenDBRequest).result;
+  const downloadSong = async (song: Song) => {
+    try {
+      setDownloadProgress(song.id, 10);
+
+      const audioUrl =
+        song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+        song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+        song.downloadUrl?.[0]?.url;
+
+      if (!audioUrl) {
+        setDownloadProgress(song.id, -1);
+        return;
+      }
+
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+      // Download audio with progress tracking
+      setDownloadProgress(song.id, 30);
+      const audioResponse = await fetch(secureAudioUrl);
+      const audioBlob = await audioResponse.blob();
+
+      setDownloadProgress(song.id, 70);
+
+      // Download image
+      const imageUrl = song.image?.[0]?.url;
+      let imageBlob = null;
+      if (imageUrl) {
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+        const imageResponse = await fetch(secureImageUrl);
+        imageBlob = await imageResponse.blob();
+      }
+
+      setDownloadProgress(song.id, 90);
+
+      // Store in IndexedDB
+      const request = indexedDB.open("OfflineMusicDB", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
         if (!db.objectStoreNames.contains("songs")) {
           db.createObjectStore("songs", { keyPath: "id" });
         }
       };
 
-      request.onsuccess = async function (event) {
-        const db = (event.target as IDBOpenDBRequest).result;
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
 
-        const downloadUrl =
-          song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
-          song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
-          song.downloadUrl?.[0]?.url;
-        const secureDownloadUrl = downloadUrl.replace(
-          /^http:\/\//i,
-          "https://"
-        );
-        if (downloadUrl) {
-          const response = await fetch(secureDownloadUrl);
-          const audioBlob = await response.blob();
+        store.put({
+          ...song,
+          audioBlob: audioBlob,
+          imageBlob: imageBlob
+        });
 
-          const songData = {
-            ...song,
-            audioBlob: audioBlob
-          };
-
-          const transaction = db.transaction(["songs"], "readwrite");
-          const store = transaction.objectStore("songs");
-          store.put(songData);
-
-          transaction.oncomplete = () => {
-            console.log("Song saved to IndexedDB");
-          };
-        }
+        addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        toast({
+          title: "Success",
+          description: song?.name + " is downloaded",
+          variant: "success"
+        });
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 2000);
       };
     } catch (error) {
-      console.error("Error saving to IndexedDB:", error);
+      console.error("Download failed:", error);
+      toast({
+        title: "Failed",
+        description: song?.name + " failed to download",
+        variant: "destructive"
+      });
+      setDownloadProgress(song.id, -1);
+      setTimeout(() => {
+        setDownloadProgress(song.id, 0);
+      }, 3000);
     }
-  };
-
-  const downloadSong = () => {
-    saveToIndexedDB(song);
   };
 
   const handleAudioEnded = () => {
@@ -283,6 +321,61 @@ const FullscreenPlayer = ({
 
   const handleSongClick = (song) => {
     onPlaySong(song);
+  };
+
+  const isOffline = (songId: string) => {
+    return offlineSongs.some((song) => song.id === songId);
+  };
+
+  const actionButtons = (listSong) => {
+    return (
+      <div className="flex justify-center gap-4">
+        <Button
+          onClick={() => onToggleLike(listSong.id)}
+          variant="ghost"
+          size="sm"
+          className={`text-white hover:bg-white/20 ${
+            likedSongs.includes(listSong.id) ? "text-red-500" : ""
+          }`}
+        >
+          <Heart
+            className={`h-5 w-5 ${
+              likedSongs.includes(listSong.id) ? "fill-current" : ""
+            }`}
+          />
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            downloadSong(listSong);
+          }}
+          disabled={downloadProgress[listSong.id] > 0}
+        >
+          {downloadProgress[listSong.id] > 0 ? (
+            downloadProgress[listSong.id] === -1 ? (
+              <X className="h-4 w-4 text-red-500" />
+            ) : downloadProgress[listSong.id] === 100 ? (
+              <Download className="h-4 w-4 text-green-500" />
+            ) : (
+              <div className="flex flex-col items-center gap-1 min-w-[40px]">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <Progress
+                  value={downloadProgress[listSong.id]}
+                  className="w-8 h-1"
+                />
+              </div>
+            )
+          ) : isOffline(listSong.id) ? (
+            <Download className="h-4 w-4 text-green-500" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    );
   };
 
   const renderSongList = (songs: Song[], title: string) => {
@@ -303,14 +396,17 @@ const FullscreenPlayer = ({
                   ? "bg-white/20 border border-white/30"
                   : "hover:bg-white/10"
               }`}
-              onClick={() => handleSongClick(listSong)}
             >
               <LazyImage
                 src={listSong.image?.[0]?.url}
                 alt={listSong.name}
                 className="w-10 h-10 rounded object-cover"
+                onClick={() => handleSongClick(listSong)}
               />
-              <div className="flex-1 min-w-0">
+              <div
+                className="flex-1 min-w-0"
+                onClick={() => handleSongClick(listSong)}
+              >
                 <p className="truncate text-sm font-medium">{listSong.name}</p>
                 <p className="truncate text-xs text-white/60">
                   {listSong.artists?.primary?.map((a) => a.name).join(", ")}
@@ -325,6 +421,7 @@ const FullscreenPlayer = ({
                   )}
                 </div>
               )}
+              {actionButtons(listSong)}
             </div>
           ))}
         </div>
@@ -375,154 +472,157 @@ const FullscreenPlayer = ({
       </div>
 
       {/* Main Content Container */}
-      <div  className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="flex flex-col items-center w-full max-w-md pointer-events-auto">
-          {/* Album Art */}
-          <div
-            className="mb-6 md:mb-8"
-            onTouchStart={(e) => handleTouchStart(e, true)}
-            onTouchEnd={(e) => handleTouchEnd(e, true)}
-          >
-            <LazyImage
-              src={
-                song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
-              }
-              alt={song.name}
-              className="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
-              onClick={onPlayPause}
-            />
-          </div>
-
-          {/* Song Info */}
-          <div className="text-center mb-6 md:mb-8 max-w-full px-4">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">
-              {song.name}
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 truncate">
-              {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                "Unknown Artist"}
-            </p>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full max-w-md mb-6 md:mb-8 px-4">
-            <Slider
-              value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-              onValueChange={handleSeek}
-              max={100}
-              step={0.1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-sm text-white/60 mt-2">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={onToggleShuffle}
-              className={`text-white hover:bg-white/20 ${
-                isShuffle ? "text-primary" : ""
-              }`}
+          <div className="flex flex-col items-center w-full max-w-md pointer-events-auto">
+            {/* Album Art */}
+            <div
+              className="mb-6 md:mb-8"
+              onTouchStart={(e) => handleTouchStart(e, true)}
+              onTouchEnd={(e) => handleTouchEnd(e, true)}
             >
-              <Shuffle className="h-5 w-5 md:h-6 md:w-6" />
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={onPrevious}
-              className="text-white hover:bg-white/20"
-            >
-              <SkipBack className="h-6 w-6 md:h-8 md:w-8" />
-            </Button>
-            <Button
-              size="lg"
-              onClick={onPlayPause}
-              className="bg-white text-black hover:bg-white/90 rounded-full p-3 md:p-4"
-            >
-              {isPlaying ? (
-                <Pause className="h-6 w-6 md:h-8 md:w-8" />
-              ) : (
-                <Play className="h-6 w-6 md:h-8 md:w-8" />
-              )}
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={onNext}
-              className="text-white hover:bg-white/20"
-            >
-              <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={onToggleRepeat}
-              className={`text-white hover:bg-white/20 ${
-                isRepeat ? "text-primary" : ""
-              }`}
-            >
-              <Repeat className="h-5 w-5 md:h-6 md:w-6" />
-            </Button>
-          </div>
-
-          {/* Bottom Controls */}
-          <div className="flex flex-col gap-4 w-full max-w-md px-4">
-            {/* Volume Control */}
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={onToggleMute}
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/20"
-              >
-                <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
-              </Button>
-              <Slider
-                value={[volume]}
-                onValueChange={handleVolumeChange}
-                max={100}
-                step={1}
-                className="flex-1"
+              <LazyImage
+                src={
+                  song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
+                }
+                alt={song.name}
+                className="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+                onClick={onPlayPause}
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center gap-4">
+            {/* Song Info */}
+            <div className="text-center mb-6 md:mb-8 max-w-full px-4">
+              <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">
+                {song.name}
+              </h1>
+              <p className="text-lg md:text-xl text-white/80 truncate">
+                {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                  "Unknown Artist"}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full max-w-md mb-6 md:mb-8 px-4">
+              <Slider
+                value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
+                onValueChange={handleSeek}
+                max={100}
+                step={0.1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-sm text-white/60 mt-2">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
               <Button
-                onClick={() => onToggleLike(song.id)}
+                size="lg"
                 variant="ghost"
-                size="sm"
+                onClick={onToggleShuffle}
                 className={`text-white hover:bg-white/20 ${
-                  likedSongs.includes(song.id) ? "text-red-500" : ""
+                  isShuffle ? "text-primary" : ""
                 }`}
               >
-                <Heart
-                  className={`h-5 w-5 ${
-                    likedSongs.includes(song.id) ? "fill-current" : ""
-                  }`}
-                />
+                <Shuffle className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
-
               <Button
-                onClick={downloadSong}
+                size="lg"
                 variant="ghost"
-                size="sm"
+                onClick={onPrevious}
                 className="text-white hover:bg-white/20"
               >
-                <Download className="h-5 w-5" />
+                <SkipBack className="h-6 w-6 md:h-8 md:w-8" />
               </Button>
+              <Button
+                size="lg"
+                onClick={onPlayPause}
+                className="bg-white text-black hover:bg-white/90 rounded-full p-3 md:p-4"
+              >
+                {isPlaying ? (
+                  <Pause className="h-6 w-6 md:h-8 md:w-8" />
+                ) : (
+                  <Play className="h-6 w-6 md:h-8 md:w-8" />
+                )}
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={onNext}
+                className="text-white hover:bg-white/20"
+              >
+                <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={onToggleRepeat}
+                className={`text-white hover:bg-white/20 ${
+                  isRepeat ? "text-primary" : ""
+                }`}
+              >
+                <Repeat className="h-5 w-5 md:h-6 md:w-6" />
+              </Button>
+            </div>
+
+            {/* Bottom Controls */}
+            <div className="flex flex-col gap-4 w-full max-w-md px-4">
+              {/* Volume Control */}
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={onToggleMute}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                >
+                  <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
+                </Button>
+                <Slider
+                  value={[volume]}
+                  onValueChange={handleVolumeChange}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center gap-4">
+                <Button
+                  onClick={() => onToggleLike(song.id)}
+                  variant="ghost"
+                  size="sm"
+                  className={`text-white hover:bg-white/20 ${
+                    likedSongs.includes(song.id) ? "text-red-500" : ""
+                  }`}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${
+                      likedSongs.includes(song.id) ? "fill-current" : ""
+                    }`}
+                  />
+                </Button>
+
+                <Button
+                  onClick={() => downloadSong(song)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                >
+                  <Download className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-        </div>
         {showList && (
-          <div style={{ height: "fit-content"}} className="w-96 border-l bg-background/80 backdrop-blur-sm ml-auto">
+          <div
+            style={{ height: "fit-content" }}
+            className="w-96 border-l bg-background/80 backdrop-blur-sm ml-auto"
+          >
             <div className="p-4 border-b bg-background/50">
               <Tabs
                 value={activeTab}
@@ -545,7 +645,7 @@ const FullscreenPlayer = ({
                 </TabsContent>
 
                 <TabsContent value="suggestions" className="mt-4">
-                  <ScrollArea >
+                  <ScrollArea>
                     {renderSongList(suggestedSongs, "Suggested Songs")}
                   </ScrollArea>
                 </TabsContent>
@@ -554,7 +654,6 @@ const FullscreenPlayer = ({
           </div>
         )}
       </div>
-      
     </div>
   );
 };

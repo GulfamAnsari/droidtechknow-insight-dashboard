@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -14,9 +13,13 @@ import {
   X,
   Download,
   List,
-  Heart
+  Heart,
+  Loader2
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
+import { useMusicContext } from "@/contexts/MusicContext";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@radix-ui/react-progress";
 
 interface Song {
   id: string;
@@ -96,9 +99,13 @@ const FullscreenPlayer = ({
 }: FullscreenPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const [isSwipeAnimating, setIsSwipeAnimating] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<"up" | "down" | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<"up" | "down" | null>(
+    null
+  );
   const [showList, setShowList] = useState(false);
 
   useEffect(() => {
@@ -134,6 +141,7 @@ const FullscreenPlayer = ({
       audioRef.current.volume = volume / 100;
     }
   }, [volume]);
+  const { toast } = useToast();
 
   // Auto-scroll to current song
   useEffect(() => {
@@ -219,47 +227,47 @@ const FullscreenPlayer = ({
 
   const saveToIndexedDB = async (song: Song) => {
     try {
-      const request = indexedDB.open('OfflineMusicDB', 1);
-      
-      request.onupgradeneeded = function(event) {
+      const request = indexedDB.open("OfflineMusicDB", 1);
+
+      request.onupgradeneeded = function (event) {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains('songs')) {
-          db.createObjectStore('songs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains("songs")) {
+          db.createObjectStore("songs", { keyPath: "id" });
         }
       };
-      
-      request.onsuccess = async function(event) {
+
+      request.onsuccess = async function (event) {
         const db = (event.target as IDBOpenDBRequest).result;
-        
-        const downloadUrl = song.downloadUrl?.find(url => url.quality === '320kbps')?.url || 
-                          song.downloadUrl?.find(url => url.quality === '160kbps')?.url ||
-                          song.downloadUrl?.[0]?.url;
-        const secureDownloadUrl= downloadUrl.replace(/^http:\/\//i, 'https://');
+
+        const downloadUrl =
+          song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+          song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+          song.downloadUrl?.[0]?.url;
+        const secureDownloadUrl = downloadUrl.replace(
+          /^http:\/\//i,
+          "https://"
+        );
         if (downloadUrl) {
           const response = await fetch(secureDownloadUrl);
           const audioBlob = await response.blob();
-          
+
           const songData = {
             ...song,
             audioBlob: audioBlob
           };
-          
-          const transaction = db.transaction(['songs'], 'readwrite');
-          const store = transaction.objectStore('songs');
+
+          const transaction = db.transaction(["songs"], "readwrite");
+          const store = transaction.objectStore("songs");
           store.put(songData);
-          
+
           transaction.oncomplete = () => {
-            console.log('Song saved to IndexedDB');
+            console.log("Song saved to IndexedDB");
           };
         }
       };
     } catch (error) {
-      console.error('Error saving to IndexedDB:', error);
+      console.error("Error saving to IndexedDB:", error);
     }
-  };
-
-  const downloadSong = () => {
-    saveToIndexedDB(song);
   };
 
   const handleAudioEnded = () => {
@@ -276,6 +284,142 @@ const FullscreenPlayer = ({
   const handleSongClick = (song) => {
     onPlaySong(song);
   };
+  const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
+    useMusicContext();
+
+  const downloadSong = async (song: Song) => {
+    try {
+      setDownloadProgress(song.id, 10);
+
+      const audioUrl =
+        song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+        song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+        song.downloadUrl?.[0]?.url;
+
+      if (!audioUrl) {
+        setDownloadProgress(song.id, -1);
+        return;
+      }
+
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+      // Download audio with progress tracking
+      setDownloadProgress(song.id, 30);
+      const audioResponse = await fetch(secureAudioUrl);
+      const audioBlob = await audioResponse.blob();
+
+      setDownloadProgress(song.id, 70);
+
+      // Download image
+      const imageUrl = song.image?.[0]?.url;
+      let imageBlob = null;
+      if (imageUrl) {
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+        const imageResponse = await fetch(secureImageUrl);
+        imageBlob = await imageResponse.blob();
+      }
+
+      setDownloadProgress(song.id, 90);
+
+      // Store in IndexedDB
+      const request = indexedDB.open("OfflineMusicDB", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("songs")) {
+          db.createObjectStore("songs", { keyPath: "id" });
+        }
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
+
+        store.put({
+          ...song,
+          audioBlob: audioBlob,
+          imageBlob: imageBlob
+        });
+
+        addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        toast({
+          title: "Success",
+          description: song?.name + " is downloaded",
+          variant: "success"
+        });
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 2000);
+      };
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        title: "Failed",
+        description: song?.name + " failed to download",
+        variant: "destructive"
+      });
+      setDownloadProgress(song.id, -1);
+      setTimeout(() => {
+        setDownloadProgress(song.id, 0);
+      }, 3000);
+    }
+  };
+
+  const isOffline = (songId: string) => {
+    return offlineSongs.some((song) => song.id === songId);
+  };
+
+  const actionButtons = (listSong) => {
+    return (
+      <div className="flex justify-center gap-4">
+        <Button
+          onClick={() => onToggleLike(listSong.id)}
+          variant="ghost"
+          size="sm"
+          className={`text-white hover:bg-white/20 ${
+            likedSongs.includes(listSong.id) ? "text-red-500" : ""
+          }`}
+        >
+          <Heart
+            className={`h-5 w-5 ${
+              likedSongs.includes(listSong.id) ? "fill-current" : ""
+            }`}
+          />
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            downloadSong(listSong);
+          }}
+          disabled={downloadProgress[listSong.id] > 0}
+        >
+          {downloadProgress[listSong.id] > 0 ? (
+            downloadProgress[listSong.id] === -1 ? (
+              <X className="h-4 w-4 text-red-500" />
+            ) : downloadProgress[listSong.id] === 100 ? (
+              <Download className="h-4 w-4 text-green-500" />
+            ) : (
+              <div className="flex flex-col items-center gap-1 min-w-[40px]">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <Progress
+                  value={downloadProgress[listSong.id]}
+                  className="w-8 h-1"
+                />
+              </div>
+            )
+          ) : isOffline(listSong.id) ? (
+            <Download className="h-4 w-4 text-green-500" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    );
+  };
 
   const renderSongList = (songs: Song[], title: string) => {
     return (
@@ -284,7 +428,7 @@ const FullscreenPlayer = ({
         <div
           ref={activeTab === "playlist" ? playlistRef : undefined}
           className="overflow-y-auto bg-black/20 rounded-lg p-4 space-y-2"
-          style={{ height: '60vh' }}
+          style={{ height: "60vh" }}
         >
           {songs.map((listSong, index) => (
             <div
@@ -295,21 +439,20 @@ const FullscreenPlayer = ({
                   ? "bg-white/20 border border-white/30"
                   : "hover:bg-white/10"
               }`}
-              onClick={() => handleSongClick(listSong)}
             >
               <LazyImage
                 src={listSong.image?.[0]?.url}
                 alt={listSong.name}
                 className="w-10 h-10 rounded object-cover"
+                onClick={() => handleSongClick(listSong)}
               />
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium">
-                  {listSong.name}
-                </p>
+              <div
+                className="flex-1 min-w-0"
+                onClick={() => handleSongClick(listSong)}
+              >
+                <p className="truncate text-sm font-medium">{listSong.name}</p>
                 <p className="truncate text-xs text-white/60">
-                  {listSong.artists?.primary
-                    ?.map((a) => a.name)
-                    .join(", ")}
+                  {listSong.artists?.primary?.map((a) => a.name).join(", ")}
                 </p>
               </div>
               {listSong.id === song.id && (
@@ -321,6 +464,7 @@ const FullscreenPlayer = ({
                   )}
                 </div>
               )}
+              {actionButtons(listSong)}
             </div>
           ))}
         </div>
@@ -373,20 +517,30 @@ const FullscreenPlayer = ({
       {/* Main Content Container */}
       <div className="flex-1 flex items-center justify-center px-4">
         {showList ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full max-w-md"
+          >
             <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/10">
-              <TabsTrigger value="playlist" className="text-white data-[state=active]:bg-white/20">
+              <TabsTrigger
+                value="playlist"
+                className="text-white data-[state=active]:bg-white/20"
+              >
                 Playlist
               </TabsTrigger>
-              <TabsTrigger value="suggestions" className="text-white data-[state=active]:bg-white/20">
+              <TabsTrigger
+                value="suggestions"
+                className="text-white data-[state=active]:bg-white/20"
+              >
                 Suggested
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="playlist">
               {renderSongList(playlist, "Current Playlist")}
             </TabsContent>
-            
+
             <TabsContent value="suggestions">
               {renderSongList(suggestedSongs, "Suggested Songs")}
             </TabsContent>
@@ -394,7 +548,7 @@ const FullscreenPlayer = ({
         ) : (
           <div className="flex flex-col items-center w-full max-w-md">
             {/* Album Art */}
-            <div 
+            <div
               className="mb-6 md:mb-8"
               onTouchStart={(e) => handleTouchStart(e, true)}
               onTouchEnd={(e) => handleTouchEnd(e, true)}
@@ -411,7 +565,9 @@ const FullscreenPlayer = ({
 
             {/* Song Info */}
             <div className="text-center mb-6 md:mb-8 max-w-full px-4">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">{song.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">
+                {song.name}
+              </h1>
               <p className="text-lg md:text-xl text-white/80 truncate">
                 {song.artists?.primary?.map((a) => a.name).join(", ") ||
                   "Unknown Artist"}
@@ -421,9 +577,7 @@ const FullscreenPlayer = ({
             {/* Progress bar */}
             <div className="w-full max-w-md mb-6 md:mb-8 px-4">
               <Slider
-                value={[
-                  duration > 0 ? (currentTime / duration) * 100 : 0
-                ]}
+                value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
                 onValueChange={handleSeek}
                 max={100}
                 step={0.1}
@@ -517,11 +671,15 @@ const FullscreenPlayer = ({
                     likedSongs.includes(song.id) ? "text-red-500" : ""
                   }`}
                 >
-                  <Heart className={`h-5 w-5 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
+                  <Heart
+                    className={`h-5 w-5 ${
+                      likedSongs.includes(song.id) ? "fill-current" : ""
+                    }`}
+                  />
                 </Button>
 
                 <Button
-                  onClick={downloadSong}
+                  onClick={() => downloadSong(song)}
                   variant="ghost"
                   size="sm"
                   className="text-white hover:bg-white/20"

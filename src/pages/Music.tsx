@@ -12,7 +12,9 @@ import {
   Settings,
   List,
   Lightbulb,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,6 +32,8 @@ import SwipeAnimations from "@/components/music/SwipeAnimations";
 import MusicHomepage from "@/components/music/MusicHomepage";
 import SongsModal from "@/components/music/SongsModal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@radix-ui/react-progress";
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,6 +75,9 @@ const Music = () => {
     toggleLike,
     downloadAllSongs,
     deleteAllOfflineSongs,
+    setDownloadProgress,
+    addToOffline,
+    downloadProgress
   } = useMusicContext();
 
   const [searchResults, setSearchResults] = useState<{
@@ -93,7 +100,7 @@ const Music = () => {
   });
 
   const playlistRef = useRef(null);
-  const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([])
+  const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -163,7 +170,7 @@ const Music = () => {
           nextPage,
           20
         );
-        
+
         setSearchResults((prev) => ({
           ...prev,
           songs: [...prev.songs, ...newResults]
@@ -232,9 +239,11 @@ const Music = () => {
   };
 
   const handleToggleLike = (songId: string) => {
-    const song = playlist.find((s) => s.id === songId) || 
-                 likedSongs.find((s) => s.id === songId) || 
-                 offlineSongs.find((s) => s.id === songId);
+    console.log(songId, "d");
+    const song =
+      playlist.find((s) => s.id === songId) ||
+      likedSongs.find((s) => s.id === songId) ||
+      offlineSongs.find((s) => s.id === songId);
     if (song) {
       toggleLike(song);
     }
@@ -264,14 +273,14 @@ const Music = () => {
   }, [isFullscreen, setIsFullscreen, setShowSongsModal]);
 
   useEffect(() => {
-    if (currentSong && activeTab == 'suggestions') {
+    if (currentSong && activeTab == "suggestions") {
       musicApi.getSuggestedSongs(currentSong, suggestedSongs).then((songs) => {
         const updatedPlaylist = [...playlist, ...suggestedSongs];
 
         // Remove duplicates by song.id
         const uniquePlaylist = updatedPlaylist.filter(
           (song, index, self) =>
-            index === self.findIndex(s => s.id === song.id)
+            index === self.findIndex((s) => s.id === song.id)
         );
 
         // Set the playlist
@@ -295,6 +304,144 @@ const Music = () => {
       }
     }
   }, [currentIndex, playlist]);
+  const { toast } = useToast();
+
+  const downloadSong = async (song: Song) => {
+    try {
+      setDownloadProgress(song.id, 10);
+
+      const audioUrl =
+        song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+        song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+        song.downloadUrl?.[0]?.url;
+
+      if (!audioUrl) {
+        setDownloadProgress(song.id, -1);
+        return;
+      }
+
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+      // Download audio with progress tracking
+      setDownloadProgress(song.id, 30);
+      const audioResponse = await fetch(secureAudioUrl);
+      const audioBlob = await audioResponse.blob();
+
+      setDownloadProgress(song.id, 70);
+
+      // Download image
+      const imageUrl = song.image?.[0]?.url;
+      let imageBlob = null;
+      if (imageUrl) {
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+        const imageResponse = await fetch(secureImageUrl);
+        imageBlob = await imageResponse.blob();
+      }
+
+      setDownloadProgress(song.id, 90);
+
+      // Store in IndexedDB
+      const request = indexedDB.open("OfflineMusicDB", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("songs")) {
+          db.createObjectStore("songs", { keyPath: "id" });
+        }
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
+
+        store.put({
+          ...song,
+          audioBlob: audioBlob,
+          imageBlob: imageBlob
+        });
+
+        addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        toast({
+          title: "Success",
+          description: song?.name + " is downloaded",
+          variant: "success"
+        });
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 2000);
+      };
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        title: "Failed",
+        description: song?.name + " failed to download",
+        variant: "destructive"
+      });
+      setDownloadProgress(song.id, -1);
+      setTimeout(() => {
+        setDownloadProgress(song.id, 0);
+      }, 3000);
+    }
+  };
+
+  const isOffline = (songId: string) => {
+    return offlineSongs.some((song) => song.id === songId);
+  };
+
+  const isLiked = (songId: string) => {
+    return likedSongs.some((song) => song.id === songId);
+  };
+
+  const actionButton = (playlistSong) => {
+    return (
+      <div className="flex justify-center gap-4">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleLike(playlistSong);
+          }}
+          className={isLiked(playlistSong.id) ? "text-red-500" : ""}
+        >
+          <Heart
+            className={`h-4 w-4 ${isLiked(playlistSong.id) ? "fill-current" : ""}`}
+          />
+        </Button>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation();
+            downloadSong(playlistSong);
+          }}
+          disabled={downloadProgress[playlistSong.id] > 0}
+        >
+          {downloadProgress[playlistSong.id] > 0 ? (
+            downloadProgress[playlistSong.id] === -1 ? (
+              <X className="h-4 w-4 text-red-500" />
+            ) : downloadProgress[playlistSong.id] === 100 ? (
+              <Download className="h-4 w-4 text-green-500" />
+            ) : (
+              <div className="flex flex-col items-center gap-1 min-w-[40px]">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <Progress
+                  value={downloadProgress[playlistSong.id]}
+                  className="w-8 h-1"
+                />
+              </div>
+            )
+          ) : isOffline(playlistSong.id) ? (
+            <Download className="h-4 w-4 text-green-500" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
@@ -371,10 +518,7 @@ const Music = () => {
                 Offline Songs ({offlineSongs.length})
               </DropdownMenuItem>
               {playlist.length > 0 && (
-                <DropdownMenuItem
-                  onClick={handleDownloadAll}
-                  className="gap-2"
-                >
+                <DropdownMenuItem onClick={handleDownloadAll} className="gap-2">
                   <Download className="h-4 w-4" />
                   Download All ({playlist.length})
                 </DropdownMenuItem>
@@ -387,7 +531,9 @@ const Music = () => {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`bg-background flex-1 overflow-auto p-6 ${currentSong ? "pb-24" : "pb-6"}`}
+          className={`bg-background flex-1 overflow-auto p-6 ${
+            currentSong ? "pb-24" : "pb-6"
+          }`}
         >
           {isSearchMode ? (
             <SearchTabs
@@ -420,7 +566,11 @@ const Music = () => {
         {!isMobile && !isFullscreen && currentSong && showPlaylist && (
           <div className="w-80 border-l bg-muted/30 flex flex-col mb-6">
             <div className="p-4 border-b">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full"
+              >
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="playlist">
                     Now Playing ({playlist.length})
@@ -431,42 +581,64 @@ const Music = () => {
                 </TabsList>
               </Tabs>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto mb-16">
               {activeTab === "playlist" ? (
-                <div className="p-2" ref={activeTab === "playlist" || activeTab === "suggestions" ? playlistRef : undefined}>
-                  {playlist.map((playlistSong, index) => (
+                <div
+                  className="p-2"
+                  ref={
+                    activeTab === "playlist" || activeTab === "suggestions"
+                      ? playlistRef
+                      : undefined
+                  }
+                >
+                  {playlist.map((playlistSong: Song, index) => (
                     <div
                       key={playlistSong.id}
-                      data-song-index={activeTab === "playlist" ? index : undefined}
+                      data-song-index={
+                        activeTab === "playlist" ? index : undefined
+                      }
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                         playlistSong?.id === currentSong?.id
                           ? "bg-primary/20 border border-primary/30"
                           : "hover:bg-background/50"
                       }`}
-                      onClick={() => playSong(playlistSong)}
                     >
-                      <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                      <div
+                        className="w-10 h-10 bg-muted rounded flex-shrink-0"
+                        onClick={() => playSong(playlistSong)}
+                      >
                         <img
                           src={playlistSong.image?.[0]?.url}
                           alt={playlistSong.name}
                           className="w-10 h-10 rounded object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
                           }}
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div
+                        className="flex-1 min-w-0"
+                        onClick={() => playSong(playlistSong)}
+                      >
                         <p className="truncate text-sm font-medium">
                           {playlistSong.name}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {playlistSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                          {playlistSong.artists?.primary
+                            ?.map((a) => a.name)
+                            .join(", ") || "Unknown Artist"}
                         </p>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {Math.floor(playlistSong.duration / 60)}:{(playlistSong.duration % 60).toString().padStart(2, "0")}
+                        {Math.floor(playlistSong.duration / 60)}:
+                        {(playlistSong.duration % 60)
+                          .toString()
+                          .padStart(2, "0")}
                       </span>
+                      {/* Action Buttons */}
+                      {actionButton(playlistSong)}
                     </div>
                   ))}
                   <div className="p-3">
@@ -483,39 +655,60 @@ const Music = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-2" ref={activeTab === "playlist" || activeTab === "suggestions" ? playlistRef : undefined}>
+                <div
+                  className="p-2"
+                  ref={
+                    activeTab === "playlist" || activeTab === "suggestions"
+                      ? playlistRef
+                      : undefined
+                  }
+                >
                   {suggestedSongs.map((suggestedSong, index) => (
                     <div
                       key={suggestedSong.id}
-                      data-song-index={activeTab === "suggestions" ? index : undefined}
-                      onClick={() => playSong(suggestedSong)}
+                      data-song-index={
+                        activeTab === "suggestions" ? index : undefined
+                      }
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                         suggestedSong?.id === currentSong?.id
                           ? "bg-primary/20 border border-primary/30"
                           : "hover:bg-background/50"
                       }`}
                     >
-                      <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                      <div
+                        className="w-10 h-10 bg-muted rounded flex-shrink-0"
+                        onClick={() => playSong(suggestedSong)}
+                      >
                         <img
                           src={suggestedSong.image?.[0]?.url}
                           alt={suggestedSong.name}
                           className="w-10 h-10 rounded object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
                           }}
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div
+                        className="flex-1 min-w-0"
+                        onClick={() => playSong(suggestedSong)}
+                      >
                         <p className="truncate text-sm font-medium">
                           {suggestedSong.name}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {suggestedSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                          {suggestedSong.artists?.primary
+                            ?.map((a) => a.name)
+                            .join(", ") || "Unknown Artist"}
                         </p>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {Math.floor(suggestedSong.duration / 60)}:{(suggestedSong.duration % 60).toString().padStart(2, "0")}
+                        {Math.floor(suggestedSong.duration / 60)}:
+                        {(suggestedSong.duration % 60)
+                          .toString()
+                          .padStart(2, "0")}
                       </span>
+                      {actionButton(suggestedSong)}
                     </div>
                   ))}
                 </div>
