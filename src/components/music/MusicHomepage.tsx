@@ -59,7 +59,7 @@ const MusicHomepage = ({
 
   useEffect(() => {
     loadHomepageData();
-  }, [likedSongObjects]);
+  }, []);
 
   const loadHomepageData = async () => {
     try {
