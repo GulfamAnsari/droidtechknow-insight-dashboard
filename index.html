@@ -1,39 +1,64 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>DroidTechKnow Insights Dashboard</title>
-    <meta name="description" content="A comprehensive dashboard for DroidTechKnow with analytics, articles, feedback, and task management." />
+    <meta
+      name="description"
+      content="A comprehensive dashboard for DroidTechKnow with analytics, articles, feedback, and task management."
+    />
     <meta name="author" content="DroidTechKnow" />
     <meta name="theme-color" content="#1A1F2C" />
 
     <meta property="og:title" content="DroidTechKnow Insights Dashboard" />
-    <meta property="og:description" content="A comprehensive dashboard for DroidTechKnow with analytics, articles, feedback, and task management." />
+    <meta
+      property="og:description"
+      content="A comprehensive dashboard for DroidTechKnow with analytics, articles, feedback, and task management."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@droidtechknow" />
     <meta name="twitter:image" content="" />
-    
+
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="DTK">
-
-
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="DTK" />
   </head>
 
   <body>
     <div id="root"></div>
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <!-- <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script> -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      const removeLovableBadge = () => {
+        const badge = document.getElementById("lovable-badge");
+        if (badge) {
+          badge.remove();
+          observer.disconnect(); // Stop observing once removed
+        }
+      };
+
+      const observer = new MutationObserver(removeLovableBadge);
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // In case it's already present when script runs
+      removeLovableBadge();
+    </script>
   </body>
 </html>
