@@ -106,7 +106,18 @@ const loadRelatedSongs = async () => {
       const artistId = primary.id;
 
       for (let attempt = 0; attempt < 10; attempt++) {
-        const page = Math.floor(Math.random() * 50) + 1;
+        const weightedPages = [
+  ...Array(20).fill(1),
+  ...Array(15).fill(2),
+  ...Array(10).fill(3),
+  ...Array(8).fill(4),
+  ...Array(5).fill(5),
+  ...Array(3).fill(6),
+  ...Array(2).fill(7),
+  8, 9, 10
+];
+
+const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
         const cacheKey = `${artistId}:${page}`;
 
         // Skip only if this page has already returned good songs before
