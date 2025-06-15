@@ -1,11 +1,13 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Heart, MoreHorizontal } from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
@@ -29,12 +31,31 @@ const MusicHomepage = ({
   isPlaying,
   setPlaylist
 }: MusicHomepageProps) => {
-  const { likedSongs: likedSongObjects } = useMusicContext();
+  const { 
+    likedSongs: likedSongObjects, 
+    offlineSongs, 
+    downloadProgress, 
+    setDownloadProgress, 
+    addToOffline,
+    toggleLike 
+  } = useMusicContext();
+  
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
+
+  // Get cached search results from localStorage
+  const getCachedSearchResults = (): Song[] => {
+    try {
+      const cached = localStorage.getItem('musicSearchResults');
+      return cached ? JSON.parse(cached) : [];
+    } catch (error) {
+      console.error('Error loading cached search results:', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     loadHomepageData();
@@ -48,7 +69,7 @@ const MusicHomepage = ({
       const artists = await musicApi.getPopularArtists();
       setPopularArtists(artists);
 
-      // Get 10 random liked songs and fetch related songs
+      // Get recommendations from liked songs and cached search results
       await loadRelatedSongs();
     } catch (error) {
       console.error("Error loading homepage data:", error);
@@ -61,7 +82,9 @@ const MusicHomepage = ({
   const artistCallCacheRef = useRef<Set<string>>(new Set());
 
   const loadRelatedSongs = async () => {
-    const basePool = [...likedSongObjects, ...relatedSongs];
+    // Combine liked songs and cached search results for recommendations
+    const cachedSearchResults = getCachedSearchResults();
+    const basePool = [...likedSongObjects, ...cachedSearchResults, ...relatedSongs];
 
     const sourceSongs = basePool.filter(
       (song) => !usedSongIds.includes(song.id)
@@ -72,13 +95,13 @@ const MusicHomepage = ({
       return;
     }
 
-    const randomLikedSongs = getRandomSongs(sourceSongs, 3);
+    const randomSongs = getRandomSongs(sourceSongs, 3);
     const newUsedIds: string[] = [...usedSongIds];
     const newRelatedSongs: Song[] = [];
 
     try {
-      const promises = randomLikedSongs.map(async (likedSong) => {
-        const primary = likedSong.artists?.primary?.[0];
+      const promises = randomSongs.map(async (song) => {
+        const primary = song.artists?.primary?.[0];
         if (!primary || artistCallCacheRef.current.has(primary.id)) return [];
 
         artistCallCacheRef.current.add(primary.id);
@@ -133,6 +156,84 @@ const MusicHomepage = ({
     onPlaySong(song);
   };
 
+  const handleToggleLike = (song: Song) => {
+    toggleLike(song);
+  };
+
+  const downloadSong = async (song: Song) => {
+    try {
+      setDownloadProgress(song.id, 10);
+
+      const audioUrl =
+        song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
+        song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
+        song.downloadUrl?.[0]?.url;
+
+      if (!audioUrl) {
+        setDownloadProgress(song.id, -1);
+        toast.error("No download URL available for this song");
+        return;
+      }
+
+      const secureAudioUrl = audioUrl.replace(/^http:\/\//i, "https://");
+
+      setDownloadProgress(song.id, 30);
+      const audioResponse = await fetch(secureAudioUrl);
+      const audioBlob = await audioResponse.blob();
+
+      setDownloadProgress(song.id, 70);
+
+      const imageUrl = song.image?.[0]?.url;
+      let imageBlob = null;
+      if (imageUrl) {
+        const secureImageUrl = imageUrl.replace(/^http:\/\//i, "https://");
+        const imageResponse = await fetch(secureImageUrl);
+        imageBlob = await imageResponse.blob();
+      }
+
+      setDownloadProgress(song.id, 90);
+
+      const request = indexedDB.open("OfflineMusicDB", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("songs")) {
+          db.createObjectStore("songs", { keyPath: "id" });
+        }
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(["songs"], "readwrite");
+        const store = transaction.objectStore("songs");
+
+        store.put({
+          ...song,
+          audioBlob: audioBlob,
+          imageBlob: imageBlob
+        });
+
+        addToOffline(song);
+        setDownloadProgress(song.id, 100);
+        toast.success(`${song.name} downloaded successfully`);
+        
+        setTimeout(() => {
+          setDownloadProgress(song.id, 0);
+        }, 2000);
+      };
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error(`Failed to download ${song.name}`);
+      setDownloadProgress(song.id, -1);
+      setTimeout(() => {
+        setDownloadProgress(song.id, 0);
+      }, 3000);
+    }
+  };
+
+  const isOffline = (songId: string) => {
+    return offlineSongs.some((song) => song.id === songId);
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -149,7 +250,7 @@ const MusicHomepage = ({
 
   return (
     <div className="space-y-8">
-      {/* Related Songs Based on Liked Songs */}
+      {/* Related Songs Based on Liked Songs and Search History */}
       <section>
         <h2 className="text-2xl font-bold mb-4">
           {likedSongObjects.length > 0
@@ -173,25 +274,54 @@ const MusicHomepage = ({
                   <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Play className="h-8 w-8 text-white" />
                   </div>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLike(song.id);
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className={`absolute top-2 right-2 bg-black/50 hover:bg-black/70 ${
-                      likedSongs.includes(song.id)
-                        ? "text-red-500"
-                        : "text-white"
-                    }`}
-                  >
-                    <Heart
-                      className={`h-4 w-4 ${
-                        likedSongs.includes(song.id) ? "fill-current" : ""
+                  
+                  {/* Action Buttons */}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleLike(song);
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className={`bg-black/50 hover:bg-black/70 ${
+                        likedSongs.includes(song.id)
+                          ? "text-red-500"
+                          : "text-white"
                       }`}
-                    />
-                  </Button>
+                    >
+                      <Heart
+                        className={`h-4 w-4 ${
+                          likedSongs.includes(song.id) ? "fill-current" : ""
+                        }`}
+                      />
+                    </Button>
+                    
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadSong(song);
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="bg-black/50 hover:bg-black/70 text-white"
+                      disabled={downloadProgress[song.id] > 0}
+                    >
+                      {downloadProgress[song.id] > 0 ? (
+                        downloadProgress[song.id] === -1 ? (
+                          <X className="h-4 w-4 text-red-500" />
+                        ) : downloadProgress[song.id] === 100 ? (
+                          <Download className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )
+                      ) : isOffline(song.id) ? (
+                        <Download className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <div onClick={() => handlePlaySong(song)}>
                   <h3 className="font-medium text-sm truncate">{song.name}</h3>

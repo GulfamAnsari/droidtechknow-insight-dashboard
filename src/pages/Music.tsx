@@ -102,6 +102,27 @@ const Music = () => {
   const playlistRef = useRef(null);
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([]);
 
+  // Store search results in localStorage for recommendations
+  const storeSearchResults = (songs: Song[]) => {
+    try {
+      const existing = localStorage.getItem('musicSearchResults');
+      const existingSongs = existing ? JSON.parse(existing) : [];
+      
+      // Combine and remove duplicates
+      const combined = [...existingSongs, ...songs];
+      const unique = combined.filter((song, index, self) => 
+        index === self.findIndex(s => s.id === song.id)
+      );
+      
+      // Keep only the latest 100 songs to prevent localStorage from getting too large
+      const latest = unique.slice(-100);
+      
+      localStorage.setItem('musicSearchResults', JSON.stringify(latest));
+    } catch (error) {
+      console.error('Error storing search results:', error);
+    }
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
@@ -113,6 +134,12 @@ const Music = () => {
     try {
       const results = await musicApi.search(searchQuery, 1, 20);
       setSearchResults(results);
+      
+      // Store search results for recommendations
+      if (results.songs.length > 0) {
+        storeSearchResults(results.songs);
+      }
+      
       // Append new search results to existing playlist instead of replacing
       const updatedPlaylist = [...playlist, ...results.songs];
       setPlaylist(updatedPlaylist);
@@ -150,6 +177,9 @@ const Music = () => {
       }));
 
       if (type === "songs") {
+        // Store new search results for recommendations
+        storeSearchResults(newResults);
+        
         const updatedSongs = [...playlist, ...newResults];
         setPlaylist(updatedSongs);
       }
@@ -180,6 +210,9 @@ const Music = () => {
           ...prev,
           songs: nextPage
         }));
+
+        // Store new search results for recommendations
+        storeSearchResults(newResults);
 
         const updatedSongs = [...playlist, ...newResults];
         setPlaylist(updatedSongs);
