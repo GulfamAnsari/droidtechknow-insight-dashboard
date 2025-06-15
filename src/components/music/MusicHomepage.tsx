@@ -1,13 +1,25 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Heart, MoreHorizontal, Download, Loader2, X } from "lucide-react";
+import {
+  Play,
+  Heart,
+  MoreHorizontal,
+  Download,
+  Loader2,
+  X
+} from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@radix-ui/react-dropdown-menu";
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
@@ -31,15 +43,15 @@ const MusicHomepage = ({
   isPlaying,
   setPlaylist
 }: MusicHomepageProps) => {
-  const { 
-    likedSongs: likedSongObjects, 
-    offlineSongs, 
-    downloadProgress, 
-    setDownloadProgress, 
+  const {
+    likedSongs: likedSongObjects,
+    offlineSongs,
+    downloadProgress,
+    setDownloadProgress,
     addToOffline,
-    toggleLike 
+    toggleLike
   } = useMusicContext();
-  
+
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,10 +61,10 @@ const MusicHomepage = ({
   // Get cached search results from localStorage
   const getCachedSearchResults = (): Song[] => {
     try {
-      const cached = localStorage.getItem('musicSearchResults');
+      const cached = localStorage.getItem("musicSearchResults");
       return cached ? JSON.parse(cached) : [];
     } catch (error) {
-      console.error('Error loading cached search results:', error);
+      console.error("Error loading cached search results:", error);
       return [];
     }
   };
@@ -78,108 +90,121 @@ const MusicHomepage = ({
     }
   };
 
+  const artistPageCache = useRef<Set<string>>(new Set());
 
-const artistPageCache = useRef<Set<string>>(new Set());
+  const loadRelatedSongs = async () => {
+    const cachedSearchResults = getCachedSearchResults();
+    const basePool = [
+      ...likedSongObjects,
+      ...cachedSearchResults,
+      ...relatedSongs
+    ];
 
-const loadRelatedSongs = async () => {
-  const cachedSearchResults = getCachedSearchResults();
-  const basePool = [...likedSongObjects, ...cachedSearchResults, ...relatedSongs];
-
-  const sourceSongs = basePool.filter(
-    (song) => !usedSongIds.includes(song.id)
-  );
-
-  // if (sourceSongs.length === 0) {
-  //   toast.info("No more recommendations available");
-  //   return;
-  // }
-
-  const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
-  const newUsedIds: string[] = [...usedSongIds, ...randomSongs.map((s) => s.id)];
-  const newRelatedSongs: Song[] = [];
-
-  try {
-    const promises = randomSongs.map(async (song) => {
-      const primary = song.artists?.primary?.[0];
-      if (!primary?.id) return [];
-
-      const artistId = primary.id;
-
-      for (let attempt = 0; attempt < 10; attempt++) {
-        const weightedPages = [
-  ...Array(20).fill(1),
-  ...Array(15).fill(2),
-  ...Array(10).fill(3),
-  ...Array(8).fill(4),
-  ...Array(5).fill(5),
-  ...Array(3).fill(6),
-  ...Array(2).fill(7),
-  8, 9, 10
-];
-
-const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
-        const cacheKey = `${artistId}:${page}`;
-
-        // Skip only if this page has already returned good songs before
-        if (artistPageCache.current.has(cacheKey)) continue;
-
-        const searchResults = await musicApi.getArtistSongs(artistId, page);
-
-        const filtered = searchResults.filter(
-          (resultSong) =>
-            !newUsedIds.includes(resultSong.id) &&
-            !likedSongs.includes(resultSong.id) &&
-            !newRelatedSongs.some((s) => s.id === resultSong.id)
-        );
-
-        if (filtered.length > 0) {
-          artistPageCache.current.add(cacheKey); // ✅ Cache only after success
-          return filtered;
-        }
-
-        // Don’t cache if nothing useful found!
-      }
-
-      return [];
-    });
-
-    const results = await Promise.all(promises);
-    const flatResults = results.flat();
-
-    const trulyUniqueSongs = flatResults.filter(
-      (song, index, self) => self.findIndex((s) => s.id === song.id) === index
+    const sourceSongs = basePool.filter(
+      (song) => !usedSongIds.includes(song.id)
     );
 
-    newRelatedSongs.push(...trulyUniqueSongs);
-    newUsedIds.push(...trulyUniqueSongs.map((s) => s.id));
+    // if (sourceSongs.length === 0) {
+    //   toast.info("No more recommendations available");
+    //   return;
+    // }
 
-    setRelatedSongs((prev) => {
-      const merged = [...prev, ...newRelatedSongs];
-      return merged.filter(
-        (song, index, self) =>
-          self.findIndex((s) => s.id === song.id) === index
+    const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
+    const newUsedIds: string[] = [
+      ...usedSongIds,
+      ...randomSongs.map((s) => s.id)
+    ];
+    const newRelatedSongs: Song[] = [];
+
+    try {
+      const promises = randomSongs.map(async (song) => {
+        const primary = song.artists?.primary?.[0];
+        if (!primary?.id) return [];
+
+        const artistId = primary.id;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const weightedPages = [
+            ...Array(20).fill(1),
+            ...Array(15).fill(2),
+            ...Array(10).fill(3),
+            ...Array(8).fill(4),
+            ...Array(5).fill(5),
+            ...Array(3).fill(6),
+            ...Array(2).fill(7),
+            8,
+            9,
+            10
+          ];
+
+          const page =
+            weightedPages[Math.floor(Math.random() * weightedPages.length)];
+          const cacheKey = `${artistId}:${page}`;
+
+          // Skip only if this page has already returned good songs before
+          if (artistPageCache.current.has(cacheKey)) continue;
+
+          const searchResults = await musicApi.getArtistSongs(artistId, page);
+
+          const filtered = searchResults.filter(
+            (resultSong) =>
+              !newUsedIds.includes(resultSong.id) &&
+              !likedSongs.includes(resultSong.id) &&
+              !newRelatedSongs.some((s) => s.id === resultSong.id)
+          );
+
+          if (filtered.length > 0) {
+            artistPageCache.current.add(cacheKey); // ✅ Cache only after success
+            return filtered;
+          }
+
+          // Don’t cache if nothing useful found!
+        }
+
+        return [];
+      });
+
+      const results = await Promise.all(promises);
+      const flatResults = results.flat();
+
+      const trulyUniqueSongs = flatResults.filter(
+        (song, index, self) => self.findIndex((s) => s.id === song.id) === index
       );
-    });
 
-    setUsedSongIds(newUsedIds);
-  } catch (error) {
-    console.error("Error fetching related songs:", error);
-  }
-};
+      newRelatedSongs.push(...trulyUniqueSongs);
+      newUsedIds.push(...trulyUniqueSongs.map((s) => s.id));
 
+      setRelatedSongs((prev) => {
+        const merged = [...prev, ...newRelatedSongs];
+        return merged.filter(
+          (song, index, self) =>
+            self.findIndex((s) => s.id === song.id) === index
+        );
+      });
 
+      setUsedSongIds(newUsedIds);
+    } catch (error) {
+      console.error("Error fetching related songs:", error);
+    }
+  };
 
-  const getRandomSongs = (songs: Song[], count: number, usedSongIds: string[]): Song[] => {
-  // Step 1: Try filtering unused songs
-  const availableSongs = songs.filter(song => !usedSongIds.includes(song.id));
+  const getRandomSongs = (
+    songs: Song[],
+    count: number,
+    usedSongIds: string[]
+  ): Song[] => {
+    // Step 1: Try filtering unused songs
+    const availableSongs = songs.filter(
+      (song) => !usedSongIds.includes(song.id)
+    );
 
-  // Step 2: If some are unused, return random from them
-  const pool = availableSongs.length > 0 ? availableSongs : songs;
+    // Step 2: If some are unused, return random from them
+    const pool = availableSongs.length > 0 ? availableSongs : songs;
 
-  // Step 3: Shuffle and return up to `count`
-  const shuffled = [...pool].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, Math.min(count, shuffled.length));
-};
+    // Step 3: Shuffle and return up to `count`
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, Math.min(count, shuffled.length));
+  };
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -251,7 +276,7 @@ const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
         addToOffline(song);
         setDownloadProgress(song.id, 100);
         toast.success(`${song.name} downloaded successfully`);
-        
+
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
         }, 2000);
@@ -293,14 +318,14 @@ const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
             ? "Recommended for You"
             : "Trending Songs"}
         </h2>
-        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
           {relatedSongs.map((song) => (
             <Card
               key={song.id}
               className="cursor-pointer hover:shadow-lg transition-shadow group"
             >
-              <CardContent className="p-4">
-                <div className="relative mb-3">
+              <CardContent className="p-2">
+                <div className="relative mb-2">
                   <LazyImage
                     src={song.image?.[1]?.url || song.image?.[0]?.url}
                     alt={song.name}
@@ -308,55 +333,70 @@ const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
                     onClick={() => handlePlaySong(song)}
                   />
                   <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-8 w-8 text-white" onClick={() => handlePlaySong(song)} />
+                    <Play
+                      className="h-8 w-8 text-white"
+                      onClick={() => handlePlaySong(song)}
+                    />
                   </div>
-                  
+
                   {/* Action Buttons */}
-                  <div className="absolute top-2 right-2 flex gap-1">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleLike(song);
-                      }}
-                      variant="ghost"
-                      size="sm"
-                      className={`bg-black/50 hover:bg-black/70 ${
-                        likedSongs.includes(song.id)
-                          ? "text-red-500"
-                          : "text-white"
-                      }`}
-                    >
-                      <Heart
-                        className={`h-4 w-4 ${
-                          likedSongs.includes(song.id) ? "fill-current" : ""
-                        }`}
-                      />
-                    </Button>
-                    
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        downloadSong(song);
-                      }}
-                      variant="ghost"
-                      size="sm"
-                      className="bg-black/50 hover:bg-black/70 text-white"
-                      disabled={downloadProgress[song.id] > 0}
-                    >
-                      {downloadProgress[song.id] > 0 ? (
-                        downloadProgress[song.id] === -1 ? (
-                          <X className="h-4 w-4 text-red-500" />
-                        ) : downloadProgress[song.id] === 100 ? (
-                          <Download className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        )
-                      ) : isOffline(song.id) ? (
-                        <Download className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
+
+                  <div className="absolute top-2 right-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 p-0 bg-black/50 hover:bg-black/70 text-white"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent
+                        align="end"
+                        className="p-1 bg-black/90 text-white flex flex-row gap-1"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLike(song);
+                          }}
+                          className={`h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center ${
+                            likedSongs.includes(song.id) ? "text-red-500" : ""
+                          }`}
+                        >
+                          <Heart
+                            className={`h-4 w-4 ${
+                              likedSongs.includes(song.id) ? "fill-current" : ""
+                            }`}
+                          />
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadSong(song);
+                          }}
+                          disabled={downloadProgress[song.id] > 0}
+                          className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center"
+                        >
+                          {downloadProgress[song.id] > 0 ? (
+                            downloadProgress[song.id] === -1 ? (
+                              <X className="h-4 w-4 text-red-500" />
+                            ) : downloadProgress[song.id] === 100 ? (
+                              <Download className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )
+                          ) : isOffline(song.id) ? (
+                            <Download className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
                 <div onClick={() => handlePlaySong(song)}>
