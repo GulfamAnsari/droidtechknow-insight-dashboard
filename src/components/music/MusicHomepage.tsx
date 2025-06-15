@@ -78,67 +78,85 @@ const MusicHomepage = ({
     }
   };
 
-  // ✅ Persistent cache across multiple calls (per session)
-  const artistCallCacheRef = useRef<Set<string>>(new Set());
 
-  const loadRelatedSongs = async () => {
-    // Combine liked songs and cached search results for recommendations
-    const cachedSearchResults = getCachedSearchResults();
-    const basePool = [...likedSongObjects, ...cachedSearchResults, ...relatedSongs];
+const artistPageCache = useRef<Set<string>>(new Set());
 
-    const sourceSongs = basePool.filter(
-      (song) => !usedSongIds.includes(song.id)
+const loadRelatedSongs = async () => {
+  const cachedSearchResults = getCachedSearchResults();
+  const basePool = [...likedSongObjects, ...cachedSearchResults, ...relatedSongs];
+
+  const sourceSongs = basePool.filter(
+    (song) => !usedSongIds.includes(song.id)
+  );
+
+  // if (sourceSongs.length === 0) {
+  //   toast.info("No more recommendations available");
+  //   return;
+  // }
+
+  const randomSongs = getRandomSongs(basePool, 3);
+  const newUsedIds: string[] = [...usedSongIds, ...randomSongs.map((s) => s.id)];
+  const newRelatedSongs: Song[] = [];
+
+  try {
+    const promises = randomSongs.map(async (song) => {
+      const primary = song.artists?.primary?.[0];
+      if (!primary?.id) return [];
+
+      const artistId = primary.id;
+
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const page = Math.floor(Math.random() * 50) + 1;
+        const cacheKey = `${artistId}:${page}`;
+
+        // Skip only if this page has already returned good songs before
+        if (artistPageCache.current.has(cacheKey)) continue;
+
+        const searchResults = await musicApi.getArtistSongs(artistId, page);
+
+        const filtered = searchResults.filter(
+          (resultSong) =>
+            !newUsedIds.includes(resultSong.id) &&
+            !likedSongs.includes(resultSong.id) &&
+            !newRelatedSongs.some((s) => s.id === resultSong.id)
+        );
+
+        if (filtered.length > 0) {
+          artistPageCache.current.add(cacheKey); // ✅ Cache only after success
+          return filtered;
+        }
+
+        // Don’t cache if nothing useful found!
+      }
+
+      return [];
+    });
+
+    const results = await Promise.all(promises);
+    const flatResults = results.flat();
+
+    const trulyUniqueSongs = flatResults.filter(
+      (song, index, self) => self.findIndex((s) => s.id === song.id) === index
     );
 
-    if (sourceSongs.length === 0) {
-      toast.info("No more recommendations available");
-      return;
-    }
+    newRelatedSongs.push(...trulyUniqueSongs);
+    newUsedIds.push(...trulyUniqueSongs.map((s) => s.id));
 
-    const randomSongs = getRandomSongs(sourceSongs, 3);
-    const newUsedIds: string[] = [...usedSongIds];
-    const newRelatedSongs: Song[] = [];
-
-    try {
-      const promises = randomSongs.map(async (song) => {
-        const primary = song.artists?.primary?.[0];
-        if (!primary || artistCallCacheRef.current.has(primary.id)) return [];
-
-        artistCallCacheRef.current.add(primary.id);
-
-        const searchResults = await musicApi.getArtistSongs(primary.id, 0);
-
-        return searchResults.filter(
-          (song) =>
-            !newUsedIds.includes(song.id) &&
-            !likedSongs.includes(song.id) &&
-            !newRelatedSongs.some((s) => s.id === song.id)
-        );
-      });
-
-      const results = await Promise.all(promises);
-      const flatResults = results.flat();
-
-      const trulyUniqueSongs = flatResults.filter(
-        (song, index, self) => self.findIndex((s) => s.id === song.id) === index
+    setRelatedSongs((prev) => {
+      const merged = [...prev, ...newRelatedSongs];
+      return merged.filter(
+        (song, index, self) =>
+          self.findIndex((s) => s.id === song.id) === index
       );
+    });
 
-      trulyUniqueSongs.forEach((song) => newUsedIds.push(song.id));
-      newRelatedSongs.push(...trulyUniqueSongs);
+    setUsedSongIds(newUsedIds);
+  } catch (error) {
+    console.error("Error fetching related songs:", error);
+  }
+};
 
-      setRelatedSongs((prev) => {
-        const merged = [...prev, ...newRelatedSongs];
-        return merged.filter(
-          (song, index, self) =>
-            self.findIndex((s) => s.id === song.id) === index
-        );
-      });
 
-      setUsedSongIds(newUsedIds);
-    } catch (error) {
-      console.error("Error fetching related songs:", error);
-    }
-  };
 
   const getRandomSongs = (songs: Song[], count: number) => {
     const shuffled = [...songs].sort(() => 0.5 - Math.random());
@@ -257,7 +275,7 @@ const MusicHomepage = ({
             ? "Recommended for You"
             : "Trending Songs"}
         </h2>
-        <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">
           {relatedSongs.map((song) => (
             <Card
               key={song.id}
@@ -272,7 +290,7 @@ const MusicHomepage = ({
                     onClick={() => handlePlaySong(song)}
                   />
                   <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-8 w-8 text-white" />
+                    <Play className="h-8 w-8 text-white" onClick={() => handlePlaySong(song)} />
                   </div>
                   
                   {/* Action Buttons */}
