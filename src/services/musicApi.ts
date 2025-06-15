@@ -143,10 +143,10 @@ class MusicApiService {
     }
   }
 
-  async getArtistSongs(artistId: string, page: number = 1): Promise<Song[]> {
+  async getArtistSongs(artistId: string, page: number = 1, limit: number = 10): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=10`,
+        `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=${limit}`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
