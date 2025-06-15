@@ -20,25 +20,7 @@ import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@radix-ui/react-progress";
-
-interface Song {
-  id: string;
-  name: string;
-  artists: {
-    primary: {
-      name: string;
-    }[];
-  };
-  image: {
-    quality: string;
-    url: string;
-  }[];
-  downloadUrl: {
-    quality: string;
-    url: string;
-  }[];
-  duration: number;
-}
+import { Song } from "@/services/musicApi";
 
 interface FullscreenPlayerProps {
   song: Song;

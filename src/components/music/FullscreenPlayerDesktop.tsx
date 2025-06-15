@@ -21,25 +21,7 @@ import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Progress } from "@radix-ui/react-progress";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { useToast } from "@/hooks/use-toast";
-
-interface Song {
-  id: string;
-  name: string;
-  artists: {
-    primary: {
-      name: string;
-    }[];
-  };
-  image: {
-    quality: string;
-    url: string;
-  }[];
-  downloadUrl: {
-    quality: string;
-    url: string;
-  }[];
-  duration: number;
-}
+import { Song } from "@/services/musicApi";
 
 interface FullscreenPlayerProps {
   song: Song;
