@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -10,13 +10,15 @@ interface EditorProps {
   onChange: (content: string) => void;
   readOnly?: boolean;
   placeholder?: string;
+  noteName?: string;
 }
 
 const Editor: React.FC<EditorProps> = ({ 
   content, 
   onChange, 
   readOnly = false,
-  placeholder = 'Start writing your note here...'
+  placeholder = 'Start writing your note here...',
+  noteName = 'note'
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -24,6 +26,16 @@ const Editor: React.FC<EditorProps> = ({
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
+  };
+
+  const downloadNote = () => {
+    const element = document.createElement('a');
+    const file = new Blob([content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${noteName}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   };
 
   // Auto-resize textarea as content grows
@@ -40,7 +52,16 @@ const Editor: React.FC<EditorProps> = ({
       "relative border rounded-md flex flex-col",
       isFullscreen ? "fixed inset-0 z-50 bg-background p-6" : "min-h-[300px]"
     )} style={{ height: '100%'}}>
-      <div className="flex justify-end p-2 border-b">
+      <div className="flex justify-end p-2 border-b gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={downloadNote}
+          className="hover:bg-muted"
+          disabled={!content.trim()}
+        >
+          <Download className="h-4 w-4" />
+        </Button>
         <Button 
           variant="ghost" 
           size="sm" 

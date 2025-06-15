@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoItem } from "@/types/todo";
@@ -13,18 +14,9 @@ import {
   Bell,
   Search,
   Menu,
-  Filter,
   Loader2,
-  ChevronDown,
-  ChevronRight
 } from "lucide-react";
 import TodoStepsList from "./TodoStepsList";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tabs,
   TabsContent,
@@ -304,30 +296,6 @@ const TodoMain = ({
             <h1 className="text-xl font-semibold" style={{ color: activeList?.color }}>
               {activeList?.name || "Tasks"}
             </h1>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Filter className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => dispatch({
-                  type: "SET_FILTER",
-                  payload: { ...state.filter, completed: false }
-                })}>
-                  Hide completed
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => dispatch({
-                  type: "SET_FILTER",
-                  payload: { ...state.filter, completed: undefined }
-                })}>
-                  Show all
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
         

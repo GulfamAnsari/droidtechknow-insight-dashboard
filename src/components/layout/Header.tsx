@@ -19,14 +19,15 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
     <header className="bg-card border-b border-border sticky top-0 z-30">
       <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-muted-foreground hover:text-foreground mr-3"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <span className="sr-only">Toggle sidebar</span>
             <Menu className="h-6 w-6" />
-          </button>
+          </Button>
           <h1 className="text-xl font-semibold text-foreground">
             DroidTechKnow Insights
           </h1>
