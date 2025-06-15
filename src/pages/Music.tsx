@@ -115,7 +115,7 @@ const Music = () => {
       );
       
       // Keep only the latest 100 songs to prevent localStorage from getting too large
-      const latest = unique.slice(-100);
+      const latest = unique.slice(-50);
       
       localStorage.setItem('musicSearchResults', JSON.stringify(latest));
     } catch (error) {
@@ -137,7 +137,7 @@ const Music = () => {
       
       // Store search results for recommendations
       if (results.songs.length > 0) {
-        storeSearchResults(results.songs);
+        storeSearchResults([results.songs[0]]);
       }
       
       // Append new search results to existing playlist instead of replacing
