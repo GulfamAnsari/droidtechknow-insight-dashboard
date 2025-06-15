@@ -94,7 +94,7 @@ const loadRelatedSongs = async () => {
   //   return;
   // }
 
-  const randomSongs = getRandomSongs(basePool, 3);
+  const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
   const newUsedIds: string[] = [...usedSongIds, ...randomSongs.map((s) => s.id)];
   const newRelatedSongs: Song[] = [];
 
@@ -158,10 +158,17 @@ const loadRelatedSongs = async () => {
 
 
 
-  const getRandomSongs = (songs: Song[], count: number) => {
-    const shuffled = [...songs].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, Math.min(count, songs.length));
-  };
+  const getRandomSongs = (songs: Song[], count: number, usedSongIds: string[]): Song[] => {
+  // Step 1: Try filtering unused songs
+  const availableSongs = songs.filter(song => !usedSongIds.includes(song.id));
+
+  // Step 2: If some are unused, return random from them
+  const pool = availableSongs.length > 0 ? availableSongs : songs;
+
+  // Step 3: Shuffle and return up to `count`
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, shuffled.length));
+};
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
