@@ -313,17 +313,21 @@ const MusicHomepage = ({
     <div className="space-y-8">
       {/* Related Songs Based on Liked Songs and Search History */}
       <section>
-        <h2 className="text-2xl font-bold mb-4">
-          Recommended for You
-        </h2>
-        <Card>
-          <CardContent>
-            <h3>Try searching to get started</h3>
-            <p>Start watching videos to help us build a feed of videos that you'll love.</p>
-          </CardContent>
-        </Card>
+        <h2 className="text-2xl font-bold mb-4">Recommended for You</h2>
+        {relatedSongs?.length == 0 ? (
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
+            <CardContent>
+              <h3>Try searching to get started</h3>
+              <p>
+                Start watching videos to help us build a feed of videos that
+                you'll love.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          ""
+        )}
 
-        <p>{relatedSongs?.length == 0 ? "Search songs to ": ""}</p>
         <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
           {relatedSongs.map((song) => (
             <Card
