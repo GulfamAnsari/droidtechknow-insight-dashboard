@@ -1,36 +1,14 @@
-
-import { useState } from "react";
-import { useTodo } from "@/contexts/TodoContext";
-import { TodoItem } from "@/types/todo";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  CalendarIcon, 
-  Check, 
-  Clock, 
-  Star, 
-  Trash2, 
-  X,
-  Bell,
-  ListTodo,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { X, Calendar, Tag, Plus, Trash2, CheckSquare, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTodo } from "@/contexts/TodoContext";
+import { Todo, TodoStep, Priority } from "@/types/todo";
 import TodoStepsList from "./TodoStepsList";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface TodoDetailsProps {
   todoId: string;
@@ -38,315 +16,249 @@ interface TodoDetailsProps {
 }
 
 const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
-  const { getTodoById, dispatch, state, updateTodo } = useTodo();
-  const todo = getTodoById(todoId) as TodoItem;
-  const [newStep, setNewStep] = useState("");
-  
+  const { state, dispatch } = useTodo();
+  const [todo, setTodo] = useState<Todo | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Priority>("medium");
+  const [dueDate, setDueDate] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+
+  useEffect(() => {
+    const foundTodo = state.todos.find(t => t.id === todoId);
+    if (foundTodo) {
+      setTodo(foundTodo);
+      setTitle(foundTodo.title);
+      setDescription(foundTodo.description || "");
+      setPriority(foundTodo.priority);
+      setDueDate(foundTodo.dueDate || "");
+      setTags(foundTodo.tags || []);
+    }
+  }, [todoId, state.todos]);
+
+  const handleSave = () => {
+    if (!todo) return;
+
+    dispatch({
+      type: "UPDATE_TODO",
+      payload: {
+        ...todo,
+        title,
+        description,
+        priority,
+        dueDate: dueDate || undefined,
+        tags,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    if (!todo) return;
+    
+    dispatch({
+      type: "DELETE_TODO",
+      payload: todo.id,
+    });
+    
+    onClose();
+  };
+
+  const handleToggleComplete = () => {
+    if (!todo) return;
+
+    dispatch({
+      type: "UPDATE_TODO",
+      payload: {
+        ...todo,
+        completed: !todo.completed,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const priorityColors = {
+    low: "bg-green-100 text-green-800",
+    medium: "bg-yellow-100 text-yellow-800",
+    high: "bg-red-100 text-red-800",
+  };
+
   if (!todo) {
     return (
-      <div className="w-full md:w-[350px] flex-shrink-0 border-l p-4 bg-background">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium">Task Details</h2>
-          <button 
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
+      <div className="w-96 border-l bg-background p-6">
+        <div className="text-center text-muted-foreground">
+          Todo not found
         </div>
-        <p className="text-muted-foreground">Task not found</p>
       </div>
     );
   }
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: { ...todo, title: e.target.value }
-    });
-  };
-
-  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: { ...todo, notes: e.target.value }
-    });
-  };
-
-  const handleToggleCompleted = () => {
-    dispatch({
-      type: "TOGGLE_TODO_COMPLETED",
-      payload: todo.id
-    });
-  };
-
-  const handleToggleImportant = () => {
-    dispatch({
-      type: "TOGGLE_TODO_IMPORTANT",
-      payload: todo.id
-    });
-  };
-
-  const handleDeleteTodo = () => {
-    dispatch({
-      type: "DELETE_TODO",
-      payload: todo.id
-    });
-    onClose();
-  };
-
-  const handleAddStep = () => {
-    if (newStep.trim()) {
-      dispatch({
-        type: "ADD_TODO_STEP",
-        payload: { todoId: todo.id, stepTitle: newStep.trim() }
-      });
-      setNewStep("");
-    }
-  };
-
-  const handleSetDueDate = (date: Date | undefined) => {
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: { ...todo, dueDate: date }
-    });
-  };
-
-  const handleSetReminderDate = (date: Date | undefined) => {
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: { ...todo, reminderDate: date }
-    });
-  };
-
-  const handleChangeList = (listId: string) => {
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: { ...todo, listId }
-    });
-  };
-
-  const formatDateForDisplay = (date: Date | null | undefined) => {
-    if (!date) return "";
-    return format(new Date(date), "PPP");
-  };
-
   return (
-    <div className="w-full md:w-[350px] flex-shrink-0 border-l p-4 bg-background overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-medium">Task Details</h2>
-        <button 
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      
-      {/* Completed checkbox and title */}
-      <div className="flex items-start gap-3 mb-4">
-        <button 
-          className={cn(
-            "mt-1 flex-shrink-0 h-5 w-5 rounded-full border flex items-center justify-center",
-            todo.completed ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground"
-          )}
-          onClick={handleToggleCompleted}
-          aria-label={todo.completed ? "Mark as incomplete" : "Mark as complete"}
-        >
-          {todo.completed && <Check className="h-3 w-3" />}
-        </button>
-        
-        <Input
-          value={todo.title}
-          onChange={handleTitleChange}
-          className="flex-1 text-base font-medium border-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-          placeholder="Task title"
-        />
-      </div>
-      
-      {/* Important button */}
-      <div className="mb-4">
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start gap-2",
-            todo.important ? "text-amber-500" : ""
-          )}
-          onClick={handleToggleImportant}
-        >
-          {todo.important ? (
-            <Star className="h-5 w-5 fill-amber-500" />
-          ) : (
-            <Star className="h-5 w-5" />
-          )}
-          {todo.important ? "Remove importance" : "Mark as important"}
-        </Button>
-      </div>
-      
-      {/* List selection */}
-      <div className="mb-4">
-        <label className="text-sm font-medium mb-1 block">List</label>
-        <Select
-          value={todo.listId}
-          onValueChange={handleChangeList}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a list" />
-          </SelectTrigger>
-          <SelectContent>
-            {state.lists.map((list) => (
-              <SelectItem key={list.id} value={list.id}>
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: list.color }}
-                  />
-                  {list.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Notes */}
-      <div className="mb-4">
-        <label className="text-sm font-medium mb-1 block">Notes</label>
-        <Textarea 
-          value={todo.notes || ""}
-          onChange={handleNotesChange}
-          className="min-h-24 resize-none"
-          placeholder="Add notes"
-        />
-      </div>
-      
-      {/* Due Date */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-1">
-          <label className="text-sm font-medium">Due date</label>
-          {todo.dueDate && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-5 p-0"
-              onClick={() => handleSetDueDate(undefined)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-        
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 text-left font-normal"
-            >
-              <CalendarIcon className="h-4 w-4" />
-              {todo.dueDate ? (
-                formatDateForDisplay(todo.dueDate)
-              ) : (
-                <span className="text-muted-foreground">Add due date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={todo.dueDate ? new Date(todo.dueDate) : undefined}
-              onSelect={handleSetDueDate}
-              initialFocus
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      
-      {/* Reminder */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-1">
-          <label className="text-sm font-medium">Reminder</label>
-          {todo.reminderDate && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-5 p-0"
-              onClick={() => handleSetReminderDate(undefined)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-        
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 text-left font-normal"
-            >
-              <Bell className="h-4 w-4" />
-              {todo.reminderDate ? (
-                format(new Date(todo.reminderDate), "PPP p")
-              ) : (
-                <span className="text-muted-foreground">Add reminder</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <div className="p-3">
-              <Calendar
-                mode="single"
-                selected={todo.reminderDate ? new Date(todo.reminderDate) : undefined}
-                onSelect={handleSetReminderDate}
-                initialFocus
-                className="pointer-events-auto"
-              />
-              {/* Time picker could be added here */}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-      
-      {/* Steps */}
-      <div className="mb-4">
-        <label className="text-sm font-medium mb-1 block">Steps</label>
-        {todo.steps && todo.steps.length > 0 && (
-          <div className="mb-2">
-            <TodoStepsList steps={todo.steps} todoId={todo.id} />
-          </div>
-        )}
-        
+    <div className="w-96 border-l bg-background flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">Todo Details</h2>
         <div className="flex gap-2">
-          <Input
-            value={newStep}
-            onChange={(e) => setNewStep(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddStep()}
-            placeholder="Add a step"
-            className="flex-1"
-          />
-          <Button onClick={handleAddStep} size="sm" disabled={!newStep.trim()}>
-            Add
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDelete}
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
-      
-      {/* Delete button */}
-      <div className="mt-auto pt-4">
-        <Button 
-          variant="outline" 
-          className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={handleDeleteTodo}
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete task
-        </Button>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Completion Status */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleComplete}
+            className={cn(
+              "p-0 h-6 w-6",
+              todo.completed ? "text-green-600" : "text-gray-400"
+            )}
+          >
+            {todo.completed ? (
+              <CheckSquare className="h-5 w-5" />
+            ) : (
+              <Square className="h-5 w-5" />
+            )}
+          </Button>
+          <span className={cn(
+            "text-sm",
+            todo.completed ? "line-through text-muted-foreground" : ""
+          )}>
+            {todo.completed ? "Completed" : "Not completed"}
+          </span>
+        </div>
+
+        {/* Title */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Title</label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleSave}
+            placeholder="Enter todo title..."
+          />
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Description</label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={handleSave}
+            placeholder="Add a description..."
+            rows={3}
+          />
+        </div>
+
+        {/* Priority */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Priority</label>
+          <div className="flex gap-2">
+            {(["low", "medium", "high"] as Priority[]).map((p) => (
+              <Button
+                key={p}
+                variant={priority === p ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setPriority(p);
+                  setTimeout(handleSave, 0);
+                }}
+                className={cn(
+                  "capitalize",
+                  priority === p && priorityColors[p]
+                )}
+              >
+                {p}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Due Date */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Due Date
+          </label>
+          <Input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            onBlur={handleSave}
+          />
+        </div>
+
+        {/* Tags */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Tags
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {tags.map((tag) => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="gap-1 cursor-pointer"
+                onClick={() => removeTag(tag)}
+              >
+                {tag}
+                <X className="h-3 w-3" />
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && addTag()}
+              placeholder="Add a tag..."
+              className="flex-1"
+            />
+            <Button size="sm" onClick={addTag}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Steps</label>
+          <TodoStepsList todoId={todo.id} />
+        </div>
+
+        {/* Metadata */}
+        <div className="space-y-2 text-xs text-muted-foreground border-t pt-4">
+          <div>Created: {new Date(todo.createdAt).toLocaleDateString()}</div>
+          {todo.updatedAt && (
+            <div>Updated: {new Date(todo.updatedAt).toLocaleDateString()}</div>
+          )}
+        </div>
       </div>
-      <Button 
-          className="w-full justify-start gap-2 mt-2"
-          onClick={() => updateTodo(todo)}
-        >
-          Update task
-        </Button>
     </div>
   );
 };

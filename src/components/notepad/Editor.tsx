@@ -1,93 +1,234 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
+import { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  Save, 
+  FileText, 
+  Trash2, 
+  Plus,
+  Download
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-interface EditorProps {
+interface Note {
+  id: string;
+  title: string;
   content: string;
-  onChange: (content: string) => void;
-  readOnly?: boolean;
-  placeholder?: string;
-  noteName?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const Editor: React.FC<EditorProps> = ({ 
-  content, 
-  onChange, 
-  readOnly = false,
-  placeholder = 'Start writing your note here...',
-  noteName = 'note'
-}) => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+interface EditorProps {
+  selectedNote: Note | null;
+  onSave: (note: Note) => void;
+  onDelete: (noteId: string) => void;
+  onCreateNew: () => void;
+}
+
+const Editor = ({ selectedNote, onSave, onDelete, onCreateNew }: EditorProps) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { theme } = useTheme();
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
-  const downloadNote = () => {
-    const element = document.createElement('a');
-    const file = new Blob([content], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${noteName}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
-
-  // Auto-resize textarea as content grows
   useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
+    if (selectedNote) {
+      setTitle(selectedNote.title);
+      setContent(selectedNote.content);
+      setHasChanges(false);
+    } else {
+      setTitle('');
+      setContent('');
+      setHasChanges(false);
     }
-  }, [content]);
+  }, [selectedNote]);
+
+  useEffect(() => {
+    if (selectedNote) {
+      const hasChanged = 
+        title !== selectedNote.title || 
+        content !== selectedNote.content;
+      setHasChanges(hasChanged);
+    }
+  }, [title, content, selectedNote]);
+
+  const handleSave = () => {
+    if (!selectedNote) return;
+    
+    const updatedNote = {
+      ...selectedNote,
+      title: title || 'Untitled',
+      content,
+      updatedAt: new Date().toISOString(),
+    };
+    
+    onSave(updatedNote);
+    setHasChanges(false);
+    toast.success('Note saved successfully');
+  };
+
+  const handleDelete = () => {
+    if (!selectedNote) return;
+    
+    onDelete(selectedNote.id);
+    toast.success('Note deleted successfully');
+  };
+
+  const handleDownload = () => {
+    if (!selectedNote) return;
+
+    const noteContent = `${title || 'Untitled'}\n\n${content}`;
+    const blob = new Blob([noteContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title || 'Untitled'}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Note downloaded successfully');
+  };
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (!hasChanges || !selectedNote) return;
+
+    const autoSaveTimer = setTimeout(() => {
+      handleSave();
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [hasChanges, title, content, selectedNote]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 's':
+            e.preventDefault();
+            if (selectedNote && hasChanges) {
+              handleSave();
+            }
+            break;
+          case 'n':
+            e.preventDefault();
+            onCreateNew();
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNote, hasChanges, onCreateNew]);
+
+  if (!selectedNote) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-muted/30">
+        <div className="text-center space-y-4">
+          <FileText className="h-16 w-16 mx-auto text-muted-foreground" />
+          <div>
+            <h3 className="text-lg font-semibold text-muted-foreground">
+              No note selected
+            </h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Select a note from the sidebar or create a new one
+            </p>
+          </div>
+          <Button onClick={onCreateNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create New Note
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn(
-      "relative border rounded-md flex flex-col",
-      isFullscreen ? "fixed inset-0 z-50 bg-background p-6" : "min-h-[300px]"
-    )} style={{ height: '100%'}}>
-      <div className="flex justify-end p-2 border-b gap-2">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={downloadNote}
-          className="hover:bg-muted"
-          disabled={!content.trim()}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={toggleFullscreen}
-          className="hover:bg-muted"
-        >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </Button>
+    <div className="flex-1 flex flex-col">
+      {/* Header */}
+      <div className="border-b p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Note title..."
+              className="text-lg font-semibold border-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+            />
+            {hasChanges && (
+              <span className="text-xs text-orange-500 font-medium">
+                • Unsaved changes
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              disabled={!hasChanges}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              className="gap-2 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+        
+        <div className="text-xs text-muted-foreground">
+          Created: {new Date(selectedNote.createdAt).toLocaleDateString()} • 
+          Last modified: {new Date(selectedNote.updatedAt).toLocaleDateString()}
+        </div>
       </div>
-      
-      <div className="flex-grow p-2">
+
+      {/* Content */}
+      <div className="flex-1 p-4">
         <textarea
           ref={textareaRef}
-          className={cn(
-            "w-full h-full p-3 resize-none focus:outline-none bg-transparent",
-            isFullscreen ? "h-[calc(100vh-120px)]" : "min-h-[250px]",
-            theme === "dark" ? "text-foreground" : "text-foreground"
-          )}
           value={content}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          disabled={readOnly}
-          style={{ 
-            lineHeight: '1.5'
-          }}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Start writing your note..."
+          className="w-full h-full resize-none border-none outline-none text-sm leading-relaxed bg-transparent"
         />
+      </div>
+
+      {/* Footer */}
+      <div className="border-t p-4">
+        <div className="flex justify-between items-center text-xs text-muted-foreground">
+          <div>
+            {content.length} characters • {content.split(/\s+/).filter(word => word.length > 0).length} words
+          </div>
+          <div className="flex gap-4">
+            <span>Ctrl+S to save</span>
+            <span>Ctrl+N for new note</span>
+          </div>
+        </div>
       </div>
     </div>
   );

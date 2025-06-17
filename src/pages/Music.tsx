@@ -476,6 +476,42 @@ const Music = () => {
     );
   };
 
+  // Add keyboard shortcuts effect
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only handle shortcuts if not typing in an input
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (event.code) {
+        case 'Space':
+          event.preventDefault();
+          if (currentSong) {
+            setIsPlaying(!isPlaying);
+          }
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          if (currentSong) {
+            playNext();
+          }
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          if (currentSong) {
+            playPrevious();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [currentSong, isPlaying, setIsPlaying, playNext, playPrevious]);
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
       <SwipeAnimations />

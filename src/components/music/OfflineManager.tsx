@@ -103,10 +103,17 @@ const OfflineManager = ({
         const transaction = db.transaction(['songs'], 'readwrite');
         const store = transaction.objectStore('songs');
         
-        store.delete(songId);
+        const deleteRequest = store.delete(songId);
         
-        transaction.oncomplete = () => {
+        deleteRequest.onsuccess = () => {
           setOfflineSongs(prev => prev.filter(song => song.id !== songId));
+          
+          // Also revoke blob URLs to free memory
+          const songToDelete = offlineSongs.find(s => s.id === songId);
+          if (songToDelete?.audioBlob) {
+            const blobUrl = URL.createObjectURL(songToDelete.audioBlob);
+            URL.revokeObjectURL(blobUrl);
+          }
         };
       };
     } catch (error) {
@@ -123,9 +130,17 @@ const OfflineManager = ({
         const transaction = db.transaction(['songs'], 'readwrite');
         const store = transaction.objectStore('songs');
         
-        store.clear();
+        const clearRequest = store.clear();
         
-        transaction.oncomplete = () => {
+        clearRequest.onsuccess = () => {
+          // Revoke all blob URLs to free memory
+          offlineSongs.forEach(song => {
+            if (song.audioBlob) {
+              const blobUrl = URL.createObjectURL(song.audioBlob);
+              URL.revokeObjectURL(blobUrl);
+            }
+          });
+          
           setOfflineSongs([]);
         };
       };
@@ -246,7 +261,7 @@ const OfflineManager = ({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete All Offline Songs</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete all {offlineSongs.length} offline songs? This action cannot be undone.
+                        Are you sure you want to delete all {offlineSongs.length} offline songs? This will free up browser storage space and cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -314,17 +329,32 @@ const OfflineManager = ({
                     >
                       <Heart className={`h-4 w-4 ${likedSongs.includes(song.id) ? "fill-current" : ""}`} />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteOfflineSong(song.id);
-                      }}
-                      className="text-red-500 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Offline Song</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{song.name}" from offline storage? This will free up browser storage space.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteOfflineSong(song.id)} className="bg-red-500 hover:bg-red-600 text-white">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}

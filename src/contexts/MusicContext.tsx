@@ -93,10 +93,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
   const [songsModalData, setSongsModalData] = useState<any>(null);
   
   // User data - Store complete Song objects
-  const [likedSongs, setLikedSongs] = useState<Song[]>(() => {
-    const saved = localStorage.getItem("likedSongs");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   
   const [offlineSongs, setOfflineSongs] = useState<Song[]>(() => {
     const saved = localStorage.getItem("offlineSongs");
@@ -105,25 +102,73 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
 
   const [downloadProgress, setDownloadProgressState] = useState<{ [songId: string]: number }>({});
 
-  // Save liked songs to localStorage
+  // Load liked songs from API on component mount
   useEffect(() => {
-    localStorage.setItem("likedSongs", JSON.stringify(likedSongs));
-  }, [likedSongs]);
+    loadLikedSongs();
+  }, []);
 
   // Save offline songs to localStorage
   useEffect(() => {
     localStorage.setItem("offlineSongs", JSON.stringify(offlineSongs));
   }, [offlineSongs]);
 
-  const toggleLike = (song: Song) => {
-    setLikedSongs(prev => {
-      const isLiked = prev.find(s => s.id === song.id);
-      if (isLiked) {
-        return prev.filter(s => s.id !== song.id);
-      } else {
-        return [...prev, song];
+  const loadLikedSongs = async () => {
+    try {
+      const response = await fetch('https://droidtechknow.com/admin/api/music/likedsongs.php', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.songs && Array.isArray(data.songs)) {
+          setLikedSongs(data.songs);
+        }
       }
-    });
+    } catch (error) {
+      console.error('Error loading liked songs:', error);
+      // Fallback to localStorage if API fails
+      const saved = localStorage.getItem("likedSongs");
+      if (saved) {
+        setLikedSongs(JSON.parse(saved));
+      }
+    }
+  };
+
+  const saveLikedSongToAPI = async (song: Song) => {
+    try {
+      const response = await fetch('https://droidtechknow.com/admin/api/music/likedsongs.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(song),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save liked song');
+      }
+    } catch (error) {
+      console.error('Error saving liked song:', error);
+      // Fallback to localStorage if API fails
+      const currentLiked = localStorage.getItem("likedSongs");
+      const likedArray = currentLiked ? JSON.parse(currentLiked) : [];
+      const updated = [...likedArray, song];
+      localStorage.setItem("likedSongs", JSON.stringify(updated));
+    }
+  };
+
+  const toggleLike = async (song: Song) => {
+    const isLiked = likedSongs.find(s => s.id === song.id);
+    
+    if (isLiked) {
+      setLikedSongs(prev => prev.filter(s => s.id !== song.id));
+    } else {
+      setLikedSongs(prev => [...prev, song]);
+      await saveLikedSongToAPI(song);
+    }
   };
 
   const addToOffline = (song: Song) => {
