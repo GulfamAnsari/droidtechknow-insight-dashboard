@@ -116,8 +116,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
   const loadLikedSongs = async () => {
     try {
       const response = await httpClient.get(
-        `https://droidtechknow.com/admin/api/music/likedsongs.php`,
-        { skipAuth: true }
+        `https://droidtechknow.com/admin/api/music/likedsongs.php`
       );
       
       if (response.ok) {
