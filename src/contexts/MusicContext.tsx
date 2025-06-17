@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Song } from '@/services/musicApi';
+import httpClient from '@/utils/httpClient';
 
 interface MusicContextType {
   // Player state
@@ -114,12 +115,10 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
 
   const loadLikedSongs = async () => {
     try {
-      const response = await fetch('https://droidtechknow.com/admin/api/music/likedsongs.php', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await httpClient.get(
+        `https://droidtechknow.com/admin/api/music/likedsongs.php`,
+        { skipAuth: true }
+      );
       
       if (response.ok) {
         const data = await response.json();
@@ -139,13 +138,8 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
 
   const saveLikedSongToAPI = async (song: Song) => {
     try {
-      const response = await fetch('https://droidtechknow.com/admin/api/music/likedsongs.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(song),
-      });
+
+      const response = await httpClient.post("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
       
       if (!response.ok) {
         throw new Error('Failed to save liked song');
