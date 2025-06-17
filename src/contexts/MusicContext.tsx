@@ -119,12 +119,9 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
         `https://droidtechknow.com/admin/api/music/likedsongs.php`
       );
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.songs && Array.isArray(data.songs)) {
-          setLikedSongs(data.songs);
+        if (response.songs && Array.isArray(response.songs)) {
+          setLikedSongs(response.songs);
         }
-      }
     } catch (error) {
       console.error('Error loading liked songs:', error);
       // Fallback to localStorage if API fails
