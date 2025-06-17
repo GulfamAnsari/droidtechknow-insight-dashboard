@@ -1,10 +1,11 @@
-
 export interface TodoList {
   id: string;
   name: string;
   color?: string;
   isDefault?: boolean;
 }
+
+export type Priority = 'low' | 'medium' | 'high';
 
 export interface TodoItem {
   id: string;
@@ -21,6 +22,8 @@ export interface TodoItem {
   recurrence?: TodoRecurrence;
   files?: TodoFile[];
   tags?: string[];
+  priority?: Priority;
+  description?: string;
 }
 
 export interface TodoStep {

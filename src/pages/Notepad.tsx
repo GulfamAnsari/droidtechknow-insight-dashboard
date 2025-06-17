@@ -20,9 +20,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 const NOTEPAD_STORAGE_KEY = 'simple-notepad-content';
 const NOTEPAD_TITLE_KEY = 'simple-notepad-title';
 
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const Notepad = () => {
-  const [noteTitle, setNoteTitle] = useState<string>("");
-  const [noteContent, setNoteContent] = useState<string>("");
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
   
@@ -31,64 +38,50 @@ const Notepad = () => {
     const savedTitle = localStorage.getItem(NOTEPAD_TITLE_KEY);
     const savedContent = localStorage.getItem(NOTEPAD_STORAGE_KEY);
     
-    if (savedTitle) {
-      setNoteTitle(savedTitle);
-    }
-    
-    if (savedContent) {
-      setNoteContent(savedContent);
+    if (savedTitle || savedContent) {
+      const note: Note = {
+        id: 'default',
+        title: savedTitle || 'Untitled',
+        content: savedContent || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setSelectedNote(note);
     }
   }, []);
-  
-  // Auto-save to localStorage whenever content changes
-  useEffect(() => {
-    if (noteContent) {
-      localStorage.setItem(NOTEPAD_STORAGE_KEY, noteContent);
-    }
-  }, [noteContent]);
 
-  // Auto-save title whenever it changes
-  useEffect(() => {
-    if (noteTitle) {
-      localStorage.setItem(NOTEPAD_TITLE_KEY, noteTitle);
-    }
-  }, [noteTitle]);
-  
-  // Save note to localStorage
-  const saveNote = () => {
-    localStorage.setItem(NOTEPAD_TITLE_KEY, noteTitle);
-    localStorage.setItem(NOTEPAD_STORAGE_KEY, noteContent);
-    
-    // Optional: Show save confirmation
-    alert("Note saved successfully!");
+  const handleSave = (note: Note) => {
+    localStorage.setItem(NOTEPAD_TITLE_KEY, note.title);
+    localStorage.setItem(NOTEPAD_STORAGE_KEY, note.content);
+    setSelectedNote(note);
   };
-  
-  const updateNoteContent = (content: string) => {
-    setNoteContent(content);
+
+  const handleDelete = (noteId: string) => {
+    localStorage.removeItem(NOTEPAD_TITLE_KEY);
+    localStorage.removeItem(NOTEPAD_STORAGE_KEY);
+    setSelectedNote(null);
+  };
+
+  const handleCreateNew = () => {
+    const newNote: Note = {
+      id: 'default',
+      title: '',
+      content: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setSelectedNote(newNote);
   };
   
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col inner-container">
       <div className="flex-1 overflow-auto flex flex-col w-full">
-        <div className="flex-1 overflow-auto p-4 w-full">
-          <Editor 
-            content={noteContent} 
-            onChange={updateNoteContent}
-          />
-        </div>
-        
-        <div className="p-3 border-t flex justify-between items-center bg-muted/30">
-          <p className="text-xs text-muted-foreground">
-            {noteContent.length} characters • Auto-saved
-          </p>
-          
-          <Button
-            onClick={saveNote}
-            size="sm"
-          >
-            <Save className="h-4 w-4 mr-1" /> Save Note
-          </Button>
-        </div>
+        <Editor 
+          selectedNote={selectedNote}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onCreateNew={handleCreateNew}
+        />
       </div>
     </div>
   );

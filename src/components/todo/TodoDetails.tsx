@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { X, Calendar, Tag, Plus, Trash2, CheckSquare, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTodo } from "@/contexts/TodoContext";
-import { Todo, TodoStep, Priority } from "@/types/todo";
+import { TodoItem, TodoStep, Priority } from "@/types/todo";
 import TodoStepsList from "./TodoStepsList";
 
 interface TodoDetailsProps {
@@ -17,7 +18,7 @@ interface TodoDetailsProps {
 
 const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
   const { state, dispatch } = useTodo();
-  const [todo, setTodo] = useState<Todo | null>(null);
+  const [todo, setTodo] = useState<TodoItem | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
@@ -31,8 +32,8 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
       setTodo(foundTodo);
       setTitle(foundTodo.title);
       setDescription(foundTodo.description || "");
-      setPriority(foundTodo.priority);
-      setDueDate(foundTodo.dueDate || "");
+      setPriority(foundTodo.priority || "medium");
+      setDueDate(foundTodo.dueDate ? foundTodo.dueDate.toISOString().split('T')[0] : "");
       setTags(foundTodo.tags || []);
     }
   }, [todoId, state.todos]);
@@ -47,9 +48,9 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
         title,
         description,
         priority,
-        dueDate: dueDate || undefined,
+        dueDate: dueDate ? new Date(dueDate) : null,
         tags,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       },
     });
   };
@@ -73,7 +74,7 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
       payload: {
         ...todo,
         completed: !todo.completed,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       },
     });
   };
@@ -248,7 +249,10 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
         {/* Steps */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Steps</label>
-          <TodoStepsList todoId={todo.id} />
+          <TodoStepsList 
+            steps={todo.steps || []} 
+            todoId={todo.id} 
+          />
         </div>
 
         {/* Metadata */}
