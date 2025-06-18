@@ -132,11 +132,21 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     }
   };
 
+
+  const deleteUnlikedSongToAPI = async (song: Song) => {
+    try {
+      await httpClient.delete("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
+    } catch (error) {
+      toast('Error loading liked songs:', error);
+    }
+  };
+
   const toggleLike = async (song: Song) => {
     const isLiked = likedSongs.find(s => s.id === song.id);
     
     if (isLiked) {
       setLikedSongs(prev => prev.filter(s => s.id !== song.id));
+      await deleteUnlikedSongToAPI(song);
     } else {
       setLikedSongs(prev => [...prev, song]);
       await saveLikedSongToAPI(song);
