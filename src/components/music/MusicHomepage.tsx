@@ -47,6 +47,7 @@ const MusicHomepage = ({
     setDownloadProgress,
     addToOffline,
     toggleLike,
+    loadLikedSongs
   } = useMusicContext();
 
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
@@ -54,7 +55,6 @@ const MusicHomepage = ({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
-  const [homepdageLoaded, sethomepdageLoaded] = useState(0);
 
   // Get cached search results from localStorage
   const getCachedSearchResults = (): Song[] => {
@@ -68,12 +68,8 @@ const MusicHomepage = ({
   };
 
   useEffect(() => {
-    if (homepdageLoaded == 0) sethomepdageLoaded(1);
-    else if (homepdageLoaded == 1) {
-      sethomepdageLoaded(2);
-      loadHomepageData();
-    }
-  }, [likedSongObjects]);
+    loadHomepageData();
+  }, []);
 
   const loadHomepageData = async () => {
     try {
@@ -96,8 +92,15 @@ const MusicHomepage = ({
 
   const loadRelatedSongs = async () => {
     const cachedSearchResults = getCachedSearchResults();
+    let likedSongs = null;
+    if (likedSongObjects.length) {
+      likedSongs = likedSongObjects;
+    } else {
+      const res: any = await loadLikedSongs();
+      likedSongs = res.songs;
+    }
     const basePool = [
-      ...likedSongObjects,
+      ...likedSongs,
       ...cachedSearchResults,
       ...relatedSongs
     ];

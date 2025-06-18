@@ -59,6 +59,7 @@ interface MusicContextType {
   playAllSongs: (songs: Song[]) => void;
   downloadAllSongs: (songs: Song[]) => Promise<void>;
   deleteAllOfflineSongs: () => Promise<void>;
+  loadLikedSongs: () => Promise<void>;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -119,6 +120,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
         `https://droidtechknow.com/admin/api/music/likedsongs.php`
       );
       setLikedSongs(response.songs);
+      return response;
     } catch (error) {
       toast('Error loading liked songs:', error);
     }
@@ -377,6 +379,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     playAllSongs,
     downloadAllSongs,
     deleteAllOfflineSongs,
+    loadLikedSongs
   };
 
   return (
