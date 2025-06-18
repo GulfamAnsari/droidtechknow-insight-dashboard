@@ -137,7 +137,7 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     try {
       await httpClient.delete("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
     } catch (error) {
-      toast('Error loading liked songs:', error);
+      toast('Error deleting song liked songs:', error);
     }
   };
 

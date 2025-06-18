@@ -42,7 +42,13 @@ const httpClient = {
    * Sends a DELETE request
    */
   delete: async (url: string, data?: any, options: RequestOptions = {}) => {
-    return httpClient.post(url, data, { ...options, method: 'DELETE' });
+    let headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers);
+    return httpClient.request(url, {
+      ...options,
+      method: 'DELETE',
+      body: JSON.stringify(data),
+      headers,
+    });
   },
 
   /**

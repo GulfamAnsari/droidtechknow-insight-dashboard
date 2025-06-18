@@ -54,7 +54,7 @@ const MusicHomepage = ({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
-  const [homepdageLoaded, sethomepdageLoaded] = useState(false);
+  const [homepdageLoaded, sethomepdageLoaded] = useState(0);
 
   // Get cached search results from localStorage
   const getCachedSearchResults = (): Song[] => {
@@ -68,9 +68,10 @@ const MusicHomepage = ({
   };
 
   useEffect(() => {
-    if (!homepdageLoaded && likedSongObjects?.length > 0) {
+    if (homepdageLoaded == 0) sethomepdageLoaded(1);
+    else if (homepdageLoaded == 1) {
+      sethomepdageLoaded(2);
       loadHomepageData();
-      sethomepdageLoaded(true);
     }
   }, [likedSongObjects]);
 
