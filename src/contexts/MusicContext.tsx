@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Song } from '@/services/musicApi';
 import httpClient from '@/utils/httpClient';
+import { toast } from 'sonner';
 
 interface MusicContextType {
   // Player state
@@ -103,50 +104,31 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
 
   const [downloadProgress, setDownloadProgressState] = useState<{ [songId: string]: number }>({});
 
-  // Load liked songs from API on component mount
-  useEffect(() => {
-    loadLikedSongs();
-  }, []);
-
   // Save offline songs to localStorage
   useEffect(() => {
     localStorage.setItem("offlineSongs", JSON.stringify(offlineSongs));
   }, [offlineSongs]);
+
+  useEffect(() => {
+    loadLikedSongs();
+  }, []);
 
   const loadLikedSongs = async () => {
     try {
       const response = await httpClient.get(
         `https://droidtechknow.com/admin/api/music/likedsongs.php`
       );
-      
-        if (response.songs && Array.isArray(response.songs)) {
-          setLikedSongs(response.songs);
-        }
+      setLikedSongs(response.songs);
     } catch (error) {
-      console.error('Error loading liked songs:', error);
-      // Fallback to localStorage if API fails
-      const saved = localStorage.getItem("likedSongs");
-      if (saved) {
-        setLikedSongs(JSON.parse(saved));
-      }
+      toast('Error loading liked songs:', error);
     }
   };
 
   const saveLikedSongToAPI = async (song: Song) => {
     try {
-
-      const response = await httpClient.post("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
-      
-      if (!response.ok) {
-        throw new Error('Failed to save liked song');
-      }
+      await httpClient.post("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
     } catch (error) {
-      console.error('Error saving liked song:', error);
-      // Fallback to localStorage if API fails
-      const currentLiked = localStorage.getItem("likedSongs");
-      const likedArray = currentLiked ? JSON.parse(currentLiked) : [];
-      const updated = [...likedArray, song];
-      localStorage.setItem("likedSongs", JSON.stringify(updated));
+      toast('Error loading liked songs:', error);
     }
   };
 

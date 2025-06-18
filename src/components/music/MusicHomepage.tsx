@@ -37,10 +37,7 @@ interface MusicHomepageProps {
 const MusicHomepage = ({
   onPlaySong,
   onNavigateToContent,
-  currentSong,
-  onToggleLike,
   likedSongs,
-  isPlaying,
   setPlaylist
 }: MusicHomepageProps) => {
   const {
@@ -49,7 +46,7 @@ const MusicHomepage = ({
     downloadProgress,
     setDownloadProgress,
     addToOffline,
-    toggleLike
+    toggleLike,
   } = useMusicContext();
 
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
@@ -57,6 +54,7 @@ const MusicHomepage = ({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
+  const [homepdageLoaded, sethomepdageLoaded] = useState(false);
 
   // Get cached search results from localStorage
   const getCachedSearchResults = (): Song[] => {
@@ -70,8 +68,11 @@ const MusicHomepage = ({
   };
 
   useEffect(() => {
-    loadHomepageData();
-  }, []);
+    if (!homepdageLoaded && likedSongObjects?.length > 0) {
+      loadHomepageData();
+      sethomepdageLoaded(true);
+    }
+  }, [likedSongObjects]);
 
   const loadHomepageData = async () => {
     try {
