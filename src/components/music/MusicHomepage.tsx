@@ -130,16 +130,19 @@ const MusicHomepage = ({
 
         for (let attempt = 0; attempt < 10; attempt++) {
           const weightedPages = [
-            ...Array(20).fill(1),
-            ...Array(15).fill(2),
+            ...Array(10).fill(1),
+            ...Array(10).fill(2),
             ...Array(10).fill(3),
             ...Array(8).fill(4),
-            ...Array(5).fill(5),
-            ...Array(3).fill(6),
-            ...Array(2).fill(7),
-            8,
-            9,
-            10
+            ...Array(8).fill(5),
+            ...Array(6).fill(6),
+            ...Array(6).fill(7),
+            ...Array(4).fill(8),
+            ...Array(4).fill(9),
+            ...Array(3).fill(10),
+            ...Array(2).fill(11),
+            ...Array(2).fill(12),
+            ...Array(2).fill(13),
           ];
 
           const page =

@@ -211,11 +211,33 @@ class MusicApiService {
         allSuggestions = [...allSuggestions, ...albumSongs.filter(song => song.id !== currentSong.id)];
       }
 
+      const weightedPages = [
+        ...Array(10).fill(1),
+        ...Array(10).fill(2),
+        ...Array(10).fill(3),
+        ...Array(8).fill(4),
+        ...Array(8).fill(5),
+        ...Array(6).fill(6),
+        ...Array(6).fill(7),
+        ...Array(4).fill(8),
+        ...Array(4).fill(9),
+        ...Array(3).fill(10),
+        ...Array(2).fill(11),
+        ...Array(2).fill(12),
+        ...Array(2).fill(13),
+      ];
+
+      const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
       // Get songs from same artists
       if (currentSong.artists?.primary?.length > 0) {
-        for (const artist of currentSong.artists.primary.slice(0, 2)) { // Limit to first 2 artists
-          const artistResults = await this.getArtistSongs(artist.id);
-          allSuggestions = [...allSuggestions, ...artistResults.filter(song => song.id !== currentSong.id)];
+        for (const artist of currentSong.artists.primary.slice(0, 3)) { // Limit to first 2 artists
+          for (let attempt = 0; attempt < 5; attempt++) {
+            const artistResults = await this.getArtistSongs(artist.id, page);
+            if (artistResults.length) {
+              allSuggestions = [...allSuggestions, ...artistResults.filter(song => song.id !== currentSong.id)];
+              break;
+            }
+          }
         }
       }
 
