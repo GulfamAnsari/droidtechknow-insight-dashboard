@@ -34,6 +34,7 @@ import SongsModal from "@/components/music/SongsModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@radix-ui/react-progress";
+import SearchSuggestions from "@/components/music/SearchSuggestions";
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,7 +115,7 @@ const Music = () => {
         index === self.findIndex(s => s.id === song.id)
       );
       
-      // Keep only the latest 100 songs to prevent localStorage from getting too large
+      // Keep only the latest 50 songs to prevent localStorage from getting too large
       const latest = unique.slice(-50);
       
       localStorage.setItem('musicSearchResults', JSON.stringify(latest));
@@ -286,6 +287,18 @@ const Music = () => {
     if (playlist.length > 0) {
       await downloadAllSongs(playlist);
     }
+  };
+
+  const handleSelectSongFromSuggestion = (song: Song) => {
+    // Add to playlist
+    const updatedPlaylist = [...playlist, song];
+    setPlaylist(updatedPlaylist);
+    
+    // Play the selected song
+    playSong(song);
+    
+    // Switch to search mode to show results
+    setIsSearchMode(true);
   };
 
   useEffect(() => {
@@ -529,24 +542,13 @@ const Music = () => {
             </Button>
           )}
 
-          {/* Search Bar */}
-          <div className="flex items-center gap-2 flex-1">
-            <Input
-              placeholder="Search for songs, artists, albums, playlists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full text-sm"
-            />
-            <Button
-              onClick={handleSearch}
-              size="icon"
-              variant="default"
-              disabled={isLoading}
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Search Bar with Suggestions */}
+          <SearchSuggestions
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onSelectSong={handleSelectSongFromSuggestion}
+            onSearch={handleSearch}
+          />
 
           {/* Now Playing Toggle for Desktop */}
           {!isMobile && currentSong && !isFullscreen && (
