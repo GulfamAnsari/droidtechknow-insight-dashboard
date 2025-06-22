@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +23,7 @@ const SearchSuggestions = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load previous searches from localStorage
   useEffect(() => {
@@ -97,11 +97,16 @@ const SearchSuggestions = ({
       onSearch();
       setIsOpen(false);
     }
+    if (e.key === "Escape") {
+      setIsOpen(false);
+      inputRef.current?.blur();
+    }
   };
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
     onSearchQueryChange(value);
-    if (value.length > 0) {
+    if (!isOpen) {
       setIsOpen(true);
     }
   };
@@ -110,115 +115,138 @@ const SearchSuggestions = ({
     setIsOpen(true);
   };
 
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(true);
+  };
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    // Only close if clicking outside, not when clicking on input
+    if (!open && document.activeElement !== inputRef.current) {
+      setIsOpen(false);
+    }
+  };
+
   const showPreviousSearches = searchQuery.trim().length <= 1 && previousSearches.length > 0;
   const showSuggestions = suggestions.length > 0 && searchQuery.trim().length > 1;
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <div className="flex items-center gap-2 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              placeholder="Search for songs, artists, albums..."
-              value={searchQuery}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onFocus={handleInputFocus}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+    <div className="flex items-center gap-2 flex-1 relative">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+        <input
+          ref={inputRef}
+          placeholder="Search for songs, artists, albums..."
+          value={searchQuery}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyPress}
+          onFocus={handleInputFocus}
+          onClick={handleInputClick}
+          className="w-full pl-10 pr-4 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+          autoComplete="off"
+        />
+        
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg z-50 max-h-96 overflow-hidden">
+            <Command shouldFilter={false} className="w-full">
+              <CommandList className="max-h-96">
+                {isLoading && (
+                  <CommandEmpty>Searching...</CommandEmpty>
+                )}
+                
+                {!isLoading && !showSuggestions && !showPreviousSearches && (
+                  <CommandEmpty>
+                    {searchQuery.trim().length > 1 ? "No songs found" : "Start typing to see suggestions"}
+                  </CommandEmpty>
+                )}
+
+                {/* Live suggestions while typing */}
+                {showSuggestions && (
+                  <CommandGroup heading="Search Results">
+                    {suggestions.map((song) => (
+                      <CommandItem
+                        key={song.id}
+                        onSelect={() => handleSelectSong(song)}
+                        className="flex items-center gap-3 p-3 cursor-pointer"
+                      >
+                        <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                          <img
+                            src={song.image?.[0]?.url}
+                            alt={song.name}
+                            className="w-10 h-10 rounded object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{song.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                          </p>
+                        </div>
+                        <Music className="h-4 w-4 text-muted-foreground" />
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+
+                {/* Previous searches when not typing */}
+                {showPreviousSearches && (
+                  <CommandGroup heading="Recent Searches">
+                    {previousSearches.slice(0, 8).map((song) => (
+                      <CommandItem
+                        key={`recent-${song.id}`}
+                        onSelect={() => handleSelectSong(song)}
+                        className="flex items-center gap-3 p-3 cursor-pointer"
+                      >
+                        <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
+                          <img
+                            src={song.image?.[0]?.url}
+                            alt={song.name}
+                            className="w-10 h-10 rounded object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{song.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                          </p>
+                        </div>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
           </div>
-          <Button
-            onClick={() => {
-              onSearch();
-              setIsOpen(false);
-            }}
-            size="icon"
-            variant="default"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
-      </PopoverTrigger>
+        )}
+
+        {/* Click overlay to close suggestions when clicking outside */}
+        {isOpen && (
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </div>
       
-      <PopoverContent className="w-96 p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandList>
-            {isLoading && (
-              <CommandEmpty>Searching...</CommandEmpty>
-            )}
-            
-            {!isLoading && !showSuggestions && !showPreviousSearches && (
-              <CommandEmpty>
-                {searchQuery.trim().length > 1 ? "No songs found" : "Start typing to see suggestions"}
-              </CommandEmpty>
-            )}
-
-            {/* Live suggestions while typing */}
-            {showSuggestions && (
-              <CommandGroup heading="Search Results">
-                {suggestions.map((song) => (
-                  <CommandItem
-                    key={song.id}
-                    onSelect={() => handleSelectSong(song)}
-                    className="flex items-center gap-3 p-3 cursor-pointer"
-                  >
-                    <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
-                      <img
-                        src={song.image?.[0]?.url}
-                        alt={song.name}
-                        className="w-10 h-10 rounded object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{song.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                      </p>
-                    </div>
-                    <Music className="h-4 w-4 text-muted-foreground" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-
-            {/* Previous searches when not typing */}
-            {showPreviousSearches && (
-              <CommandGroup heading="Recent Searches">
-                {previousSearches.slice(0, 8).map((song) => (
-                  <CommandItem
-                    key={`recent-${song.id}`}
-                    onSelect={() => handleSelectSong(song)}
-                    className="flex items-center gap-3 p-3 cursor-pointer"
-                  >
-                    <div className="w-10 h-10 bg-muted rounded flex-shrink-0">
-                      <img
-                        src={song.image?.[0]?.url}
-                        alt={song.name}
-                        className="w-10 h-10 rounded object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{song.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                      </p>
-                    </div>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      <Button
+        onClick={() => {
+          onSearch();
+          setIsOpen(false);
+        }}
+        size="icon"
+        variant="default"
+      >
+        <Search className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };
 
