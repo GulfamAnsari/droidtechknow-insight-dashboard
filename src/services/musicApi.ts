@@ -266,10 +266,10 @@ class MusicApiService {
     }
   }
 
-  async getPopularArtists(): Promise<Artist[]> {
+  async getPopularArtists(page = 1, limit = 50): Promise<Artist[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/artists?query=popular artists&limit=50&page=1`,
+        `https://saavn.dev/api/search/artists?query=popular artists&limit=${limit}&page=${page}`,
         { skipAuth: true }
       );
       return response?.data?.results || [];

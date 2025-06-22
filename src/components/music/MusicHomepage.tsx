@@ -55,7 +55,9 @@ const MusicHomepage = ({
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingArtistMore, setloadingArtistMore] = useState(false);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
+  const [artistPage, setartistPage] = useState(1);
 
   // Get cached search results from localStorage
   const getCachedSearchResults = (): Song[] => {
@@ -103,7 +105,6 @@ const MusicHomepage = ({
     const basePool = [
       ...likedSongs,
       ...cachedSearchResults,
-      ...relatedSongs
     ];
 
     const sourceSongs = basePool.filter(
@@ -204,6 +205,14 @@ const MusicHomepage = ({
     setLoadingMore(true);
     await loadRelatedSongs();
     setLoadingMore(false);
+  };
+
+  const handleArtistLoadMore = async () => {
+     setloadingArtistMore(true);
+    const artists = await musicApi.getPopularArtists(artistPage + 1);
+    setartistPage(artistPage + 1);
+    setPopularArtists([...popularArtists, ...artists]);
+    setloadingArtistMore(false);
   };
 
   const handlePlaySong = (song: Song) => {
@@ -463,6 +472,21 @@ const MusicHomepage = ({
               </CardContent>
             </Card>
           ))}
+        </div>
+         <div className="flex justify-center mt-6">
+          <Button
+            onClick={handleArtistLoadMore}
+            variant="outline"
+            disabled={loadingMore}
+            className="gap-2"
+          >
+             {loadingArtistMore ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            ) : (
+              <MoreHorizontal className="h-4 w-4" />
+            )}
+            Load More Artists
+          </Button>
         </div>
       </section>
     </div>
