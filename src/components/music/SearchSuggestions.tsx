@@ -78,11 +78,8 @@ const SearchSuggestions = ({
     // Add new song to the beginning and remove duplicates
     const updated = [song, ...existingSongs.filter((s: Song) => s.id !== song.id)];
     
-    // Keep only the latest 20 songs
-    const limited = updated.slice(0, 20);
-    
-    localStorage.setItem('musicSearchResults', JSON.stringify(limited));
-    setPreviousSearches(limited);
+    localStorage.setItem('musicSearchResults', JSON.stringify(updated));
+    setPreviousSearches(updated);
     
     // Update search query and close suggestions
     onSearchQueryChange(song.name);

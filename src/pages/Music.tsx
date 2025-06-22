@@ -296,9 +296,6 @@ const Music = () => {
     
     // Play the selected song
     playSong(song);
-    
-    // Switch to search mode to show results
-    setIsSearchMode(true);
   };
 
   useEffect(() => {
