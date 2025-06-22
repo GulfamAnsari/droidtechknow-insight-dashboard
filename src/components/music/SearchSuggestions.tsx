@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -44,11 +45,11 @@ const SearchSuggestions = ({
       clearTimeout(debounceRef.current);
     }
 
-    if (searchQuery.trim().length > 2) {
+    if (searchQuery.trim().length > 1) {
+      setIsLoading(true);
       debounceRef.current = setTimeout(async () => {
-        setIsLoading(true);
         try {
-          const results = await musicApi.searchByType('songs', searchQuery, 1, 5);
+          const results = await musicApi.searchByType('songs', searchQuery, 1, 8);
           setSuggestions(Array.isArray(results) ? results : []);
         } catch (error) {
           console.error('Error fetching suggestions:', error);
@@ -59,6 +60,7 @@ const SearchSuggestions = ({
       }, 300);
     } else {
       setSuggestions([]);
+      setIsLoading(false);
     }
 
     return () => {
@@ -97,6 +99,20 @@ const SearchSuggestions = ({
     }
   };
 
+  const handleInputChange = (value: string) => {
+    onSearchQueryChange(value);
+    if (value.length > 0) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsOpen(true);
+  };
+
+  const showPreviousSearches = searchQuery.trim().length <= 1 && previousSearches.length > 0;
+  const showSuggestions = suggestions.length > 0 && searchQuery.trim().length > 1;
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -104,11 +120,11 @@ const SearchSuggestions = ({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
-              placeholder="Search for songs, artists, albums, playlists..."
+              placeholder="Search for songs, artists, albums..."
               value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyPress={handleKeyPress}
-              onFocus={() => setIsOpen(true)}
+              onFocus={handleInputFocus}
               className="w-full pl-10 pr-4 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -126,23 +142,21 @@ const SearchSuggestions = ({
       </PopoverTrigger>
       
       <PopoverContent className="w-96 p-0" align="start">
-        <Command>
+        <Command shouldFilter={false}>
           <CommandList>
             {isLoading && (
               <CommandEmpty>Searching...</CommandEmpty>
             )}
             
-            {!isLoading && suggestions.length === 0 && searchQuery.trim().length <= 2 && previousSearches.length === 0 && (
-              <CommandEmpty>Start typing to see suggestions</CommandEmpty>
+            {!isLoading && !showSuggestions && !showPreviousSearches && (
+              <CommandEmpty>
+                {searchQuery.trim().length > 1 ? "No songs found" : "Start typing to see suggestions"}
+              </CommandEmpty>
             )}
 
-            {!isLoading && suggestions.length === 0 && searchQuery.trim().length > 2 && (
-              <CommandEmpty>No songs found</CommandEmpty>
-            )}
-
-            {/* Live suggestions */}
-            {suggestions.length > 0 && (
-              <CommandGroup heading="Suggestions">
+            {/* Live suggestions while typing */}
+            {showSuggestions && (
+              <CommandGroup heading="Search Results">
                 {suggestions.map((song) => (
                   <CommandItem
                     key={song.id}
@@ -171,10 +185,10 @@ const SearchSuggestions = ({
               </CommandGroup>
             )}
 
-            {/* Previous searches */}
-            {previousSearches.length > 0 && suggestions.length === 0 && (
+            {/* Previous searches when not typing */}
+            {showPreviousSearches && (
               <CommandGroup heading="Recent Searches">
-                {previousSearches.slice(0, 5).map((song) => (
+                {previousSearches.slice(0, 8).map((song) => (
                   <CommandItem
                     key={`recent-${song.id}`}
                     onSelect={() => handleSelectSong(song)}
