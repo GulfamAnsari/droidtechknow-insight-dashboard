@@ -16,7 +16,8 @@ import {
   BarChart3,
   FileText,
   MessageSquare,
-  Music
+  Music,
+  AppleIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -133,6 +134,15 @@ const Dashboard = () => {
           ]}
           link="/music"
           linkText="Open Music App"
+        />
+
+        <DashboardCard
+          icon={AppleIcon}
+          title="Food tracker"
+          description="You can log your food intake"
+          features={["Log food", "Log weight and height", "Track calories", "View history"]}
+          link="/food-tracker"
+          linkText="Food tracker"
         />
 
         <DashboardCard

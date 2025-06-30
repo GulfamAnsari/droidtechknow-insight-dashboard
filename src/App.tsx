@@ -20,6 +20,7 @@ import Music from "./pages/Music";
 import SongsList from "./pages/SongsList";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import FoodTracker from "./pages/FoodTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ const App = () => (
                     <Route path="todo" element={<Todo />} />
                     <Route path="notepad" element={<Notepad />} />
                     <Route path="myfiles" element={<MyFiles />} />
+                    <Route path="food-tracker" element={<FoodTracker />} />
                     <Route path="music" element={<Music />} />
                     <Route path="music/songs" element={<SongsList />} />
                   </Route>
