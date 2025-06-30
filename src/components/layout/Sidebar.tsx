@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music, Apple } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -23,6 +23,31 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       href: "/",
       icon: Home,
     },
+     {
+      name: "Todo",
+      href: "/todo",
+      icon: CheckSquare,
+    },
+    {
+      name: "Music",
+      href: "/music",
+      icon: Music,
+    },
+    {
+      name: "Food Tracker",
+      href: "/food-tracker",
+      icon: Apple,
+    },
+    {
+      name: "My Cloud",
+      href: "/myfiles",
+      icon: Cloud,
+    },
+    {
+      name: "Notepad",
+      href: "/notepad",
+      icon: BookOpen,
+    },
     {
       name: "Articles",
       href: "/articles",
@@ -38,26 +63,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       href: "/analytics",
       icon: BarChart3,
     },
-    {
-      name: "Todo",
-      href: "/todo",
-      icon: CheckSquare,
-    },
-    {
-      name: "Notepad",
-      href: "/notepad",
-      icon: BookOpen,
-    },
-    {
-      name: "My Cloud",
-      href: "/myfiles",
-      icon: Cloud,
-    },
-    {
-      name: "Music",
-      href: "/music",
-      icon: Music,
-    }
   ];
 
   const SidebarContent = () => (
