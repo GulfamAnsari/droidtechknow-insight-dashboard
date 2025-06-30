@@ -385,7 +385,7 @@ const SongsList = () => {
         
         {/* Load More Button */}
         {hasMore && !loading && (
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-6 mb-6">
             <Button 
               onClick={loadMore} 
               disabled={loadingMore}

@@ -145,7 +145,10 @@ const MusicHomepage = ({
             (resultSong) =>
               !newUsedIds.includes(resultSong.id) &&
               !likedSongs.includes(resultSong.id) &&
-              !newRelatedSongs.some((s) => s.id === resultSong.id)
+              !newRelatedSongs.some((s) => {
+                const LAN = ["hindi", "english"];
+                return s.id === resultSong.id && LAN.includes(s.language)
+              })
           );
 
           if (filtered.length > 0) {
@@ -473,7 +476,7 @@ const MusicHomepage = ({
             </Card>
           ))}
         </div>
-         <div className="flex justify-center mt-6">
+         <div className="flex justify-center mt-6 mb-6">
           <Button
             onClick={handleArtistLoadMore}
             variant="outline"

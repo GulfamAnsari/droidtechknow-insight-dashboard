@@ -255,7 +255,7 @@ const AudioPlayer = ({
       />
 
       {/* Progress bar */}
-      <div className="px-4 pt-2">
+      <div className="px-4 p-4">
         <Slider
           value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
           onValueChange={handleSeek}
@@ -266,7 +266,7 @@ const AudioPlayer = ({
       </div>
 
       {/* Player controls */}
-      <div className="flex items-center gap-3 p-4">
+      <div className="flex items-center gap-6 pt-2 pl-4 pr-4 pb-4">
         {/* Song info - clickable on mobile */}
         <div
           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer md:cursor-default"

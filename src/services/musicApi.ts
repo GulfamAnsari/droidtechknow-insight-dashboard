@@ -23,6 +23,7 @@ export interface Song {
     name: string;
   };
   year?: string;
+  language?: string;
 }
 
 export interface Album {
@@ -188,19 +189,6 @@ class MusicApiService {
     }
   }
 
-  async getSuggestions(songId: string): Promise<Song[]> {
-    try {
-      const response = await httpClient.get(
-        `https://saavn.dev/api/songs/${songId}/suggestions`,
-        { skipAuth: true }
-      );
-      return response?.data || [];
-    } catch (error) {
-      console.error("Get suggestions failed:", error);
-      return [];
-    }
-  }
-
    async getSuggestedSongs(currentSong: Song, suggested): Promise<Song[]> {
     try {
       let allSuggestions: Song[] = [];
@@ -213,14 +201,18 @@ class MusicApiService {
 
       
 
-      const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
+      
       // Get songs from same artists
       if (currentSong.artists?.primary?.length > 0) {
-        for (const artist of currentSong.artists.primary.slice(0, 3)) { // Limit to first 2 artists
+        for (const artist of currentSong.artists.primary.slice(0, 3)) { // Limit to first 3 artists
           for (let attempt = 0; attempt < 5; attempt++) {
+            const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
             const artistResults = await this.getArtistSongs(artist.id, page);
             if (artistResults.length) {
-              allSuggestions = [...allSuggestions, ...artistResults.filter(song => song.id !== currentSong.id)];
+              allSuggestions = [...allSuggestions, ...artistResults.filter((song: Song) => {
+                const LAN = ["hindi", "engligh"];
+                return song.id !== currentSong.id && LAN.includes(song?.language);
+              })];
               break;
             }
           }
@@ -240,31 +232,7 @@ class MusicApiService {
       return [];
     }
   }
-  async getTrendingSongs(): Promise<Song[]> {
-    try {
-      const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=trending&limit=10&page=1`,
-        { skipAuth: true }
-      );
-      return response?.data?.results || [];
-    } catch (error) {
-      console.error("Get trending songs failed:", error);
-      return [];
-    }
-  }
 
-  async getTopSongs(): Promise<Song[]> {
-    try {
-      const response = await httpClient.get(
-        `https://saavn.dev/api/search/songs?query=top%20bollywood&limit=10&page=1`,
-        { skipAuth: true }
-      );
-      return response?.data?.results || [];
-    } catch (error) {
-      console.error("Get top songs failed:", error);
-      return [];
-    }
-  }
 
   async getPopularArtists(page = 1, limit = 50): Promise<Artist[]> {
     try {
