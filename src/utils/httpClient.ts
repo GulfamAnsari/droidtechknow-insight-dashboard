@@ -36,7 +36,27 @@ const httpClient = {
       headers,
     });
   },
+
+  /**
+   * Sends a PUT request
+   */
+  put: async (url: string, data?: any, options: RequestOptions = {}) => {
+    let headers = options.headers instanceof Headers ? options.headers : new Headers(options.headers);
+    let body: string | FormData = data;
   
+    const isFormData = data instanceof FormData;
+  
+    if (!isFormData) {
+      body = JSON.stringify(data);
+    }
+  
+    return httpClient.request(url, {
+      ...options,
+      method: 'PUT',
+      body,
+      headers,
+    });
+  },
 
   /**
    * Sends a DELETE request
