@@ -83,7 +83,7 @@ const DashboardTodoCard = () => {
         )}
       </CardContent>
       <CardFooter>
-        <Button asChild className="w-full">
+        <Button asChild variant="pill">
           <Link to="/todo">Go to Todo App</Link>
         </Button>
       </CardFooter>
@@ -110,7 +110,7 @@ const DashboardCard = ({ icon: Icon, title, description, features, link, linkTex
       )}
     </CardContent>
     <CardFooter>
-      <Button asChild className="w-full">
+      <Button asChild variant="pill">
         <Link to={link}>{linkText}</Link>
       </Button>
     </CardFooter>
