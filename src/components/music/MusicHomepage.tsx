@@ -13,7 +13,6 @@ import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +69,29 @@ const MusicHomepage = ({
     }
   };
 
+  const getArtistsSongsFromSaved = async (): Promise<Song[]> => {
+    try {
+      const artists = JSON.parse(localStorage.getItem('favoriteArtists') || null);
+      let songs = [];
+      if (artists) {
+        for (let i = 0;  i < artists.length; i++) {
+          const { id } = artists[i];
+          const s = {
+            artists: {
+              primary: [{ id }]
+            }
+          }
+          songs = [...songs, s];
+        }
+       
+        return songs;
+      }
+    } catch (error) {
+      console.error("Error loading cached search results:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     loadHomepageData();
   }, []);
@@ -94,27 +116,36 @@ const MusicHomepage = ({
   const artistPageCache = useRef<Set<string>>(new Set());
 
   const loadRelatedSongs = async () => {
-    const cachedSearchResults = getCachedSearchResults();
-    let likedSongs = null;
-    if (likedSongObjects.length) {
-      likedSongs = likedSongObjects;
-    } else {
-      const res: any = await loadLikedSongs();
-      likedSongs = res.songs;
+    const savedOptions = JSON.parse(localStorage.getItem('recommendationOptions') || null);
+
+    
+    let likedSongs = [];
+    let cachedSearchResults = [];
+    let favorites = [];
+    let basePool = [];
+
+    if (savedOptions?.liked) {
+      if (likedSongObjects.length) {
+        likedSongs = likedSongObjects;
+      } else {
+        const res: any = await loadLikedSongs();
+        likedSongs = res.songs;
+      }
+      console.log('likedSongs', likedSongs)
+      basePool = [...basePool, ...likedSongs];
     }
-    const basePool = [
-      ...likedSongs,
-      ...cachedSearchResults,
-    ];
+    if (savedOptions?.searched) {
+      cachedSearchResults = getCachedSearchResults();
+      console.log('cachedSearchResults', cachedSearchResults)
+      basePool = [...basePool, ...cachedSearchResults];
+    }
+    if (savedOptions?.favorites)  {
+      favorites = await getArtistsSongsFromSaved();
+      console.log('favorites', favorites)
+      basePool = [...basePool, ...favorites];
+    }
+    console.log(basePool)
 
-    const sourceSongs = basePool.filter(
-      (song) => !usedSongIds.includes(song.id)
-    );
-
-    // if (sourceSongs.length === 0) {
-    //   toast.info("No more recommendations available");
-    //   return;
-    // }
 
     const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
     const newUsedIds: string[] = [
@@ -146,8 +177,7 @@ const MusicHomepage = ({
               !newUsedIds.includes(resultSong.id) &&
               !likedSongs.includes(resultSong.id) &&
               !newRelatedSongs.some((s) => {
-                const LAN = ["hindi", "english"];
-                return s.id === resultSong.id && LAN.includes(s.language)
+                return s.id === resultSong.id;
               })
           );
 
@@ -172,8 +202,12 @@ const MusicHomepage = ({
       newRelatedSongs.push(...trulyUniqueSongs);
       newUsedIds.push(...trulyUniqueSongs.map((s) => s.id));
 
+      
       setRelatedSongs((prev) => {
-        const merged = [...prev, ...newRelatedSongs];
+        const merged = [...prev, ...newRelatedSongs].filter((s) => {
+          const LAN = ["hindi", "english"];
+          return LAN.includes(s.language);
+        });
         return merged.filter(
           (song, index, self) =>
             self.findIndex((s) => s.id === song.id) === index
