@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,7 @@ import SongsList from "./pages/SongsList";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import FoodTracker from "./pages/FoodTracker";
+import ScreenRecorder from "./pages/ScreenRecorder";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +56,7 @@ const App = () => (
                     <Route path="food-tracker" element={<FoodTracker />} />
                     <Route path="music" element={<Music />} />
                     <Route path="music/songs" element={<SongsList />} />
+                    <Route path="screen-recorder" element={<ScreenRecorder />} />
                   </Route>
                 </Route>
                 

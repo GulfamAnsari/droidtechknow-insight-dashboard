@@ -1,6 +1,5 @@
-
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music, Apple } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music, Apple, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -37,6 +36,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       name: "Food Tracker",
       href: "/food-tracker",
       icon: Apple,
+    },
+    {
+      name: "Screen Recorder",
+      href: "/screen-recorder",
+      icon: Video,
     },
     {
       name: "My Cloud",

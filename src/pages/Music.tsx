@@ -35,6 +35,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@radix-ui/react-progress";
 import SearchSuggestions from "@/components/music/SearchSuggestions";
+import FavoriteArtistsModal from "@/components/music/FavoriteArtistsModal";
+import RecommendationSettingsModal from "@/components/music/RecommendationSettingsModal";
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +44,8 @@ const Music = () => {
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
   const [activeTab, setActiveTab] = useState("playlist");
+  const [showFavoriteArtists, setShowFavoriteArtists] = useState(false);
+  const [showRecommendationSettings, setShowRecommendationSettings] = useState(false);
 
   const {
     currentSong,
@@ -585,6 +589,20 @@ const Music = () => {
                 <Download className="h-4 w-4" />
                 Offline Songs ({offlineSongs.length})
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowFavoriteArtists(true)}
+                className="gap-2"
+              >
+                <MusicIcon className="h-4 w-4" />
+                Favorite Artists
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowRecommendationSettings(true)}
+                className="gap-2"
+              >
+                <Lightbulb className="h-4 w-4" />
+                Recommendation Settings
+              </DropdownMenuItem>
               {playlist.length > 0 && (
                 <DropdownMenuItem onClick={handleDownloadAll} className="gap-2">
                   <Download className="h-4 w-4" />
@@ -785,6 +803,17 @@ const Music = () => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <FavoriteArtistsModal 
+        open={showFavoriteArtists}
+        onOpenChange={setShowFavoriteArtists}
+      />
+      
+      <RecommendationSettingsModal
+        open={showRecommendationSettings}
+        onOpenChange={setShowRecommendationSettings}
+      />
 
       {/* Songs Modal */}
       <SongsModal />

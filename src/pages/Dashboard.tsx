@@ -17,7 +17,8 @@ import {
   FileText,
   MessageSquare,
   Music,
-  AppleIcon
+  AppleIcon,
+  Video
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -146,13 +147,28 @@ const Dashboard = () => {
         />
 
         <DashboardCard
+          icon={Video}
+          title="Screen Recorder"
+          description="Record your screen with audio"
+          features={[
+            "High-quality screen recording",
+            "Audio capture support",
+            "Local storage",
+            "Multiple format support"
+          ]}
+          link="/screen-recorder"
+          linkText="Start Recording"
+        />
+
+        <DashboardCard
           icon={BookOpen}
           title="Notepad"
           description="Take and manage your notes"
           features={[
             "Rich text formatting",
-            "Local storage persistence",
-            "Automatic saving"
+            "Multiple notes support",
+            "Fullscreen mode",
+            "Auto-save functionality"
           ]}
           link="/notepad"
           linkText="Open Notepad"

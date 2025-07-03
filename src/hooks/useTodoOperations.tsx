@@ -1,24 +1,20 @@
 
 import { useState } from 'react';
 import { useTodo } from '@/contexts/TodoContext';
+import httpClient from '@/utils/httpClient';
+import { TodoItem } from '@/types/todo';
 
 export const useTodoOperations = () => {
   const { state, dispatch } = useTodo();
   const [isLoading, setIsLoading] = useState(false);
 
-  const createTodo = async (todoData: any) => {
+  const createTodo = async (todoData: Partial<TodoItem>) => {
     setIsLoading(true);
     try {
-      // Make API call first
-      const response = await fetch('/api/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(todoData)
-      });
+      const response = await httpClient.post('https://droidtechknow.com/admin/api/todo/', todoData);
       
-      if (response.ok) {
-        const newTodo = await response.json();
-        // Update local state after successful API call
+      if (response.success) {
+        const newTodo = response.todo;
         dispatch({ type: 'ADD_TODO', payload: newTodo });
         return newTodo;
       } else {
@@ -32,19 +28,16 @@ export const useTodoOperations = () => {
     }
   };
 
-  const updateTodo = async (todoId: string, updates: any) => {
+  const updateTodo = async (todoId: string, updates: Partial<TodoItem>) => {
     setIsLoading(true);
     try {
-      // Make API call first
-      const response = await fetch(`/api/todos/${todoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+      const response = await httpClient.put(`https://droidtechknow.com/admin/api/todo/`, {
+        id: todoId,
+        ...updates
       });
       
-      if (response.ok) {
-        const updatedTodo = await response.json();
-        // Update local state after successful API call - use the complete todo object
+      if (response.success) {
+        const updatedTodo = response.todo;
         dispatch({ type: 'UPDATE_TODO', payload: updatedTodo });
         return updatedTodo;
       } else {
@@ -61,13 +54,11 @@ export const useTodoOperations = () => {
   const deleteTodo = async (todoId: string) => {
     setIsLoading(true);
     try {
-      // Make API call first
-      const response = await fetch(`/api/todos/${todoId}`, {
-        method: 'DELETE'
+      const response = await httpClient.delete('https://droidtechknow.com/admin/api/todo/', {
+        id: todoId
       });
       
-      if (response.ok) {
-        // Update local state after successful API call
+      if (response.success) {
         dispatch({ type: 'DELETE_TODO', payload: todoId });
       } else {
         throw new Error('Failed to delete todo');

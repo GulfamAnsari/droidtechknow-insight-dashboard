@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useTodo } from "@/contexts/TodoContext";
 import { TodoItem, TodoStep, Priority } from "@/types/todo";
 import TodoStepsList from "./TodoStepsList";
+import { useTodoOperations } from "@/hooks/useTodoOperations";
 
 interface TodoDetailsProps {
   todoId: string;
@@ -18,6 +18,7 @@ interface TodoDetailsProps {
 
 const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
   const { state, dispatch } = useTodo();
+  const { updateTodo, deleteTodo, isLoading } = useTodoOperations();
   const [todo, setTodo] = useState<TodoItem | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -38,45 +39,43 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
     }
   }, [todoId, state.todos]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!todo) return;
 
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: {
-        ...todo,
+    try {
+      await updateTodo(todo.id, {
         title,
         description,
         priority,
         dueDate: dueDate ? new Date(dueDate) : null,
         tags,
-        updatedAt: new Date(),
-      },
-    });
+      });
+    } catch (error) {
+      console.error('Failed to save todo:', error);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!todo) return;
     
-    dispatch({
-      type: "DELETE_TODO",
-      payload: todo.id,
-    });
-    
-    onClose();
+    try {
+      await deleteTodo(todo.id);
+      onClose();
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
+    }
   };
 
-  const handleToggleComplete = () => {
+  const handleToggleComplete = async () => {
     if (!todo) return;
 
-    dispatch({
-      type: "UPDATE_TODO",
-      payload: {
-        ...todo,
+    try {
+      await updateTodo(todo.id, {
         completed: !todo.completed,
-        updatedAt: new Date(),
-      },
-    });
+      });
+    } catch (error) {
+      console.error('Failed to toggle todo:', error);
+    }
   };
 
   const addTag = () => {
@@ -113,9 +112,18 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
         <h2 className="text-lg font-semibold">Todo Details</h2>
         <div className="flex gap-2">
           <Button
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={isLoading}
+          >
+            {isLoading ? "Saving..." : "Update"}
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={handleDelete}
+            disabled={isLoading}
             className="text-red-600 hover:text-red-700"
           >
             <Trash2 className="h-4 w-4" />
@@ -133,6 +141,7 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
             variant="ghost"
             size="sm"
             onClick={handleToggleComplete}
+            disabled={isLoading}
             className={cn(
               "p-0 h-6 w-6",
               todo.completed ? "text-green-600" : "text-gray-400"
@@ -158,7 +167,6 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleSave}
             placeholder="Enter todo title..."
           />
         </div>
@@ -169,7 +177,6 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            onBlur={handleSave}
             placeholder="Add a description..."
             rows={3}
           />
@@ -184,10 +191,7 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
                 key={p}
                 variant={priority === p ? "default" : "outline"}
                 size="sm"
-                onClick={() => {
-                  setPriority(p);
-                  setTimeout(handleSave, 0);
-                }}
+                onClick={() => setPriority(p)}
                 className={cn(
                   "capitalize",
                   priority === p && priorityColors[p]
@@ -209,7 +213,6 @@ const TodoDetails = ({ todoId, onClose }: TodoDetailsProps) => {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            onBlur={handleSave}
           />
         </div>
 
