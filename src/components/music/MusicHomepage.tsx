@@ -69,7 +69,7 @@ const MusicHomepage = ({
     }
   };
 
-  const getArtistsSongsFromSaved = async (): Promise<Song[]> => {
+  const getArtistsSongsFromSaved = () => {
     try {
       const artists = JSON.parse(localStorage.getItem('favoriteArtists') || null);
       let songs = [];
@@ -84,8 +84,8 @@ const MusicHomepage = ({
           songs = [...songs, s];
         }
        
-        return songs;
       }
+      return songs;
     } catch (error) {
       console.error("Error loading cached search results:", error);
       return [];
@@ -140,7 +140,7 @@ const MusicHomepage = ({
       basePool = [...basePool, ...cachedSearchResults];
     }
     if (savedOptions?.favorites)  {
-      favorites = await getArtistsSongsFromSaved();
+      favorites = getArtistsSongsFromSaved();
       console.log('favorites', favorites)
       basePool = [...basePool, ...favorites];
     }
