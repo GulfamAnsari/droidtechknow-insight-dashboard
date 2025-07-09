@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+      },
       manifest: {
         name: 'DroidTechKnow Insights Dashboard',
         short_name: 'DTK Insights',
@@ -47,4 +51,22 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+          charts: ['recharts'],
+          query: ['@tanstack/react-query'],
+          music: ['src/pages/Music.tsx', 'src/contexts/MusicContext.tsx'],
+          foodTracker: ['src/pages/FoodTracker.tsx', 'src/pages/FoodTracker2.tsx'],
+          notepad: ['src/pages/Notepad.tsx'],
+          todo: ['src/pages/Todo.tsx']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  }
 }));
