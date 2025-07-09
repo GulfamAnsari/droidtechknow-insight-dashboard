@@ -16,7 +16,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   const isMobile = useIsMobile();
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   
-  const navItems = [
+  const navigation = [
     {
       name: "Dashboard",
       href: "/",
@@ -35,6 +35,11 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
     {
       name: "Food Tracker",
       href: "/food-tracker",
+      icon: Apple,
+    },
+    {
+      name: "Food Tracker 2",
+      href: "/food-tracker-2",
       icon: Apple,
     },
     {
@@ -85,7 +90,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-2">
-          {navItems.map((item) => (
+          {navigation.map((item) => (
             <li key={item.name}>
               <NavLink
                 to={item.href}
@@ -132,7 +137,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         </div>
         <div className="flex-1 w-full">
           <ul className="space-y-6 mt-2">
-            {navItems.slice(1).map((item, index) => (
+            {navigation.slice(1).map((item, index) => (
               <li 
                 key={item.name} 
                 className="relative"

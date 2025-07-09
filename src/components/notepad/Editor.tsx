@@ -1,15 +1,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  Save, 
-  FileText, 
-  Trash2, 
-  Plus,
-  Download
-} from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import EditorToolbar from './EditorToolbar';
 
 interface Note {
   id: string;
@@ -24,9 +18,10 @@ interface EditorProps {
   onSave: (note: Note) => void;
   onDelete: (noteId: string) => void;
   onCreateNew: () => void;
+  onShowNotesList: () => void;
 }
 
-const Editor = ({ selectedNote, onSave, onDelete, onCreateNew }: EditorProps) => {
+const Editor = ({ selectedNote, onSave, onDelete, onCreateNew, onShowNotesList }: EditorProps) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
@@ -100,7 +95,7 @@ const Editor = ({ selectedNote, onSave, onDelete, onCreateNew }: EditorProps) =>
 
     const autoSaveTimer = setTimeout(() => {
       handleSave();
-    }, 2000); // Auto-save after 2 seconds of inactivity
+    }, 2000);
 
     return () => clearTimeout(autoSaveTimer);
   }, [hasChanges, title, content, selectedNote]);
@@ -152,62 +147,18 @@ const Editor = ({ selectedNote, onSave, onDelete, onCreateNew }: EditorProps) =>
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <div className="border-b p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Note title..."
-              className="text-lg font-semibold border-none p-0 h-auto focus-visible:ring-0 bg-transparent"
-            />
-            {hasChanges && (
-              <span className="text-xs text-orange-500 font-medium">
-                • Unsaved changes
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              disabled={!hasChanges}
-              className="gap-2"
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              className="gap-2 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </div>
-        
-        <div className="text-xs text-muted-foreground">
-          Created: {new Date(selectedNote.createdAt).toLocaleDateString()} • 
-          Last modified: {new Date(selectedNote.updatedAt).toLocaleDateString()}
-        </div>
-      </div>
+      <EditorToolbar
+        selectedNote={selectedNote}
+        title={title}
+        hasChanges={hasChanges}
+        onTitleChange={setTitle}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onDownload={handleDownload}
+        onShowNotesList={onShowNotesList}
+        onCreateNew={onCreateNew}
+      />
 
-      {/* Content */}
       <div className="flex-1 p-4">
         <textarea
           ref={textareaRef}
@@ -218,7 +169,6 @@ const Editor = ({ selectedNote, onSave, onDelete, onCreateNew }: EditorProps) =>
         />
       </div>
 
-      {/* Footer */}
       <div className="border-t p-4">
         <div className="flex justify-between items-center text-xs text-muted-foreground">
           <div>

@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import FoodTracker from "./pages/FoodTracker";
 import ScreenRecorder from "./pages/ScreenRecorder";
+import FoodTracker2 from "./pages/FoodTracker2";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +55,7 @@ const App = () => (
                     <Route path="notepad" element={<Notepad />} />
                     <Route path="myfiles" element={<MyFiles />} />
                     <Route path="food-tracker" element={<FoodTracker />} />
+                    <Route path="food-tracker-2" element={<FoodTracker2 />} />
                     <Route path="music" element={<Music />} />
                     <Route path="music/songs" element={<SongsList />} />
                     <Route path="screen-recorder" element={<ScreenRecorder />} />

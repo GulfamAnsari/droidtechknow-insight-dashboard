@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -115,26 +114,6 @@ const Notepad = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowNotesList(true)}
-            className="gap-2"
-          >
-            <List className="h-4 w-4" />
-            All Notes
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCreateNew}
-            className="gap-2"
-          >
-            <FileText className="h-4 w-4" />
-            New Note
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
             onClick={toggleFullscreen}
             className="gap-2"
           >
@@ -160,6 +139,7 @@ const Notepad = () => {
           onSave={handleSave}
           onDelete={handleDelete}
           onCreateNew={handleCreateNew}
+          onShowNotesList={() => setShowNotesList(true)}
         />
       </div>
 
