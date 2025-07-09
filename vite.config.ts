@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => ({
           charts: ['recharts'],
           query: ['@tanstack/react-query'],
           music: ['src/pages/Music.tsx', 'src/contexts/MusicContext.tsx'],
-          foodTracker: ['src/pages/FoodTracker.tsx', 'src/pages/FoodTracker2.tsx'],
+          foodTracker: ['src/pages/FoodTracker.tsx'],
           notepad: ['src/pages/Notepad.tsx'],
           todo: ['src/pages/Todo.tsx']
         }

@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -143,20 +144,6 @@ const Dashboard = () => {
           features={["Log food", "Log weight and height", "Track calories", "View history"]}
           link="/food-tracker"
           linkText="Food tracker"
-        />
-
-        <DashboardCard
-          icon={AppleIcon}
-          title="Food Tracker 2"
-          description="Advanced nutrition tracking"
-          features={[
-            "Comprehensive food logging",
-            "Nutrition analysis",
-            "Progress tracking",
-            "Meal suggestions"
-          ]}
-          link="/food-tracker-2"
-          linkText="Open Food Tracker 2"
         />
 
         <DashboardCard

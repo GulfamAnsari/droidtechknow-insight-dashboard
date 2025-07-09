@@ -38,11 +38,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       icon: Apple,
     },
     {
-      name: "Food Tracker 2",
-      href: "/food-tracker-2",
-      icon: Apple,
-    },
-    {
       name: "Screen Recorder",
       href: "/screen-recorder",
       icon: Video,
