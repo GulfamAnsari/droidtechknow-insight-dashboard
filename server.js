@@ -86,7 +86,7 @@ app.get("/oauth2callback", async (req, res) => {
         req.session.userData = loginData.data;
         
         // Redirect to dashboard
-        res.redirect("http://localhost:3000/?login=success");
+        res.redirect("http://localhost:4000/?login=success");
       } else {
         // User doesn't exist, redirect to signup with pre-filled data
         const signupData = {
@@ -95,7 +95,7 @@ app.get("/oauth2callback", async (req, res) => {
         };
         
         req.session.signupData = signupData;
-        res.redirect(`http://localhost:3000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
+        res.redirect(`http://localhost:4000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
       }
     } catch (apiError) {
       console.error("Login API Error:", apiError);
@@ -106,11 +106,11 @@ app.get("/oauth2callback", async (req, res) => {
       };
       
       req.session.signupData = signupData;
-      res.redirect(`http://localhost:3000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
+      res.redirect(`http://localhost:4000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
     }
   } catch (error) {
     console.error("OAuth Callback Error:", error);
-    res.redirect("http://localhost:3000/login?error=oauth_failed");
+    res.redirect("http://localhost:4000/login?error=oauth_failed");
   }
 });
 
