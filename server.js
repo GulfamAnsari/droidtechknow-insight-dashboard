@@ -1,125 +1,97 @@
-
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fetch from 'node-fetch';
-import session from 'express-session';
-import { google } from 'googleapis';
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { google } from "googleapis";
+import session from "express-session";
+import cors from "cors";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
 
 // Polyfill for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
-// Session middleware
-app.use(session({
-  secret: 'your-session-secret', // Replace with a secure secret
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // Set to true in production with HTTPS
-}));
+app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(bodyParser.json());
+app.use(
+  session({
+    secret: "your_secret",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
-// Google OAuth2 setup
+// Serve static files from dist (if needed)
+app.use(express.static(path.join(__dirname, 'dist')));
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
-  "http://localhost:3000/oauth2callback"
+  "http://localhost:4000/oauth2callback"
 );
 
-// Google OAuth routes
 app.get("/auth", (req, res) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: ["https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+    scope: ["https://www.googleapis.com/auth/gmail.readonly"],
   });
   res.redirect(url);
 });
 
 app.get("/oauth2callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const { tokens } = await oauth2Client.getToken(code);
-    
-    // Get user info from Google
-    oauth2Client.setCredentials(tokens);
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const userInfo = await oauth2.userinfo.get();
-    
-    const { email, name } = userInfo.data;
-    
-    // Store user info in session for the frontend to access
-    req.session.googleAuth = {
-      email,
-      name,
-      tokens
-    };
-    
-    // Redirect to frontend with success parameter
-    res.redirect("http://localhost:3000/login?google_auth=success");
-  } catch (error) {
-    console.error('OAuth callback error:', error);
-    res.redirect("http://localhost:3000/login?google_auth=error");
-  }
+  const { code } = req.query;
+  const { tokens } = await oauth2Client.getToken(code);
+  req.session.tokens = tokens;
+  res.redirect("http://localhost:3000/dashboard");
 });
 
-// API route to get Google auth data
-app.get('/api/google-auth', (req, res) => {
-  if (req.session.googleAuth) {
-    const authData = req.session.googleAuth;
-    // Clear the session data after sending it
-    delete req.session.googleAuth;
-    res.json(authData);
-  } else {
-    res.status(404).json({ error: 'No Google auth data found' });
-  }
-});
+app.get("/transactions", async (req, res) => {
+  if (!req.session.tokens) return res.status(401).send("Not authorized");
 
-// 1. API route to proxy JioSaavn playlist details
-app.get('/status', async (req, res) => {
-  res.send({ status: 'success' });
-});
+  oauth2Client.setCredentials(req.session.tokens);
+  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-app.get('/api/playlist', async (req, res) => {
-  const { listid } = req.query;
+  const result = await gmail.users.messages.list({
+    userId: "me",
+    q: "subject:(debited OR credited) category:primary newer_than:30d",
+    maxResults: 20,
+  });
 
-  if (!listid) {
-    return res.status(400).json({ status: 'error', message: 'Missing listid parameter' });
-  }
+  const transactions = [];
 
-  const url = `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&_format=json&cc=in&_marker=0%3F_marker%3D0&listid=${encodeURIComponent(listid)}`;
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json'
-      }
+  for (let msg of result.data.messages || []) {
+    const msgData = await gmail.users.messages.get({
+      userId: "me",
+      id: msg.id,
+      format: "full",
     });
+    const body = Buffer.from(
+      msgData.data.payload.parts?.[0]?.body?.data || "",
+      "base64"
+    ).toString("utf8");
 
-    const text = await response.text();
+    const regex = /Rs\.?\s?([\d,]+\.\d{2}).*?(debited|credited).*?on\s(\d+\s\w+\s\d{4}).*?Info:\s(.+)/i;
+    const match = body.match(regex);
 
-    // Some JioSaavn responses include junk before JSON starts
-    const jsonStart = text.indexOf('{');
-    const cleanText = jsonStart !== -1 ? text.slice(jsonStart) : '{}';
-
-    const data = JSON.parse(cleanText);
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Failed to fetch playlist', error: error.message });
+    if (match) {
+      transactions.push({
+        amount: parseFloat(match[1].replace(/,/g, "")),
+        type: match[2].toLowerCase(),
+        date: match[3],
+        merchant: match[4].trim(),
+      });
+    }
   }
+
+  res.json(transactions);
 });
 
-// 2. Serve static files from dist
-app.use(express.static(path.join(__dirname, 'dist')));
-
-// 3. Fallback to index.html for SPA routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
-
-// 4. Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
+
