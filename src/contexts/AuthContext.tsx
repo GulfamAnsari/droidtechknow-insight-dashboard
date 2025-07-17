@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
@@ -66,9 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       );
       
-      const { auth_token, data, success } = response;
+      console.log('Login response:', response);
       
-      if (success) {
+      // Handle both success formats from the API response
+      const { auth_token, data, success, message } = response;
+      
+      if (success === "success" || success === true) {
         // Store the token in cookies
         Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
         // Store the user ID in cookies
@@ -78,14 +80,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('user', JSON.stringify(data));
         setUser(data);
         
-        toast.success('Successfully logged in!');
+        toast.success(message || 'Successfully logged in!');
         return true;
       } else {
-        toast.error(data.message || 'Login failed. Please check your credentials.');
+        toast.error(message || 'Login failed. Please check your credentials.');
         return false;
       }
     } catch (error) {
       console.error('Login error:', error);
+      // For Google OAuth, if login fails with email, it means user doesn't exist
+      if (username.includes('@') && password === "google_oauth_temp") {
+        console.log('User not found for Google OAuth, will redirect to signup');
+        return false;
+      }
       toast.error('An error occurred during login. Please try again.');
       return false;
     } finally {
