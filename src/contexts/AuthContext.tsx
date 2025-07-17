@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
@@ -34,20 +35,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if the user is already logged in when the app loads
+  // Check authentication status on app load
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const checkAuthStatus = async () => {
       try {
-        setUser(JSON.parse(storedUser));
+        // First check localStorage for existing user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (error) {
+            console.error('Failed to parse user data:', error);
+            localStorage.removeItem('user');
+            Cookies.remove('Cookie');
+            Cookies.remove('userId');
+          }
+        }
+
+        // Also check server-side session (for Google OAuth)
+        const response = await fetch('/check-auth', {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated && data.user) {
+            // Store server auth data in localStorage and cookies
+            Cookies.set('Cookie', data.authToken, { expires: 7 });
+            Cookies.set('userId', data.user.id, { expires: 7 });
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setUser(data.user);
+          }
+        }
       } catch (error) {
-        console.error('Failed to parse user data:', error);
-        localStorage.removeItem('user');
-        Cookies.remove('Cookie');
-        Cookies.remove('userId');
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+    
+    checkAuthStatus();
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -131,7 +159,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Clear server-side session
+      await fetch('/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Server logout error:', error);
+    }
+    
+    // Clear client-side data
     localStorage.removeItem('user');
     Cookies.remove('Cookie');
     Cookies.remove('userId');

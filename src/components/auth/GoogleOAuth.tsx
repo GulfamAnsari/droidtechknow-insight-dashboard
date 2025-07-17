@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface GoogleOAuthProps {
   onSuccess: (email: string, name: string) => void;
@@ -10,41 +11,40 @@ interface GoogleOAuthProps {
 
 export const GoogleOAuth = ({ onSuccess, isLoading = false }: GoogleOAuthProps) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Check if we're returning from Google OAuth
-    const urlParams = new URLSearchParams(window.location.search);
-    const googleAuth = urlParams.get('google_auth');
+    // Check if we're returning from successful login
+    const loginSuccess = searchParams.get('login');
+    const signupRequired = searchParams.get('signup');
+    const error = searchParams.get('error');
     
-    if (googleAuth === 'success') {
-      // Fetch the Google auth data from the server
-      setIsGoogleLoading(true);
-      fetch('/api/google-auth')
-        .then(response => response.json())
-        .then(data => {
-          if (data.email && data.name) {
-            onSuccess(data.email, data.name);
-          } else {
-            throw new Error('Invalid Google auth data');
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching Google auth data:', error);
-          toast.error("Failed to process Google sign-in");
-        })
-        .finally(() => {
-          setIsGoogleLoading(false);
-          // Clean up the URL
-          window.history.replaceState({}, '', '/login');
-        });
-    } else if (googleAuth === 'error') {
-      toast.error("Google sign-in failed");
+    if (loginSuccess === 'success') {
+      toast.success("Successfully logged in with Google!");
+      navigate('/');
+      window.history.replaceState({}, '', '/');
+    } else if (signupRequired === 'true') {
+      const email = searchParams.get('email');
+      const name = searchParams.get('name');
+      
+      if (email && name) {
+        toast.info("Please complete your account setup");
+        onSuccess(email, name);
+      }
+      
       // Clean up the URL
       window.history.replaceState({}, '', '/login');
+    } else if (error) {
+      if (error === 'oauth_failed') {
+        toast.error("Google sign-in failed. Please try again.");
+      }
+      window.history.replaceState({}, '', '/login');
     }
-  }, [onSuccess]);
+  }, [searchParams, navigate, onSuccess]);
 
   const handleGoogleSignIn = () => {
+    setIsGoogleLoading(true);
     // Redirect to the server's OAuth endpoint
     window.location.href = '/auth';
   };
@@ -75,7 +75,7 @@ export const GoogleOAuth = ({ onSuccess, isLoading = false }: GoogleOAuthProps) 
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         />
       </svg>
-      {isGoogleLoading ? "Processing Google sign-in..." : "Continue with Google"}
+      {isGoogleLoading ? "Processing..." : "Continue with Google"}
     </Button>
   );
 };

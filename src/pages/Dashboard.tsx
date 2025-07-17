@@ -18,7 +18,8 @@ import {
   MessageSquare,
   Music,
   AppleIcon,
-  Video
+  Video,
+  CreditCard
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -144,6 +145,20 @@ const Dashboard = () => {
           features={["Log food", "Log weight and height", "Track calories", "View history"]}
           link="/food-tracker"
           linkText="Food tracker"
+        />
+
+        <DashboardCard
+          icon={CreditCard}
+          title="Expense Manager"
+          description="Track your expenses from Gmail"
+          features={[
+            "Gmail transaction extraction",
+            "Expense categorization",
+            "Monthly summaries",
+            "Real-time tracking"
+          ]}
+          link="/expense-manager"
+          linkText="Manage Expenses"
         />
 
         <DashboardCard

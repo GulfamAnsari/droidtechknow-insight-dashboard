@@ -1,3 +1,4 @@
+
 // === 1. Backend (Node.js + Express + ES Modules Compatible) ===
 // File: server.mjs
 
@@ -26,6 +27,7 @@ app.use(
     secret: "your_secret",
     resave: false,
     saveUninitialized: true,
+    cookie: { secure: false } // Set to true in production with HTTPS
   })
 );
 
@@ -34,7 +36,7 @@ const buildPath = path.join(__dirname, "dist");
 app.use(express.static(buildPath));
 
 // Handle all other non-API routes by serving index.html
-app.get(/^\/(?!auth|oauth2callback|transactions|me).*/, (req, res) => {
+app.get(/^\/(?!auth|oauth2callback|transactions|me|check-auth|logout).*/, (req, res) => {
   res.sendFile(path.join(buildPath, "index.html"));
 });
 
@@ -48,7 +50,7 @@ const oauth2Client = new google.auth.OAuth2(
 app.get("/auth", (req, res) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: ["https://www.googleapis.com/auth/gmail.readonly"],
+    scope: ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/userinfo.email"],
   });
   res.redirect(url);
 });
@@ -60,22 +62,125 @@ app.get("/oauth2callback", async (req, res) => {
     req.session.tokens = tokens;
 
     oauth2Client.setCredentials(tokens);
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    
+    // Get user email from Google
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const email = userInfo.data.email;
+    
+    req.session.email = email;
 
-    const profile = await gmail.users.getProfile({ userId: "me" });
-    req.session.email = profile.data.emailAddress;
+    // Try to login with existing API
+    try {
+      const loginResponse = await fetch('https://droidtechknow.com/admin/api/auth/signin.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+        },
+        body: JSON.stringify({
+          username: email,
+          password: 'google_oauth_temp'
+        })
+      });
 
-    // Instead of redirecting, return email so FE can route
-    res.json({ email: profile.data.emailAddress });
+      const loginData = await loginResponse.json();
+      
+      if (loginData.success === "success" || loginData.success === true) {
+        // User exists, store auth data in session
+        req.session.authToken = loginData.auth_token;
+        req.session.userData = loginData.data;
+        
+        // Redirect to dashboard
+        res.redirect("http://localhost:3000/?login=success");
+      } else {
+        // User doesn't exist, redirect to signup with pre-filled data
+        const signupData = {
+          email: email,
+          name: userInfo.data.name || email.split('@')[0]
+        };
+        
+        req.session.signupData = signupData;
+        res.redirect(`http://localhost:3000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
+      }
+    } catch (apiError) {
+      console.error("Login API Error:", apiError);
+      // If API call fails, treat as new user
+      const signupData = {
+        email: email,
+        name: userInfo.data.name || email.split('@')[0]
+      };
+      
+      req.session.signupData = signupData;
+      res.redirect(`http://localhost:3000/login?signup=true&email=${encodeURIComponent(email)}&name=${encodeURIComponent(signupData.name)}`);
+    }
   } catch (error) {
     console.error("OAuth Callback Error:", error);
-    res.status(500).send("OAuth failed");
+    res.redirect("http://localhost:3000/login?error=oauth_failed");
+  }
+});
+
+// Check auth status endpoint
+app.get("/check-auth", async (req, res) => {
+  try {
+    if (!req.session.tokens || !req.session.email) {
+      return res.status(401).json({ authenticated: false });
+    }
+
+    // If we have session data but no authToken, try to re-authenticate
+    if (!req.session.authToken) {
+      try {
+        const loginResponse = await fetch('https://droidtechknow.com/admin/api/auth/signin.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+          },
+          body: JSON.stringify({
+            username: req.session.email,
+            password: 'google_oauth_temp'
+          })
+        });
+
+        const loginData = await loginResponse.json();
+        
+        if (loginData.success === "success" || loginData.success === true) {
+          req.session.authToken = loginData.auth_token;
+          req.session.userData = loginData.data;
+        } else {
+          return res.status(401).json({ authenticated: false });
+        }
+      } catch (apiError) {
+        console.error("Re-auth API Error:", apiError);
+        return res.status(401).json({ authenticated: false });
+      }
+    }
+
+    res.json({ 
+      authenticated: true, 
+      user: req.session.userData,
+      authToken: req.session.authToken
+    });
+  } catch (error) {
+    console.error("Auth check error:", error);
+    res.status(500).json({ authenticated: false, error: "Auth check failed" });
   }
 });
 
 app.get("/me", (req, res) => {
   if (!req.session.tokens) return res.status(401).send("Not logged in");
-  res.send({ email: req.session.email });
+  res.send({ 
+    email: req.session.email,
+    user: req.session.userData 
+  });
+});
+
+// Logout endpoint
+app.post("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to logout" });
+    }
+    res.json({ success: true });
+  });
 });
 
 app.get("/transactions", async (req, res) => {

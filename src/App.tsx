@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import FoodTracker from "./pages/FoodTracker";
 import ScreenRecorder from "./pages/ScreenRecorder";
+import ExpenseManager from "./pages/ExpenseManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +56,7 @@ const App = () => (
                     <Route path="notepad" element={<Notepad />} />
                     <Route path="myfiles" element={<MyFiles />} />
                     <Route path="food-tracker" element={<FoodTracker />} />
+                    <Route path="expense-manager" element={<ExpenseManager />} />
                     <Route path="music" element={<Music />} />
                     <Route path="music/songs" element={<SongsList />} />
                     <Route path="screen-recorder" element={<ScreenRecorder />} />
