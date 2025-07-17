@@ -35,11 +35,6 @@ app.use(
 const buildPath = path.join(__dirname, "dist");
 app.use(express.static(buildPath));
 
-// Handle all other non-API routes by serving index.html
-app.get(/^\/(?!auth|oauth2callback|transactions|me|check-auth|logout).*/, (req, res) => {
-  res.sendFile(path.join(buildPath, "index.html"));
-});
-
 // === Google OAuth Setup ===
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
@@ -229,6 +224,11 @@ app.get("/transactions", async (req, res) => {
     console.error("Transaction Fetch Error:", error);
     res.status(500).send("Failed to fetch transactions");
   }
+});
+
+// Handle all other non-API routes by serving index.html
+app.get(/^\/(?!auth|oauth2callback|transactions|me|check-auth|logout).*/, (req, res) => {
+  res.sendFile(path.join(buildPath, "index.html"));
 });
 
 // Error handler for any unmatched routes
