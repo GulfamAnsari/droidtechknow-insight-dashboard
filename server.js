@@ -27,15 +27,14 @@ app.use(
     saveUninitialized: false,
     cookie: {
       secure: false, // true only if HTTPS
-      sameSite: "lax", // important for Chrome
-    },
+      sameSite: "lax" // important for Chrome
+    }
   })
 );
 
 // === Serve frontend build ===
 const buildPath = path.join(__dirname, "dist");
 app.use(express.static(buildPath));
-
 
 // === Google OAuth Setup ===
 const oauth2Client = new google.auth.OAuth2(
@@ -49,8 +48,8 @@ app.get("/auth", (req, res) => {
     access_type: "offline",
     scope: [
       "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/userinfo.email",
-    ],
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
   });
   res.redirect(url);
 });
@@ -70,16 +69,19 @@ app.get("/oauth2callback", async (req, res) => {
 
     // Try to auto-login via API
     try {
-      const loginResponse = await fetch("https://droidtechknow.com/admin/api/auth/signin.php", {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=UTF-8",
-        },
-        body: JSON.stringify({
-          username: email,
-          password: "google_oauth_temp",
-        }),
-      });
+      const loginResponse = await fetch(
+        "https://droidtechknow.com/admin/api/auth/signin.php",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8"
+          },
+          body: JSON.stringify({
+            username: email,
+            password: "google_oauth_temp"
+          })
+        }
+      );
 
       const loginData = await loginResponse.json();
 
@@ -89,7 +91,7 @@ app.get("/oauth2callback", async (req, res) => {
       } else {
         const signupData = {
           email: email,
-          name: userInfo.data.name || email.split("@")[0],
+          name: userInfo.data.name || email.split("@")[0]
         };
         req.session.signupData = signupData;
       }
@@ -114,23 +116,25 @@ app.get("/oauth2callback", async (req, res) => {
 // Check login session
 app.get("/check-auth", async (req, res) => {
   try {
-    console.log(req.session.tokens)
     if (!req.session.tokens || !req.session.email) {
       return res.status(401).json({ authenticated: false });
     }
 
     if (!req.session.authToken) {
       try {
-        const loginResponse = await fetch("https://droidtechknow.com/admin/api/auth/signin.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8",
-          },
-          body: JSON.stringify({
-            username: req.session.email,
-            password: "google_oauth_temp",
-          }),
-        });
+        const loginResponse = await fetch(
+          "https://droidtechknow.com/admin/api/auth/signin.php",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain;charset=UTF-8"
+            },
+            body: JSON.stringify({
+              username: req.session.email,
+              password: "google_oauth_temp"
+            })
+          }
+        );
 
         const loginData = await loginResponse.json();
         if (loginData.success === "success" || loginData.success === true) {
@@ -148,7 +152,7 @@ app.get("/check-auth", async (req, res) => {
     res.json({
       authenticated: true,
       user: req.session.userData,
-      authToken: req.session.authToken,
+      authToken: req.session.authToken
     });
   } catch (error) {
     console.error("Auth check error:", error);
@@ -160,7 +164,7 @@ app.get("/me", (req, res) => {
   if (!req.session.tokens) return res.status(401).send("Not logged in");
   res.send({
     email: req.session.email,
-    user: req.session.userData,
+    user: req.session.userData
   });
 });
 
@@ -180,34 +184,60 @@ app.get("/transactions", async (req, res) => {
 
     const result = await gmail.users.messages.list({
       userId: "me",
-      q: "subject:(debited OR credited) category:primary newer_than:30d",
-      maxResults: 20,
+      q: "",
+      maxResults: 20
     });
 
     const transactions = [];
+    console.log("Gmail API result:", JSON.stringify(result.data, null, 2));
 
     for (let msg of result.data.messages || []) {
       const msgData = await gmail.users.messages.get({
         userId: "me",
         id: msg.id,
-        format: "full",
+        format: "full"
       });
 
-      const body = Buffer.from(
-        msgData.data.payload.parts?.[0]?.body?.data || "",
-        "base64"
-      ).toString("utf8");
+      const payload = msgData.data.payload;
 
+      // Extract plain text body (robust for all formats)
+      const extractMessageBody = (payload) => {
+        if (payload.parts) {
+          for (const part of payload.parts) {
+            if (part.mimeType === "text/plain" && part.body?.data) {
+              return Buffer.from(part.body.data, "base64").toString("utf8");
+            }
+          }
+          // Fallback to any part with data
+          const fallbackPart = payload.parts.find((p) => p.body?.data);
+          if (fallbackPart) {
+            return Buffer.from(fallbackPart.body.data, "base64").toString(
+              "utf8"
+            );
+          }
+        } else if (payload.body?.data) {
+          return Buffer.from(payload.body.data, "base64").toString("utf8");
+        }
+        return "";
+      };
+
+      const body = extractMessageBody(payload);
+
+      // Debug print the email
+      console.log("EMAIL BODY:\n", body);
+
+      // Use a regex suitable for your bank SMS/email pattern
       const regex =
-        /Rs\.?\s?([\d,]+\.\d{2}).*?(debited|credited).*?on\s(\d+\s\w+\s\d{4}).*?Info:\s(.+)/i;
+        /(?:INR|Rs\.?)\s?([\d,]+\.\d{2}).*?\b(credited|debited)\b.*?(?:on|at)?\s?(\d{1,2}[-/ ]?[A-Za-z]{3,9}[-/ ]?\d{2,4})?.*?(?:Info|desc(?:ription)?|to)?:?\s?(.+)/i;
+
       const match = body.match(regex);
 
       if (match) {
         transactions.push({
           amount: parseFloat(match[1].replace(/,/g, "")),
           type: match[2].toLowerCase(),
-          date: match[3],
-          merchant: match[4].trim(),
+          date: match[3] || "unknown",
+          merchant: match[4].trim()
         });
       }
     }
@@ -220,9 +250,12 @@ app.get("/transactions", async (req, res) => {
 });
 
 // Serve frontend for SPA
-app.get(/^\/(?!auth|oauth2callback|transactions|me|check-auth|logout).*/, (req, res) => {
-  res.sendFile(path.join(buildPath, "index.html"));
-});
+app.get(
+  /^\/(?!auth|oauth2callback|transactions|me|check-auth|logout).*/,
+  (req, res) => {
+    res.sendFile(path.join(buildPath, "index.html"));
+  }
+);
 
 // Fallback 404
 app.use((req, res) => {
