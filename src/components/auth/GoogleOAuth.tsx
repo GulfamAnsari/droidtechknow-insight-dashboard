@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -8,75 +8,45 @@ interface GoogleOAuthProps {
   isLoading?: boolean;
 }
 
-declare global {
-  interface Window {
-    google: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          prompt: () => void;
-          renderButton: (element: HTMLElement, config: any) => void;
-        };
-      };
-    };
-  }
-}
-
 export const GoogleOAuth = ({ onSuccess, isLoading = false }: GoogleOAuthProps) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const initializeGoogle = () => {
-    if (!window.google) {
-      toast.error("Google Sign-In not available");
-      return;
-    }
-
-    window.google.accounts.id.initialize({
-      client_id: "YOUR_GOOGLE_CLIENT_ID", // Replace with your actual Google Client ID
-      callback: handleGoogleResponse,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-  };
-
-  const handleGoogleResponse = (response: any) => {
-    try {
+  useEffect(() => {
+    // Check if we're returning from Google OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleAuth = urlParams.get('google_auth');
+    
+    if (googleAuth === 'success') {
+      // Fetch the Google auth data from the server
       setIsGoogleLoading(true);
-      
-      // Decode the JWT token to get user information
-      const payload = JSON.parse(atob(response.credential.split('.')[1]));
-      
-      console.log('Google OAuth payload:', payload);
-      
-      const email = payload.email;
-      const name = payload.name || payload.given_name || email.split('@')[0];
-      
-      onSuccess(email, name);
-    } catch (error) {
-      console.error('Error processing Google response:', error);
-      toast.error("Failed to process Google sign-in");
-    } finally {
-      setIsGoogleLoading(false);
+      fetch('/api/google-auth')
+        .then(response => response.json())
+        .then(data => {
+          if (data.email && data.name) {
+            onSuccess(data.email, data.name);
+          } else {
+            throw new Error('Invalid Google auth data');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching Google auth data:', error);
+          toast.error("Failed to process Google sign-in");
+        })
+        .finally(() => {
+          setIsGoogleLoading(false);
+          // Clean up the URL
+          window.history.replaceState({}, '', '/login');
+        });
+    } else if (googleAuth === 'error') {
+      toast.error("Google sign-in failed");
+      // Clean up the URL
+      window.history.replaceState({}, '', '/login');
     }
-  };
+  }, [onSuccess]);
 
   const handleGoogleSignIn = () => {
-    if (!window.google) {
-      // Load Google Sign-In script if not already loaded
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.onload = () => {
-        initializeGoogle();
-        window.google.accounts.id.prompt();
-      };
-      script.onerror = () => {
-        toast.error("Failed to load Google Sign-In");
-      };
-      document.head.appendChild(script);
-    } else {
-      initializeGoogle();
-      window.google.accounts.id.prompt();
-    }
+    // Redirect to the server's OAuth endpoint
+    window.location.href = '/auth';
   };
 
   return (
@@ -105,7 +75,7 @@ export const GoogleOAuth = ({ onSuccess, isLoading = false }: GoogleOAuthProps) 
           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
         />
       </svg>
-      {isGoogleLoading ? "Signing in with Google..." : "Continue with Google"}
+      {isGoogleLoading ? "Processing Google sign-in..." : "Continue with Google"}
     </Button>
   );
 };
