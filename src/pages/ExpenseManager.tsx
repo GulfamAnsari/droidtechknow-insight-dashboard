@@ -28,7 +28,7 @@ const ExpenseManager = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await fetch('/transactions', {
+      const response = await fetch('https://droidtechknow.com/admin/api/auth/google-auth.php?route=transactions', {
         credentials: 'include'
       });
 

@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Also check server-side session (for Google OAuth)
-        const response = await fetch('/check-auth', {
+        const response = await fetch('https://droidtechknow.com/admin/api/auth/google-auth.php?route=check-auth', {
           method: 'GET',
           credentials: 'include'
         });
@@ -162,7 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       // Clear server-side session
-      await fetch('/logout', {
+      await fetch('https://droidtechknow.com/admin/api/auth/google-auth.php?route=logout', {
         method: 'POST',
         credentials: 'include'
       });

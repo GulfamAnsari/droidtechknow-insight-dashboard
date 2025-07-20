@@ -46,7 +46,7 @@ export const GoogleOAuth = ({ onSuccess, isLoading = false }: GoogleOAuthProps) 
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     // Redirect to the server's OAuth endpoint
-    window.location.href = '/auth';
+    window.location.href = 'https://droidtechknow.com/admin/api/auth/google-auth.php?route=auth';
   };
 
   return (
