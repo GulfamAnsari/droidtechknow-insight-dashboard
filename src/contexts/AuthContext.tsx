@@ -60,12 +60,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.authenticated && data.user) {
+          console.log(data);
+          if (data.authenticated) {
             // Store server auth data in localStorage and cookies
-            Cookies.set('Cookie', data.authToken, { expires: 7 });
-            Cookies.set('userId', data.user.id, { expires: 7 });
-            localStorage.setItem('user', JSON.stringify(data.user));
-            setUser(data.user);
+            Cookies.set('Cookie', data.auth_token, { expires: 30 });
+            Cookies.set('userId', data.data.id, { expires: 30 });
+            localStorage.setItem('user', JSON.stringify(data.data));
+            setUser(data.data);
           }
         }
       } catch (error) {
