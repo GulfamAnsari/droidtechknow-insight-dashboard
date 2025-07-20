@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server.js",
-    "build:admin": "vite build --base=/admin/apps/"
+    "build:admin": "vite build --base=/admin/apps/ && node copy.js"
   },
   "dependencies": {
     "@editorjs/checklist": "^1.6.0",
