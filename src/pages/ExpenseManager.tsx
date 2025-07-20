@@ -33,32 +33,56 @@ interface ParsedTransaction {
   parsedDate: string;
 }
 
-// Regex patterns for transaction parsing
+// Enhanced regex patterns for bank transaction parsing
 const TRANSACTION_PATTERNS = {
-  // Amount patterns
+  // Amount patterns - comprehensive patterns for Indian banks
   amount: [
+    // Standard currency formats
     /(?:Rs\.?\s*|₹\s*)(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
-    /(?:INR\s*|rupees?\s*)(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
-    /(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*(?:rs\.?|₹|inr|rupees?)/gi
+    /(?:INR\s*)(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
+    /(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*(?:rs\.?|₹|inr)/gi,
+    // Bank specific amount patterns
+    /amount[:\s]+(?:rs\.?\s*|₹\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
+    /(?:debited|credited)\s+(?:with\s+)?(?:rs\.?\s*|₹\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
+    /(?:paid|spent|received)\s+(?:rs\.?\s*|₹\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi,
+    // UPI and digital payment patterns
+    /(?:upi|paytm|phonepe|googlepay|gpay|bhim).*?(?:rs\.?\s*|₹\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/gi
   ],
   
-  // Debit patterns
+  // Debit patterns - bank-specific language
   debit: [
-    /debited|deducted|withdrawn|paid|spent|charged|purchase|transaction|bill/gi,
-    /amount\s+(?:of\s+)?(?:rs\.?\s*|₹\s*)?[\d,.]+ (?:has been )?(?:debited|deducted|withdrawn)/gi
+    /debited|deducted|withdrawn|paid|spent|charged|purchase|bill payment|auto debit/gi,
+    /payment made|money sent|transfer.*?to|fund transfer/gi,
+    /card.*?used|transaction.*?processed|purchase.*?made/gi,
+    /emi.*?debited|loan.*?deducted|insurance.*?premium/gi,
+    /utility.*?payment|recharge.*?successful/gi,
+    /atm.*?withdrawal|cash.*?withdrawn/gi
   ],
   
-  // Credit patterns
+  // Credit patterns - bank-specific language  
   credit: [
-    /credited|deposited|received|refund|cashback|reward|bonus/gi,
-    /amount\s+(?:of\s+)?(?:rs\.?\s*|₹\s*)?[\d,.]+ (?:has been )?(?:credited|deposited)/gi
+    /credited|deposited|received|refund|cashback|reward|bonus|salary/gi,
+    /money.*?received|amount.*?added|fund.*?credited/gi,
+    /interest.*?credited|dividend.*?paid|refund.*?processed/gi,
+    /transfer.*?from|received.*?from|deposit.*?made/gi,
+    /upi.*?received|payment.*?received/gi
   ],
   
-  // Merchant patterns
+  // Merchant patterns - enhanced for Indian context
   merchant: [
-    /(?:at|from|to|merchant)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50})/gi,
-    /transaction\s+(?:at|with)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50})/gi,
-    /purchase\s+(?:at|from)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50})/gi
+    // Standard merchant patterns
+    /(?:at|from|to|merchant|vendor)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi,
+    /(?:transaction|purchase|payment)\s+(?:at|with|to)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi,
+    // UPI merchant patterns
+    /(?:upi|paid to|sent to)\s+([A-Za-z][A-Za-z0-9\s@\-\.]{2,50}?)(?:\s|$|@)/gi,
+    // Card transaction patterns
+    /(?:card used at|pos|swipe at)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi,
+    // Online merchant patterns
+    /(?:payment to|order from|purchase from)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi,
+    // Banking patterns
+    /(?:transfer to|sent to)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi,
+    // Extract from transaction description
+    /(?:txn|transaction).*?(?:at|with)\s+([A-Za-z][A-Za-z0-9\s&\-\.]{2,50}?)(?:\s|$|\.)/gi
   ]
 };
 
@@ -188,7 +212,9 @@ const ExpenseManager = () => {
   const netAmount = totalCredited - totalDebited;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-auto p-6 max-w-7xl mx-auto w-full">
+        <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -305,7 +331,7 @@ const ExpenseManager = () => {
             Transactions extracted from Gmail using regex patterns
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -316,93 +342,97 @@ const ExpenseManager = () => {
               <p className="text-sm">Try adjusting your filters or check your Gmail authentication</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Merchant</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-center">Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parsedTransactions.map((transaction, index) => (
-                  <TableRow key={transaction.email.messageId || index}>
-                    <TableCell className="font-medium">{transaction.parsedDate}</TableCell>
-                    <TableCell className="max-w-32 truncate" title={transaction.email.from}>
-                      {transaction.email.from.split('<')[0].trim() || transaction.email.from}
-                    </TableCell>
-                    <TableCell className="max-w-48 truncate" title={transaction.email.subject}>
-                      {transaction.email.subject}
-                    </TableCell>
-                    <TableCell>{transaction.merchant || "Unknown"}</TableCell>
-                    <TableCell>
-                      {transaction.type ? (
-                        <Badge variant={transaction.type === 'debited' ? 'destructive' : 'default'}>
-                          {transaction.type === 'debited' ? 'Debited' : 'Credited'}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Unknown</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      transaction.type === 'debited' ? 'text-red-600' : 
-                      transaction.type === 'credited' ? 'text-green-600' : 'text-muted-foreground'
-                    }`}>
-                      {transaction.amount ? (
-                        <>
-                          {transaction.type === 'debited' ? '-' : transaction.type === 'credited' ? '+' : ''}
-                          ₹{transaction.amount.toFixed(2)}
-                        </>
-                      ) : (
-                        'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-                          <DialogHeader>
-                            <DialogTitle>Email Content</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="font-semibold">Subject:</h4>
-                              <p>{transaction.email.subject}</p>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold">From:</h4>
-                              <p>{transaction.email.from}</p>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold">Date:</h4>
-                              <p>{transaction.email.date}</p>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold">HTML Content:</h4>
-                              <div 
-                                className="border p-4 max-h-96 overflow-auto bg-muted"
-                                dangerouslySetInnerHTML={{ __html: transaction.email.html }}
-                              />
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
+            <div className="overflow-auto max-h-[600px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>From</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Merchant</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-center">Details</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {parsedTransactions.map((transaction, index) => (
+                    <TableRow key={transaction.email.messageId || index}>
+                      <TableCell className="font-medium">{transaction.parsedDate}</TableCell>
+                      <TableCell className="max-w-32 truncate" title={transaction.email.from}>
+                        {transaction.email.from.split('<')[0].trim() || transaction.email.from}
+                      </TableCell>
+                      <TableCell className="max-w-48 truncate" title={transaction.email.subject}>
+                        {transaction.email.subject}
+                      </TableCell>
+                      <TableCell>{transaction.merchant || "Unknown"}</TableCell>
+                      <TableCell>
+                        {transaction.type ? (
+                          <Badge variant={transaction.type === 'debited' ? 'destructive' : 'default'}>
+                            {transaction.type === 'debited' ? 'Debited' : 'Credited'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Unknown</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${
+                        transaction.type === 'debited' ? 'text-red-600' : 
+                        transaction.type === 'credited' ? 'text-green-600' : 'text-muted-foreground'
+                      }`}>
+                        {transaction.amount ? (
+                          <>
+                            {transaction.type === 'debited' ? '-' : transaction.type === 'credited' ? '+' : ''}
+                            ₹{transaction.amount.toFixed(2)}
+                          </>
+                        ) : (
+                          'N/A'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+                            <DialogHeader>
+                              <DialogTitle>Email Content</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="font-semibold">Subject:</h4>
+                                <p>{transaction.email.subject}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">From:</h4>
+                                <p>{transaction.email.from}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">Date:</h4>
+                                <p>{transaction.email.date}</p>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">HTML Content:</h4>
+                                <div 
+                                  className="border p-4 max-h-96 overflow-auto bg-muted"
+                                  dangerouslySetInnerHTML={{ __html: transaction.email.html }}
+                                />
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 };
