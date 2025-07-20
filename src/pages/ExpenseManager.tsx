@@ -95,7 +95,7 @@ const ExpenseManager = () => {
   // Filter parameters
   const [startDate, setStartDate] = useState("2025-07-01");
   const [endDate, setEndDate] = useState("2025-07-20");
-  const [allowedSenders, setAllowedSenders] = useState(false);
+  const [allowedSenders, setAllowedSenders] = useState(true);
   const [labelIds, setLabelIds] = useState("INBOX");
 
   const parseEmailContent = (email: EmailTransaction): ParsedTransaction => {
