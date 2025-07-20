@@ -1,7 +1,7 @@
+
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { google } from "googleapis";
 import session from "express-session";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -36,77 +36,38 @@ app.use(
 const buildPath = path.join(__dirname, "dist");
 app.use(express.static(buildPath));
 
-// === Google OAuth Setup ===
-const oauth2Client = new google.auth.OAuth2(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  "http://localhost:4000/oauth2callback"
-);
-
+// === Google OAuth Routes ===
 app.get("/auth", (req, res) => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: [
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/userinfo.email"
-    ]
-  });
-  res.redirect(url);
+  res.redirect("https://droidtechknow.com/admin/api/auth/google-auth.php?route=auth");
 });
 
 app.get("/oauth2callback", async (req, res) => {
   try {
     const { code } = req.query;
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
-
-    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-    const userInfo = await oauth2.userinfo.get();
-    const email = userInfo.data.email;
-
-    req.session.tokens = tokens;
-    req.session.email = email;
-
-    // Try to auto-login via API
-    try {
-      const loginResponse = await fetch(
-        "https://droidtechknow.com/admin/api/auth/signin.php",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8"
-          },
-          body: JSON.stringify({
-            username: email,
-            password: "google_oauth_temp"
-          })
-        }
-      );
-
-      const loginData = await loginResponse.json();
-
-      if (loginData.success === "success" || loginData.success === true) {
-        req.session.authToken = loginData.auth_token;
-        req.session.userData = loginData.data;
-      } else {
-        const signupData = {
-          email: email,
-          name: userInfo.data.name || email.split("@")[0]
-        };
-        req.session.signupData = signupData;
-      }
-    } catch (apiError) {
-      console.error("Login API Error:", apiError);
-    }
-
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save failed:", err);
-        return res.redirect("http://localhost:4000/login?error=session_failed");
-      }
-
-      res.redirect("http://localhost:4000/?login=success");
+    
+    // Forward the OAuth callback to the API
+    const response = await fetch(`https://droidtechknow.com/admin/api/auth/google-auth.php?route=auth&code=${code}`, {
+      method: 'GET'
     });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      req.session.tokens = data.tokens;
+      req.session.email = data.email;
+      req.session.authToken = data.auth_token;
+      req.session.userData = data.user_data;
+
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save failed:", err);
+          return res.redirect("http://localhost:4000/login?error=session_failed");
+        }
+        res.redirect("http://localhost:4000/?login=success");
+      });
+    } else {
+      res.redirect("http://localhost:4000/login?error=oauth_failed");
+    }
   } catch (error) {
     console.error("OAuth Callback Error:", error);
     res.redirect("http://localhost:4000/login?error=oauth_failed");
@@ -116,136 +77,87 @@ app.get("/oauth2callback", async (req, res) => {
 // Check login session
 app.get("/check-auth", async (req, res) => {
   try {
-    if (!req.session.tokens || !req.session.email) {
-      return res.status(401).json({ authenticated: false });
-    }
-
-    if (!req.session.authToken) {
-      try {
-        const loginResponse = await fetch(
-          "https://droidtechknow.com/admin/api/auth/signin.php",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "text/plain;charset=UTF-8"
-            },
-            body: JSON.stringify({
-              username: req.session.email,
-              password: "google_oauth_temp"
-            })
-          }
-        );
-
-        const loginData = await loginResponse.json();
-        if (loginData.success === "success" || loginData.success === true) {
-          req.session.authToken = loginData.auth_token;
-          req.session.userData = loginData.data;
-        } else {
-          return res.status(401).json({ authenticated: false });
-        }
-      } catch (apiError) {
-        console.error("Re-auth API Error:", apiError);
-        return res.status(401).json({ authenticated: false });
+    const response = await fetch("https://droidtechknow.com/admin/api/auth/google-auth.php?route=check-auth", {
+      method: 'GET',
+      headers: {
+        'Cookie': req.headers.cookie || ''
       }
-    }
-
-    res.json({
-      authenticated: true,
-      user: req.session.userData,
-      authToken: req.session.authToken
     });
+
+    const data = await response.json();
+    
+    if (data.authenticated) {
+      req.session.tokens = data.tokens;
+      req.session.email = data.email;
+      req.session.authToken = data.auth_token;
+      req.session.userData = data.user_data;
+      
+      res.json({
+        authenticated: true,
+        user: data.user_data,
+        authToken: data.auth_token
+      });
+    } else {
+      res.status(401).json({ authenticated: false });
+    }
   } catch (error) {
     console.error("Auth check error:", error);
     res.status(500).json({ authenticated: false, error: "Auth check failed" });
   }
 });
 
-app.get("/me", (req, res) => {
-  if (!req.session.tokens) return res.status(401).send("Not logged in");
-  res.send({
-    email: req.session.email,
-    user: req.session.userData
-  });
+app.get("/me", async (req, res) => {
+  try {
+    const response = await fetch("https://droidtechknow.com/admin/api/auth/google-auth.php?route=me", {
+      method: 'GET',
+      headers: {
+        'Cookie': req.headers.cookie || ''
+      }
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error("Me endpoint error:", error);
+    res.status(500).json({ error: "Failed to get user info" });
+  }
 });
 
-app.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ error: "Failed to logout" });
-    res.json({ success: true });
-  });
+app.post("/logout", async (req, res) => {
+  try {
+    const response = await fetch("https://droidtechknow.com/admin/api/auth/google-auth.php?route=logout", {
+      method: 'POST',
+      headers: {
+        'Cookie': req.headers.cookie || ''
+      }
+    });
+
+    const data = await response.json();
+    
+    req.session.destroy((err) => {
+      if (err) return res.status(500).json({ error: "Failed to logout" });
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ error: "Failed to logout" });
+  }
 });
 
 app.get("/transactions", async (req, res) => {
   try {
-    if (!req.session.tokens) return res.status(401).send("Not authorized");
-
-    oauth2Client.setCredentials(req.session.tokens);
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-    const result = await gmail.users.messages.list({
-      userId: "me",
-      q: "",
-      maxResults: 20
+    const response = await fetch("https://droidtechknow.com/admin/api/auth/google-auth.php?route=transactions", {
+      method: 'GET',
+      headers: {
+        'Cookie': req.headers.cookie || ''
+      }
     });
 
-    const transactions = [];
-    console.log("Gmail API result:", JSON.stringify(result.data, null, 2));
-
-    for (let msg of result.data.messages || []) {
-      const msgData = await gmail.users.messages.get({
-        userId: "me",
-        id: msg.id,
-        format: "full"
-      });
-
-      const payload = msgData.data.payload;
-
-      // Extract plain text body (robust for all formats)
-      const extractMessageBody = (payload) => {
-        if (payload.parts) {
-          for (const part of payload.parts) {
-            if (part.mimeType === "text/plain" && part.body?.data) {
-              return Buffer.from(part.body.data, "base64").toString("utf8");
-            }
-          }
-          // Fallback to any part with data
-          const fallbackPart = payload.parts.find((p) => p.body?.data);
-          if (fallbackPart) {
-            return Buffer.from(fallbackPart.body.data, "base64").toString(
-              "utf8"
-            );
-          }
-        } else if (payload.body?.data) {
-          return Buffer.from(payload.body.data, "base64").toString("utf8");
-        }
-        return "";
-      };
-
-      const body = extractMessageBody(payload);
-
-      // Debug print the email
-      console.log("EMAIL BODY:\n", body);
-
-      // Use a regex suitable for your bank SMS/email pattern
-      const regex =
-        /(?:INR|Rs\.?)\s?([\d,]+\.\d{2}).*?\b(credited|debited)\b.*?(?:on|at)?\s?(\d{1,2}[-/ ]?[A-Za-z]{3,9}[-/ ]?\d{2,4})?.*?(?:Info|desc(?:ription)?|to)?:?\s?(.+)/i;
-
-      const match = body.match(regex);
-
-      if (match) {
-        transactions.push({
-          amount: parseFloat(match[1].replace(/,/g, "")),
-          type: match[2].toLowerCase(),
-          date: match[3] || "unknown",
-          merchant: match[4].trim()
-        });
-      }
-    }
-
-    res.json(transactions);
+    const data = await response.json();
+    res.json(data);
   } catch (error) {
-    console.error("Transaction Fetch Error:", error);
-    res.status(500).send("Failed to fetch transactions");
+    console.error("Transactions error:", error);
+    res.status(500).json({ error: "Failed to fetch transactions" });
   }
 });
 
