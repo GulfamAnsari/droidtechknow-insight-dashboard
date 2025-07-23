@@ -300,7 +300,7 @@ const ExpenseManager = () => {
 
   // Extract bill reminders from email data
   const extractBillReminders = (emails: EmailTransaction[]) => {
-    const billKeywords = ['bill', 'payment due', 'reminder', 'due date', 'invoice', 'statement'];
+    const billKeywords = ['total amount due', 'minimum due', 'bses yamuna'];
     const bills = [];
 
     emails.forEach(email => {
