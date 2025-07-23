@@ -41,7 +41,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter basename="/admin/apps/"> 
+            <BrowserRouter basename={window.location.host === "localhost" ? "/admin/apps/": ""}> 
               <Routes>
                 <Route path="/login" element={<Login />} />
                 

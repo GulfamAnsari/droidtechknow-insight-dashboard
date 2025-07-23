@@ -316,9 +316,9 @@ const ExpenseManager = () => {
   const netAmount = totalCredited - totalDebited;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-auto p-6 w-full">
-        <div className="max-w-7xl mx-auto">
+    <div className="h-full flex flex-col bg-gradient-to-b">
+      <div className="flex-1 overflow-auto p-8 w-full">
+        <div className="max-w-8xl mx-auto">
           <div className="flex gap-6">
             {/* Main Content */}
             <div className="flex-1 space-y-6">
