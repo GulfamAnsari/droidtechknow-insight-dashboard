@@ -12,13 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   RefreshCw,
   DollarSign,
   TrendingDown,
   TrendingUp,
   Calendar,
   Info,
-  Eye
+  Eye,
+  Bell,
+  CreditCard
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +60,7 @@ interface ParsedTransaction {
   type?: "debited" | "credited";
   merchant?: string;
   parsedDate: string;
+  paymentMode?: string;
 }
 
 function extractTextFromHtml(htmlString) {
@@ -96,6 +106,13 @@ const TRANSACTION_PATTERNS = {
   merchant: [
     // Standard merchant patterns
     /(?:\sat\s|\sin\s)([A-Za-z0-9&.\- ]{2,50})/i
+  ],
+
+  // Payment mode patterns
+  paymentMode: [
+    /\b(?:upi|credit card|debit card|net banking|wallet|cash|cheque|neft|rtgs|imps)\b/gi,
+    /\b(?:visa|mastercard|rupay|american express|amex)\b/gi,
+    /\b(?:paytm|phonepe|googlepay|amazon pay|freecharge)\b/gi
   ]
 };
 
@@ -108,12 +125,43 @@ const ExpenseManager = () => {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Filter parameters
-  const [startDate, setStartDate] = useState("2025-07-01");
-  const [endDate, setEndDate] = useState("2025-07-20");
+  const [dateRange, setDateRange] = useState("30days");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [allowedSenders, setAllowedSenders] = useState(true);
   const [labelIds, setLabelIds] = useState("INBOX");
+
+  // Calculate date range based on selection
+  const getDateRange = (range: string) => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    switch (range) {
+      case "7days":
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return { start: sevenDaysAgo.toISOString().split('T')[0], end: today };
+      case "30days":
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return { start: thirtyDaysAgo.toISOString().split('T')[0], end: today };
+      case "3months":
+        const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        return { start: threeMonthsAgo.toISOString().split('T')[0], end: today };
+      case "custom":
+        return { start: startDate, end: endDate };
+      default:
+        return { start: thirtyDaysAgo.toISOString().split('T')[0], end: today };
+    }
+  };
+
+  // Initialize with 30 days default
+  useEffect(() => {
+    const { start, end } = getDateRange("30days");
+    setStartDate(start);
+    setEndDate(end);
+  }, []);
 
   const parseEmailContent = (email: EmailTransaction): ParsedTransaction => {
     const content = `${email.subject} ${extractTextFromHtml(
@@ -164,21 +212,33 @@ const ExpenseManager = () => {
       }
     }
 
+    // Extract payment mode
+    let paymentMode: string | undefined;
+    for (const pattern of TRANSACTION_PATTERNS.paymentMode) {
+      const match = pattern.exec(content);
+      if (match) {
+        paymentMode = match[0].trim();
+        break;
+      }
+    }
+
     return {
       email,
       amount,
       type,
       merchant,
+      paymentMode,
       parsedDate: new Date(email.date).toLocaleDateString()
     };
   };
 
   const fetchTransactions = async () => {
     try {
+      const { start, end } = getDateRange(dateRange);
       const params = new URLSearchParams({
         route: "transactions",
-        startDate,
-        endDate,
+        startDate: start,
+        endDate: end,
         allowedSenders: allowedSenders.toString(),
         labelIds
       });
@@ -193,11 +253,13 @@ const ExpenseManager = () => {
       if (response.ok) {
         const data: EmailTransaction[] = await response.json();
         setEmailTransactions(data);
+        setIsAuthenticated(true);
 
         // Parse transactions
         const parsed = data.map(parseEmailContent);
         setParsedTransactions(parsed);
       } else if (response.status === 401) {
+        setIsAuthenticated(false);
         toast.error("Please authenticate with Google to view transactions");
       } else {
         toast.error("Failed to fetch transactions");
@@ -225,6 +287,19 @@ const ExpenseManager = () => {
     fetchTransactions();
   };
 
+  const handleDateRangeChange = (value: string) => {
+    setDateRange(value);
+    if (value !== "custom") {
+      const { start, end } = getDateRange(value);
+      setStartDate(start);
+      setEndDate(end);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    window.location.href = 'https://droidtechknow.com/admin/api/auth/google-auth.php?route=auth';
+  };
+
   // Calculate totals from parsed transactions
   const transactionsWithAmounts = parsedTransactions.filter(
     (t) => t.amount && t.type
@@ -242,8 +317,11 @@ const ExpenseManager = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-auto p-6 max-w-7xl mx-auto w-full">
-        <div className="space-y-6">
+      <div className="flex-1 overflow-auto p-6 w-full">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex gap-6">
+            {/* Main Content */}
+            <div className="flex-1 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -265,60 +343,105 @@ const ExpenseManager = () => {
             </Button>
           </div>
 
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filters</CardTitle>
-              <CardDescription>
-                Configure transaction search parameters
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
+          {/* Authentication Check */}
+          {!isAuthenticated ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                  <h3 className="text-lg font-semibold">Authentication Required</h3>
+                  <p className="text-muted-foreground">
+                    Please sign in with Google to access your transaction data
+                  </p>
+                  <Button onClick={handleGoogleSignIn} className="gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="labelIds">Label IDs</Label>
-                  <Input
-                    id="labelIds"
-                    value={labelIds}
-                    onChange={(e) => setLabelIds(e.target.value)}
-                    placeholder="INBOX"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="allowedSenders"
-                    checked={allowedSenders}
-                    onCheckedChange={setAllowedSenders}
-                  />
-                  <Label htmlFor="allowedSenders">Allowed Senders Only</Label>
-                </div>
-              </div>
-              <Button onClick={handleApplyFilters} disabled={isLoading}>
-                Apply Filters
-              </Button>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Filters */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div className="space-y-2">
+                      <Label>Date Range</Label>
+                      <Select value={dateRange} onValueChange={handleDateRangeChange}>
+                        <SelectTrigger className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7days">Last 7 days</SelectItem>
+                          <SelectItem value="30days">Last 30 days</SelectItem>
+                          <SelectItem value="3months">Last 3 months</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {dateRange === "custom" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">Start Date</Label>
+                          <Input
+                            id="startDate"
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-36"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">End Date</Label>
+                          <Input
+                            id="endDate"
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-36"
+                          />
+                        </div>
+                      </>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="labelIds">Labels</Label>
+                      <Input
+                        id="labelIds"
+                        value={labelIds}
+                        onChange={(e) => setLabelIds(e.target.value)}
+                        placeholder="INBOX"
+                        className="w-32"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="allowedSenders"
+                        checked={allowedSenders}
+                        onCheckedChange={setAllowedSenders}
+                      />
+                      <Label htmlFor="allowedSenders">Bank Senders Only</Label>
+                    </div>
+                    
+                    <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
+                      Apply
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {isAuthenticated && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -367,10 +490,12 @@ const ExpenseManager = () => {
                 <p className="text-xs text-muted-foreground">Overall balance</p>
               </CardContent>
             </Card>
-          </div>
+            </div>
+          )}
 
           {/* Transactions Table */}
-          <Card>
+          {isAuthenticated && (
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -402,6 +527,7 @@ const ExpenseManager = () => {
                         <TableHead>From</TableHead>
                         <TableHead>Subject</TableHead>
                         <TableHead>Merchant</TableHead>
+                        <TableHead>Payment Mode</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead className="text-center">Details</TableHead>
@@ -428,6 +554,15 @@ const ExpenseManager = () => {
                           </TableCell>
                           <TableCell>
                             {transaction.merchant || "Unknown"}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.paymentMode ? (
+                              <Badge variant="outline" className="text-xs">
+                                {transaction.paymentMode}
+                              </Badge>
+                            ) : (
+                              "-"
+                            )}
                           </TableCell>
                           <TableCell>
                             {transaction.type ? (
@@ -514,7 +649,75 @@ const ExpenseManager = () => {
                 </div>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          )}
+            </div>
+
+            {/* Bill Reminders Sidebar */}
+            <div className="w-80">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Bill Reminders
+                  </CardTitle>
+                  <CardDescription>
+                    Upcoming due bills and payments
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Sample bill reminders - replace with actual data */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-4 w-4 text-red-500" />
+                        <div>
+                          <p className="font-medium text-sm">Credit Card Bill</p>
+                          <p className="text-xs text-muted-foreground">HDFC Bank</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm text-red-600">₹25,430</p>
+                        <p className="text-xs text-muted-foreground">Due in 3 days</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Bell className="h-4 w-4 text-orange-500" />
+                        <div>
+                          <p className="font-medium text-sm">Internet Bill</p>
+                          <p className="text-xs text-muted-foreground">Airtel</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm text-orange-600">₹1,299</p>
+                        <p className="text-xs text-muted-foreground">Due in 5 days</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <DollarSign className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <p className="font-medium text-sm">Electricity Bill</p>
+                          <p className="text-xs text-muted-foreground">BSES</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm text-blue-600">₹2,847</p>
+                        <p className="text-xs text-muted-foreground">Due in 8 days</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button variant="outline" size="sm" className="w-full">
+                    View All Bills
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     </div>
