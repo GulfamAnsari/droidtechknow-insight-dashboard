@@ -19,6 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   RefreshCw,
   DollarSign,
   TrendingDown,
@@ -27,7 +33,8 @@ import {
   Info,
   Eye,
   Bell,
-  CreditCard
+  CreditCard,
+  ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -104,8 +111,12 @@ const TRANSACTION_PATTERNS = {
 
   // Merchant patterns - enhanced for Indian context
   merchant: [
-    // Standard merchant patterns
-    /(?:\sat\s|\sin\s)([A-Za-z0-9&.\- ]{2,50})/i
+    // Enhanced merchant detection patterns
+    /(?:at|to|from|via)\s+([A-Za-z0-9&.\s-]{3,40})(?:\s+(?:on|for|with)|$)/gi,
+    /(?:paid\s+to|transaction\s+at|purchase\s+at|payment\s+to)\s+([A-Za-z0-9&.\s-]{3,40})/gi,
+    /(?:merchant|store|shop):\s*([A-Za-z0-9&.\s-]{3,40})/gi,
+    /([A-Z][A-Za-z0-9\s&.-]{2,30})\s+(?:payment|transaction|purchase|bill)/gi,
+    /\b([A-Z][A-Za-z0-9\s&.-]{2,25})\s+(?:UPI|card|online)/gi
   ],
 
   // Payment mode patterns
@@ -126,6 +137,7 @@ const ExpenseManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [billReminders, setBillReminders] = useState([]);
 
   // Filter parameters
   const [dateRange, setDateRange] = useState("30days");
@@ -133,6 +145,14 @@ const ExpenseManager = () => {
   const [endDate, setEndDate] = useState("");
   const [allowedSenders, setAllowedSenders] = useState(true);
   const [labelIds, setLabelIds] = useState("INBOX");
+  const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
+
+  // Bank list for filtering
+  const banksList = [
+    "HDFC Bank", "ICICI Bank", "SBI", "Axis Bank", "Kotak Bank",
+    "PNB", "BOB", "Canara Bank", "Yes Bank", "IDFC First Bank",
+    "IndusInd Bank", "RBL Bank", "Federal Bank", "Citi Bank", "Standard Chartered"
+  ];
 
   // Calculate date range based on selection
   const getDateRange = (range: string) => {
@@ -240,7 +260,8 @@ const ExpenseManager = () => {
         startDate: start,
         endDate: end,
         allowedSenders: allowedSenders.toString(),
-        labelIds
+        labelIds,
+        ...(selectedBanks.length > 0 && { banks: selectedBanks.join(',') })
       });
 
       const response = await fetch(
@@ -258,6 +279,10 @@ const ExpenseManager = () => {
         // Parse transactions
         const parsed = data.map(parseEmailContent);
         setParsedTransactions(parsed);
+
+        // Extract bill reminders from email data
+        const bills = extractBillReminders(data);
+        setBillReminders(bills);
       } else if (response.status === 401) {
         setIsAuthenticated(false);
         toast.error("Please authenticate with Google to view transactions");
@@ -271,6 +296,38 @@ const ExpenseManager = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
+  };
+
+  // Extract bill reminders from email data
+  const extractBillReminders = (emails: EmailTransaction[]) => {
+    const billKeywords = ['bill', 'payment due', 'reminder', 'due date', 'invoice', 'statement'];
+    const bills = [];
+
+    emails.forEach(email => {
+      const content = `${email.subject} ${extractTextFromHtml(email.html)}`.toLowerCase();
+      const hasBillKeyword = billKeywords.some(keyword => content.includes(keyword));
+      
+      if (hasBillKeyword) {
+        // Extract amount and due date from email content
+        const amountMatch = content.match(/(?:rs|inr|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)/i);
+        const dueDateMatch = content.match(/due\s+(?:date|on)?\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+        
+        const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+        const dueDate = dueDateMatch ? dueDateMatch[1] : null;
+        
+        if (amount > 0) {
+          bills.push({
+            id: email.messageId,
+            merchant: email.from.split('<')[0].trim(),
+            amount: amount,
+            dueDate: dueDate,
+            type: 'bill'
+          });
+        }
+      }
+    });
+
+    return bills.slice(0, 5); // Return top 5 bills
   };
 
   useEffect(() => {
@@ -346,20 +403,33 @@ const ExpenseManager = () => {
           {/* Authentication Check */}
           {!isAuthenticated ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="text-center space-y-4">
-                  <h3 className="text-lg font-semibold">Authentication Required</h3>
-                  <p className="text-muted-foreground">
-                    Please sign in with Google to access your transaction data
-                  </p>
-                  <Button onClick={handleGoogleSignIn} className="gap-2">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="text-center space-y-6">
+                  <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-blue-600" viewBox="0 0 24 24">
                       <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                       <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                       <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                       <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    Sign in with Google
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">Sign in to Google</h3>
+                    <p className="text-gray-600 mt-2">
+                      Access your Gmail transaction data securely
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleGoogleSignIn} 
+                    className="relative h-12 px-8 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
                   </Button>
                 </div>
               </CardContent>
@@ -368,12 +438,11 @@ const ExpenseManager = () => {
             <>
               {/* Filters */}
               <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-wrap items-end gap-4">
-                    <div className="space-y-2">
-                      <Label>Date Range</Label>
+                <CardContent className="p-3">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div className="min-w-0">
                       <Select value={dateRange} onValueChange={handleDateRangeChange}>
-                        <SelectTrigger className="w-40">
+                        <SelectTrigger className="w-32 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -387,50 +456,70 @@ const ExpenseManager = () => {
                     
                     {dateRange === "custom" && (
                       <>
-                        <div className="space-y-2">
-                          <Label htmlFor="startDate">Start Date</Label>
-                          <Input
-                            id="startDate"
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="w-36"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="endDate">End Date</Label>
-                          <Input
-                            id="endDate"
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-36"
-                          />
-                        </div>
+                        <Input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-32 h-8 text-xs"
+                        />
+                        <Input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-32 h-8 text-xs"
+                        />
                       </>
                     )}
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="labelIds">Labels</Label>
-                      <Input
-                        id="labelIds"
-                        value={labelIds}
-                        onChange={(e) => setLabelIds(e.target.value)}
-                        placeholder="INBOX"
-                        className="w-32"
-                      />
-                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs">
+                          Banks ({selectedBanks.length})
+                          <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2">
+                        <div className="space-y-2 max-h-48 overflow-auto">
+                          {banksList.map((bank) => (
+                            <div key={bank} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={bank}
+                                checked={selectedBanks.includes(bank)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedBanks([...selectedBanks, bank]);
+                                  } else {
+                                    setSelectedBanks(selectedBanks.filter(b => b !== bank));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={bank} className="text-xs font-normal">
+                                {bank}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     
-                    <div className="flex items-center space-x-2">
+                    <Input
+                      value={labelIds}
+                      onChange={(e) => setLabelIds(e.target.value)}
+                      placeholder="INBOX"
+                      className="w-20 h-8 text-xs"
+                    />
+                    
+                    <div className="flex items-center space-x-1">
                       <Switch
                         id="allowedSenders"
                         checked={allowedSenders}
                         onCheckedChange={setAllowedSenders}
+                        className="scale-75"
                       />
-                      <Label htmlFor="allowedSenders">Bank Senders Only</Label>
+                      <Label htmlFor="allowedSenders" className="text-xs">Bank Only</Label>
                     </div>
                     
-                    <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
+                    <Button onClick={handleApplyFilters} disabled={isLoading} size="sm" className="h-8 text-xs">
                       Apply
                     </Button>
                   </div>
@@ -566,17 +655,22 @@ const ExpenseManager = () => {
                           </TableCell>
                           <TableCell>
                             {transaction.type ? (
-                              <Badge
-                                variant={
-                                  transaction.type === "debited"
-                                    ? "destructive"
-                                    : "default"
-                                }
-                              >
-                                {transaction.type === "debited"
-                                  ? "Debited"
-                                  : "Credited"}
-                              </Badge>
+                               <Badge
+                                 variant={
+                                   transaction.type === "debited"
+                                     ? "destructive"
+                                     : "secondary"
+                                 }
+                                 className={
+                                   transaction.type === "credited"
+                                     ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                     : ""
+                                 }
+                               >
+                                 {transaction.type === "debited"
+                                   ? "Debited"
+                                   : "Credited"}
+                               </Badge>
                             ) : (
                               <Badge variant="secondary">Unknown</Badge>
                             )}
@@ -666,49 +760,32 @@ const ExpenseManager = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Sample bill reminders - replace with actual data */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-4 w-4 text-red-500" />
-                        <div>
-                          <p className="font-medium text-sm">Credit Card Bill</p>
-                          <p className="text-xs text-muted-foreground">HDFC Bank</p>
+                    {billReminders.length > 0 ? (
+                      billReminders.map((bill, index) => (
+                        <div key={bill.id || index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-4 w-4 text-red-500" />
+                            <div>
+                              <p className="font-medium text-sm">{bill.merchant}</p>
+                              <p className="text-xs text-muted-foreground">Bill Reminder</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-sm text-red-600">₹{bill.amount?.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {bill.dueDate || "Due soon"}
+                            </p>
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No bill reminders found</p>
+                        <p className="text-xs">Bills will appear here when detected from emails</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm text-red-600">₹25,430</p>
-                        <p className="text-xs text-muted-foreground">Due in 3 days</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Bell className="h-4 w-4 text-orange-500" />
-                        <div>
-                          <p className="font-medium text-sm">Internet Bill</p>
-                          <p className="text-xs text-muted-foreground">Airtel</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm text-orange-600">₹1,299</p>
-                        <p className="text-xs text-muted-foreground">Due in 5 days</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <DollarSign className="h-4 w-4 text-blue-500" />
-                        <div>
-                          <p className="font-medium text-sm">Electricity Bill</p>
-                          <p className="text-xs text-muted-foreground">BSES</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm text-blue-600">₹2,847</p>
-                        <p className="text-xs text-muted-foreground">Due in 8 days</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                   
                   <Button variant="outline" size="sm" className="w-full">
