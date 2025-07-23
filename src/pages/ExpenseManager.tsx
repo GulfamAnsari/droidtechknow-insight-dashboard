@@ -300,7 +300,7 @@ const ExpenseManager = () => {
 
   // Extract bill reminders from email data
   const extractBillReminders = (emails: EmailTransaction[]) => {
-    const billKeywords = ['total amount due', 'minimum due', 'bses yamuna'];
+    const billKeywords = ['total amount due', 'minimum due', 'bses yamuna', 'credit card', 'credit card'];
     const bills = [];
 
     emails.forEach(email => {
@@ -309,7 +309,7 @@ const ExpenseManager = () => {
       
       if (hasBillKeyword) {
         // Extract amount and due date from email content
-        const amountMatch = content.match(/(?:rs|inr|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)/i);
+        const amountMatch = content.match(/(?:RS|INR|MRP)\.?\s*([\d,]+(?:\.\d{1,2})?)/i);
         const dueDateMatch = content.match(/due\s+(?:date|on)?\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
         
         const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
