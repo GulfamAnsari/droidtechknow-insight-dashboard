@@ -55,6 +55,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { parse, differenceInCalendarDays } from "date-fns";
 
 interface EmailTransaction {
   from: string;
@@ -150,7 +151,7 @@ const ExpenseManager = () => {
   const [labelIds, setLabelIds] = useState("INBOX");
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
   const [showOnlyTransactions, setShowOnlyTransactions] = useState(false);
-  
+
   const [showFilters, setShowFilters] = useState(false);
   const [showBillReminders, setShowBillReminders] = useState(false);
 
@@ -335,10 +336,11 @@ const ExpenseManager = () => {
 
     emails.forEach((email) => {
       senders.forEach((sender) => {
-        if (email?.from?.includes(sender)) {
+        if (email?.from?.toLocaleLowerCase().includes(sender)) {
           const content = `${email.subject} ${extractTextFromHtml(
             email.html
           )}`.toLowerCase();
+          console.log(content);
           // Enhanced amount extraction patterns
           const amountPatterns = [
             /(?:total\s+amount\s+due|total\s+due|minimum\s+due|outstanding\s+amount|amount\s+payable)[^₹\d]*(?:₹|Rs\.?|INR)?\s*([\d,]+(?:\.\d{1,2})?)/i,
@@ -348,12 +350,16 @@ const ExpenseManager = () => {
           ];
           // Enhanced due date extraction patterns
           const dueDatePatterns = [
-            /due\s+(?:date|on)?\s*:?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-            /(?:payment\s+)?due\s+(?:by|on)?\s*:?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-            /(?:last\s+date\s+(?:for|of)\s+payment|payment\s+date)\s*:?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
-            /(?:pay\s+by|before)\s+(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i
-          ];
+            // Matches formats like: 05/08/2025, 5-8-2025, 05.08.2025
+            /(?:due\s+(?:date|on)?|payment\s+due|pay\s+by|before|last\s+date(?:\s+of\s+payment)?)[\s:\-]*([0-3]?\d[\/\-\.][01]?\d[\/\-\.]\d{2,4})/i,
 
+            // Matches formats like: 22 Jul 2025 or 5 September 2024
+            /(?:due\s+(?:date|on)?|payment\s+due|pay\s+by|before|last\s+date(?:\s+of\s+payment)?)[\s:\-]*([0-3]?\d\s+[A-Za-z]{3,9}\s+\d{4})/i,
+
+            // Fallback: just date alone in either format
+            /([0-3]?\d[\/\-\.][01]?\d[\/\-\.]\d{2,4})/,
+            /([0-3]?\d\s+[A-Za-z]{3,9}\s+\d{4})/
+          ];
           let amount = 0;
           let dueDate = null;
 
@@ -365,10 +371,16 @@ const ExpenseManager = () => {
               break;
             }
           }
+          const normalizeText = (text) => {
+            return text
+              .replace(/\u00A0/g, " ") // Replace non-breaking spaces
+              .replace(/\s+/g, " ") // Collapse multiple spaces
+              .trim();
+          };
 
           // Try each due date pattern
           for (const pattern of dueDatePatterns) {
-            const match = content.match(pattern);
+            const match = normalizeText(content).match(pattern);
             if (match) {
               dueDate = match[1];
               break;
@@ -377,7 +389,7 @@ const ExpenseManager = () => {
 
           bills.push({
             id: email.messageId,
-            merchant: email.from.split("<")[0].trim(),
+            merchant: email.from,
             amount: amount,
             dueDate: dueDate,
             type: "bill"
@@ -437,7 +449,25 @@ const ExpenseManager = () => {
     .filter((t) => t.type === "credited")
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
-  const netAmount = totalCredited - totalDebited;
+  function BillDueDate({ bill }) {
+    // Parse date – adapt format based on your actual string (e.g., "22 Jul 2025")
+    const dueDate = new Date(bill.dueDate); // Or use `parse()` from date-fns if format is custom
+    const today = new Date();
+
+    const daysLeft = differenceInCalendarDays(dueDate, today);
+
+    const isNearDue = daysLeft >= 0 && daysLeft <= 10;
+
+    const style = {
+      backgroundColor: isNearDue ? "orange" : "transparent",
+      padding: "4px 8px",
+      borderRadius: "4px",
+      display: "inline-block",
+      color: isNearDue ? "white" : "inherit"
+    };
+
+    return <span style={style}>{bill.dueDate}</span>;
+  }
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b">
@@ -961,7 +991,9 @@ const ExpenseManager = () => {
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
-                            {bill.dueDate && <p>Due: {bill.dueDate}</p>}
+                            {bill.dueDate && (
+                              <p style={style}>Due: {bill.dueDate}</p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1005,7 +1037,7 @@ const ExpenseManager = () => {
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
-                            {bill.dueDate && <p>Due: {bill.dueDate}</p>}
+                            {bill.dueDate && <p>Due: {BillDueDate(bill)}</p>}
                           </div>
                         </div>
                       ))}
