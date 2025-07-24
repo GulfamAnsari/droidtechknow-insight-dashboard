@@ -469,7 +469,7 @@ const ExpenseManager = () => {
       color: isNearDue ? "white" : "inherit"
     };
 
-    return <span style={style}>{dueDateI}</span>;
+    return <p style={style}>Due: {dueDateI}</p>;
   }
   return (
     <div className="h-full flex flex-col bg-gradient-to-b">
@@ -1037,7 +1037,7 @@ const ExpenseManager = () => {
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
-                            {bill.dueDate && <p>Due: {BillDueDate(bill.dueDate)}</p>}
+                            {bill.dueDate && BillDueDate(bill.dueDate)}
                           </div>
                         </div>
                       ))}
