@@ -55,7 +55,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { parse, differenceInCalendarDays } from "date-fns";
+import { parse, differenceInCalendarDays } from 'date-fns';
 
 interface EmailTransaction {
   from: string;
@@ -151,7 +151,7 @@ const ExpenseManager = () => {
   const [labelIds, setLabelIds] = useState("INBOX");
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
   const [showOnlyTransactions, setShowOnlyTransactions] = useState(false);
-
+  
   const [showFilters, setShowFilters] = useState(false);
   const [showBillReminders, setShowBillReminders] = useState(false);
 
@@ -336,7 +336,7 @@ const ExpenseManager = () => {
 
     emails.forEach((email) => {
       senders.forEach((sender) => {
-        if (email?.from?.toLocaleLowerCase().includes(sender)) {
+        if ((email?.from?.toLocaleLowerCase()).includes(sender)) {
           const content = `${email.subject} ${extractTextFromHtml(
             email.html
           )}`.toLowerCase();
@@ -373,8 +373,8 @@ const ExpenseManager = () => {
           }
           const normalizeText = (text) => {
             return text
-              .replace(/\u00A0/g, " ") // Replace non-breaking spaces
-              .replace(/\s+/g, " ") // Collapse multiple spaces
+              .replace(/\u00A0/g, ' ')     // Replace non-breaking spaces
+              .replace(/\s+/g, ' ')        // Collapse multiple spaces
               .trim();
           };
 
@@ -451,9 +451,10 @@ const ExpenseManager = () => {
 
   const netAmount = totalCredited - totalDebited;
 
-  function BillDueDate({ bill }) {
+  
+  function BillDueDate(dueDateI) {
     // Parse date – adapt format based on your actual string (e.g., "22 Jul 2025")
-    const dueDate = new Date(bill.dueDate); // Or use `parse()` from date-fns if format is custom
+    const dueDate = new Date(dueDateI); // Or use `parse()` from date-fns if format is custom
     const today = new Date();
 
     const daysLeft = differenceInCalendarDays(dueDate, today);
@@ -468,9 +469,8 @@ const ExpenseManager = () => {
       color: isNearDue ? "white" : "inherit"
     };
 
-    return <span style={style}>{bill.dueDate}</span>;
+    return <span style={style}>{dueDateI}</span>;
   }
-
   return (
     <div className="h-full flex flex-col bg-gradient-to-b">
       <div className="flex-1 overflow-auto p-2 md:p-8 w-full">
@@ -993,9 +993,7 @@ const ExpenseManager = () => {
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
-                            {bill.dueDate && (
-                              <p>Due: {bill.dueDate}</p>
-                            )}
+                            {bill.dueDate && <p >Due: {bill.dueDate}</p>}
                           </div>
                         </div>
                       ))}
@@ -1039,7 +1037,7 @@ const ExpenseManager = () => {
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
-                            {bill.dueDate && <p>Due: {BillDueDate(bill)}</p>}
+                            {bill.dueDate && <p>Due: {BillDueDate(bill.dueDate)}</p>}
                           </div>
                         </div>
                       ))}
