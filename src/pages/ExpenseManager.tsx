@@ -34,7 +34,10 @@ import {
   Eye,
   Bell,
   CreditCard,
-  ChevronDown
+  ChevronDown,
+  Filter,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -146,6 +149,10 @@ const ExpenseManager = () => {
   const [allowedSenders, setAllowedSenders] = useState(true);
   const [labelIds, setLabelIds] = useState("INBOX");
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
+  const [showOnlyTransactions, setShowOnlyTransactions] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showBillReminders, setShowBillReminders] = useState(false);
 
   // Bank list for filtering
   const banksList = [
@@ -300,7 +307,7 @@ const ExpenseManager = () => {
 
   // Extract bill reminders from email data
   const extractBillReminders = (emails: EmailTransaction[]) => {
-    const billKeywords = ['total amount due', 'minimum due', 'bses yamuna', 'credit card', 'credit card'];
+    const billKeywords = ['total amount due', 'minimum due', 'bses yamuna', 'credit card', 'bill payment', 'outstanding amount'];
     const bills = [];
 
     emails.forEach(email => {
@@ -308,12 +315,40 @@ const ExpenseManager = () => {
       const hasBillKeyword = billKeywords.some(keyword => content.includes(keyword));
       
       if (hasBillKeyword) {
-        // Extract amount and due date from email content
-        const amountMatch = content.match(/(?:RS|INR|MRP)\.?\s*([\d,]+(?:\.\d{1,2})?)/i);
-        const dueDateMatch = content.match(/due\s+(?:date|on)?\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+        // Enhanced amount extraction patterns
+        const amountPatterns = [
+          /(?:total amount due|minimum due|outstanding amount|amount payable).*?(?:RS|INR|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)/i,
+          /(?:RS|INR|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:is due|due|payable)/i,
+          /amount.*?(?:RS|INR|₹)\.?\s*([\d,]+(?:\.\d{1,2})?)/i
+        ];
         
-        const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
-        const dueDate = dueDateMatch ? dueDateMatch[1] : null;
+        // Enhanced due date extraction patterns
+        const dueDatePatterns = [
+          /due\s+(?:date|on)?\s*:?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+          /(?:payment\s+)?due\s+(?:by|on)?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i,
+          /(?:last\s+)?date\s+(?:of\s+)?payment\s*:?\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i
+        ];
+        
+        let amount = 0;
+        let dueDate = null;
+        
+        // Try each amount pattern
+        for (const pattern of amountPatterns) {
+          const match = content.match(pattern);
+          if (match) {
+            amount = parseFloat(match[1].replace(/,/g, ''));
+            break;
+          }
+        }
+        
+        // Try each due date pattern
+        for (const pattern of dueDatePatterns) {
+          const match = content.match(pattern);
+          if (match) {
+            dueDate = match[1];
+            break;
+          }
+        }
         
         if (amount > 0) {
           bills.push({
@@ -357,6 +392,21 @@ const ExpenseManager = () => {
     window.location.href = 'https://droidtechknow.com/admin/api/auth/google-auth.php?route=auth';
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Filter transactions based on toggle
+  const filteredTransactions = showOnlyTransactions 
+    ? parsedTransactions.filter(t => t.type === 'debited' || t.type === 'credited')
+    : parsedTransactions;
+
   // Calculate totals from parsed transactions
   const transactionsWithAmounts = parsedTransactions.filter(
     (t) => t.amount && t.type
@@ -374,30 +424,43 @@ const ExpenseManager = () => {
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b">
-      <div className="flex-1 overflow-auto p-8 w-full">
+      <div className="flex-1 overflow-auto p-2 md:p-8 w-full">
         <div className="max-w-8xl mx-auto">
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Main Content */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-4 lg:space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Expense Manager</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl md:text-3xl font-bold">Expense Manager</h1>
+              <p className="text-muted-foreground text-sm md:text-base">
                 Track your transactions from Gmail
               </p>
             </div>
-            <Button
-              onClick={handleRefresh}
-              disabled={isLoading || isRefreshing}
-              size="sm"
-              className="gap-2"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={toggleFullscreen}
+                size="sm"
+                variant="outline"
+                className="gap-2"
+              >
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                <span className="hidden md:inline">
+                  {isFullscreen ? 'Exit' : 'Fullscreen'}
+                </span>
+              </Button>
+              <Button
+                onClick={handleRefresh}
+                disabled={isLoading || isRefreshing}
+                size="sm"
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                <span className="hidden md:inline">Refresh</span>
+              </Button>
+            </div>
           </div>
 
           {/* Authentication Check */}
@@ -436,13 +499,35 @@ const ExpenseManager = () => {
             </Card>
           ) : (
             <>
-              {/* Filters */}
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              {/* Mobile Filter Buttons */}
+              <div className="flex flex-wrap gap-2 lg:hidden">
+                <Button
+                  onClick={() => setShowFilters(!showFilters)}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+                <Button
+                  onClick={() => setShowBillReminders(!showBillReminders)}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Bell className="h-4 w-4" />
+                  Bills
+                </Button>
+              </div>
+
+              {/* Filters - Desktop always visible, Mobile collapsible */}
+              <Card className={`${showFilters ? 'block' : 'hidden'} lg:block`}>
+                <CardContent className="p-2">
+                  <div className="flex flex-wrap items-center gap-1 md:gap-2">
                     <div className="min-w-0">
                       <Select value={dateRange} onValueChange={handleDateRangeChange}>
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectTrigger className="w-24 md:w-32 h-7 md:h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -460,20 +545,20 @@ const ExpenseManager = () => {
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="w-32 h-8 text-xs"
+                          className="w-24 md:w-32 h-7 md:h-8 text-xs"
                         />
                         <Input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="w-32 h-8 text-xs"
+                          className="w-24 md:w-32 h-7 md:h-8 text-xs"
                         />
                       </>
                     )}
                     
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 text-xs">
+                        <Button variant="outline" size="sm" className="h-7 md:h-8 text-xs px-2">
                           Banks ({selectedBanks.length})
                           <ChevronDown className="ml-1 h-3 w-3" />
                         </Button>
@@ -525,230 +610,198 @@ const ExpenseManager = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Summary Cards with totals moved above bills */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Total Credited
+                        </p>
+                        <p className="text-lg font-bold text-green-600">
+                          ₹{totalCredited.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <TrendingDown className="h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Total Debited
+                        </p>
+                        <p className="text-lg font-bold text-red-500">
+                          ₹{totalDebited.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-5 w-5 text-blue-500" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Net Amount
+                        </p>
+                        <p className={`text-lg font-bold ${netAmount >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          ₹{netAmount.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Email Transactions Table */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Email Transactions</CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="transaction-toggle" className="text-sm">Show only debit/credit</Label>
+                      <Switch
+                        id="transaction-toggle"
+                        checked={showOnlyTransactions}
+                        onCheckedChange={setShowOnlyTransactions}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Date</TableHead>
+                          <TableHead className="text-xs">From</TableHead>
+                          <TableHead className="text-xs hidden md:table-cell">Subject</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Type</TableHead>
+                          <TableHead className="text-xs hidden lg:table-cell">Merchant</TableHead>
+                          <TableHead className="text-xs hidden lg:table-cell">Payment Mode</TableHead>
+                          <TableHead className="text-xs">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center py-8">
+                              <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                              Loading transactions...
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredTransactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center py-8">
+                              No transactions found for the selected period
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredTransactions.map((transaction, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="text-xs">{transaction.parsedDate}</TableCell>
+                              <TableCell className="max-w-24 md:max-w-48 truncate text-xs">
+                                {transaction.email.from}
+                              </TableCell>
+                              <TableCell className="max-w-32 md:max-w-64 truncate text-xs hidden md:table-cell">
+                                {transaction.email.subject}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {transaction.amount
+                                  ? `₹${transaction.amount.toLocaleString()}`
+                                  : "-"}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {transaction.type ? (
+                                  <Badge
+                                    variant={
+                                      transaction.type === "credited"
+                                        ? "default"
+                                        : "destructive"
+                                    }
+                                    className={
+                                      transaction.type === "credited"
+                                        ? "bg-green-800 text-white hover:bg-green-900"
+                                        : ""
+                                    }
+                                  >
+                                    {transaction.type}
+                                  </Badge>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell className="max-w-24 lg:max-w-48 truncate text-xs hidden lg:table-cell">
+                                {transaction.merchant || "-"}
+                              </TableCell>
+                              <TableCell className="max-w-20 lg:max-w-32 truncate text-xs hidden lg:table-cell">
+                                {transaction.paymentMode || "-"}
+                              </TableCell>
+                              <TableCell>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                                    <DialogHeader>
+                                      <DialogTitle>Email Details</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <h4 className="font-semibold">Subject:</h4>
+                                        <p className="text-sm">{transaction.email.subject}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold">From:</h4>
+                                        <p className="text-sm">{transaction.email.from}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold">Date:</h4>
+                                        <p className="text-sm">{new Date(transaction.email.date).toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold">Merchant:</h4>
+                                        <p className="text-sm">{transaction.merchant || "-"}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold">Payment Mode:</h4>
+                                        <p className="text-sm">{transaction.paymentMode || "-"}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold">Content:</h4>
+                                        <div 
+                                          className="border rounded p-4 max-h-96 overflow-y-auto text-sm"
+                                          dangerouslySetInnerHTML={{ __html: transaction.email.html }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           )}
-
-          {/* Summary Cards */}
-          {isAuthenticated && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Debited
-                </CardTitle>
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  ₹{totalDebited.toFixed(2)}
-                </div>
-                <p className="text-xs text-muted-foreground">Money spent</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Credited
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  ₹{totalCredited.toFixed(2)}
-                </div>
-                <p className="text-xs text-muted-foreground">Money received</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Net Amount
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`text-2xl font-bold ${
-                    netAmount >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  ₹{netAmount.toFixed(2)}
-                </div>
-                <p className="text-xs text-muted-foreground">Overall balance</p>
-              </CardContent>
-            </Card>
-            </div>
-          )}
-
-          {/* Transactions Table */}
-          {isAuthenticated && (
-            <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Email Transactions ({parsedTransactions.length} found)
-              </CardTitle>
-              <CardDescription>
-                Transactions extracted from Gmail using regex patterns
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-hidden">
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : parsedTransactions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No transactions found</p>
-                  <p className="text-sm">
-                    Try adjusting your filters or check your Gmail
-                    authentication
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-auto max-h-[600px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>From</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Merchant</TableHead>
-                        <TableHead>Payment Mode</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-center">Details</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {parsedTransactions.map((transaction, index) => (
-                        <TableRow key={transaction.email.messageId || index}>
-                          <TableCell className="font-medium">
-                            {transaction.parsedDate}
-                          </TableCell>
-                          <TableCell
-                            className="max-w-32 truncate"
-                            title={transaction.email.from}
-                          >
-                            {transaction.email.from.split("<")[0].trim() ||
-                              transaction.email.from}
-                          </TableCell>
-                          <TableCell
-                            className="max-w-48 truncate"
-                            title={transaction.email.subject}
-                          >
-                            {transaction.email.subject}
-                          </TableCell>
-                          <TableCell>
-                            {transaction.merchant || "Unknown"}
-                          </TableCell>
-                          <TableCell>
-                            {transaction.paymentMode ? (
-                              <Badge variant="outline" className="text-xs">
-                                {transaction.paymentMode}
-                              </Badge>
-                            ) : (
-                              "-"
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {transaction.type ? (
-                               <Badge
-                                 variant={
-                                   transaction.type === "debited"
-                                     ? "destructive"
-                                     : "secondary"
-                                 }
-                                 className={
-                                   transaction.type === "credited"
-                                     ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                     : ""
-                                 }
-                               >
-                                 {transaction.type === "debited"
-                                   ? "Debited"
-                                   : "Credited"}
-                               </Badge>
-                            ) : (
-                              <Badge variant="secondary">Unknown</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell
-                            className={`text-right font-medium ${
-                              transaction.type === "debited"
-                                ? "text-red-600"
-                                : transaction.type === "credited"
-                                ? "text-green-600"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {transaction.amount ? (
-                              <>
-                                {transaction.type === "debited"
-                                  ? "-"
-                                  : transaction.type === "credited"
-                                  ? "+"
-                                  : ""}
-                                ₹{transaction.amount.toFixed(2)}
-                              </>
-                            ) : (
-                              "N/A"
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-                                <DialogHeader>
-                                  <DialogTitle>Email Content</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <h4 className="font-semibold">Subject:</h4>
-                                    <p>{transaction.email.subject}</p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold">From:</h4>
-                                    <p>{transaction.email.from}</p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold">Date:</h4>
-                                    <p>{transaction.email.date}</p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold">
-                                      HTML Content:
-                                    </h4>
-                                    <div
-                                      className="border p-4 max-h-96 overflow-auto bg-muted"
-                                      dangerouslySetInnerHTML={{
-                                        __html: transaction.email.html
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-            </Card>
-          )}
             </div>
 
-            {/* Bill Reminders Sidebar */}
-            <div className="w-80">
+            {/* Bill Reminders Sidebar - Desktop */}
+            <div className={`w-80 space-y-6 hidden lg:block`}>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -756,44 +809,88 @@ const ExpenseManager = () => {
                     Bill Reminders
                   </CardTitle>
                   <CardDescription>
-                    Upcoming due bills and payments
+                    Upcoming bills based on your emails
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    {billReminders.length > 0 ? (
-                      billReminders.map((bill, index) => (
-                        <div key={bill.id || index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <CreditCard className="h-4 w-4 text-red-500" />
-                            <div>
-                              <p className="font-medium text-sm">{bill.merchant}</p>
-                              <p className="text-xs text-muted-foreground">Bill Reminder</p>
-                            </div>
+                <CardContent>
+                  {billReminders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No bill reminders found
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {billReminders.map((bill, index) => (
+                        <div
+                          key={index}
+                          className="p-3 border rounded-lg space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-sm truncate">
+                              {bill.merchant}
+                            </h4>
+                            <Badge variant="outline" className="text-xs">
+                              Due
+                            </Badge>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium text-sm text-red-600">₹{bill.amount?.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {bill.dueDate || "Due soon"}
-                            </p>
+                          <div className="text-sm text-muted-foreground">
+                            <p>Amount: ₹{bill.amount.toLocaleString()}</p>
+                            {bill.dueDate && (
+                              <p>Due: {bill.dueDate}</p>
+                            )}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No bill reminders found</p>
-                        <p className="text-xs">Bills will appear here when detected from emails</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <Button variant="outline" size="sm" className="w-full">
-                    View All Bills
-                  </Button>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
+
+            {/* Mobile Bill Reminders */}
+            {showBillReminders && (
+              <Card className="lg:hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Bill Reminders
+                  </CardTitle>
+                  <CardDescription>
+                    Upcoming bills based on your emails
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {billReminders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No bill reminders found
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {billReminders.map((bill, index) => (
+                        <div
+                          key={index}
+                          className="p-3 border rounded-lg space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-sm truncate">
+                              {bill.merchant}
+                            </h4>
+                            <Badge variant="outline" className="text-xs">
+                              Due
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <p>Amount: ₹{bill.amount.toLocaleString()}</p>
+                            {bill.dueDate && (
+                              <p>Due: {bill.dueDate}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
