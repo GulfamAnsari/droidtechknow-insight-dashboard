@@ -350,7 +350,6 @@ const ExpenseManager = () => {
           }
         }
         
-        if (amount > 0) {
           bills.push({
             id: email.messageId,
             merchant: email.from.split('<')[0].trim(),
@@ -358,11 +357,10 @@ const ExpenseManager = () => {
             dueDate: dueDate,
             type: 'bill'
           });
-        }
       }
     });
 
-    return bills.slice(0, 5); // Return top 5 bills
+    return bills;
   };
 
   useEffect(() => {
