@@ -41,6 +41,7 @@ interface FileItem {
   favorite?: boolean;
   fileType: string;
   metadata: FileMetadata;
+  thumbnail: string;
 }
 
 interface Category {
@@ -122,7 +123,8 @@ const MyFiles = () => {
           album: file.album,
           favorite: file.favorite || false,
           fileType: file.fileType || getFileType(file.title, file.metadata?.format || ''),
-          metadata: file.metadata || {}
+          metadata: file.metadata || {},
+          thumbnail: file?.thumbnail
         }));
       } catch (error) {
         console.error("Error fetching files:", error);
@@ -861,6 +863,7 @@ const MyFiles = () => {
                           }`}
                           style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                         >
+                          {console.log(file)}
                           {file.fileType === 'photo' ? (
                             <img
   loading="lazy"
