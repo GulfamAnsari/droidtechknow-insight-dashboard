@@ -30,6 +30,7 @@ interface FileItem {
   favorite?: boolean;
   fileType: string;
   metadata: FileMetadata;
+  thumbnail: string;
 }
 
 interface FileGridProps {
@@ -109,7 +110,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
             >
               {file.fileType === 'photo' ? (
                 <img 
-                  src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/${file.url}`} 
+                  src={file.url.startsWith('http') ? file.thumbnail || file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.thumbnail || file.url}`} 
                   alt={file.title}
                   className="h-full w-full object-cover"
                   loading="lazy"

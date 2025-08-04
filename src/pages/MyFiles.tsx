@@ -864,7 +864,7 @@ const MyFiles = () => {
                           {file.fileType === 'photo' ? (
                             <img
   loading="lazy"
-                              src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.thumbnail || file.url}`} 
+                              src={file.url.startsWith('http') ? file.thumbnail || file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.thumbnail || file.url}`} 
                               alt={file.title}
                               className="h-full w-full object-cover"
                             />
