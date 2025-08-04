@@ -11,9 +11,10 @@ import httpClient from "@/utils/httpClient";
 interface UploadAreaProps {
   onUploadSuccess: () => void;
   userId?: string;
+  album?: string;
 }
 
-const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
+const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
@@ -128,6 +129,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId }) => {
         
         // Always include userId
         formData.append('userId', userIdToUse);
+        
+        // Add album if provided
+        if (album) {
+          formData.append('album', album);
+        }
         
         // Upload using our HTTP client
         await httpClient.post('https://droidtechknow.com/admin/api/files/upload.php', formData);

@@ -13,12 +13,14 @@ interface UploadAreaProps {
   onUploadSuccess: () => void;
   acceptedFileTypes?: string[];
   title?: string;
+  album?: string;
 }
 
 const UploadArea: React.FC<UploadAreaProps> = ({ 
   onUploadSuccess, 
   acceptedFileTypes = ["image/*", "application/pdf", "video/*", "audio/*"], 
-  title = "Upload Files" 
+  title = "Upload Files",
+  album
 }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -115,6 +117,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         if (file.type.startsWith('image/')) {
           formData.append('width', String(width));
           formData.append('height', String(height));
+        }
+        
+        // Add album if provided
+        if (album) {
+          formData.append('album', album);
         }
         
         await httpClient.post('https://droidtechknow.com/admin/api/files/upload.php', formData);

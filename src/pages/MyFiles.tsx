@@ -743,7 +743,11 @@ const MyFiles = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl">
-                <UploadArea onUploadSuccess={handleUploadSuccess} userId={user?.id} />
+                <UploadArea 
+                  onUploadSuccess={handleUploadSuccess} 
+                  userId={user?.id} 
+                  album={selectedCategory?.startsWith('album-') ? selectedCategory.replace('album-', '') : undefined}
+                />
               </DialogContent>
             </Dialog>
           </div>
