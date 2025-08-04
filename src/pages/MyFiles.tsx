@@ -4,11 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen } from "lucide-react";
+import { albumApi, Album, CreateAlbumRequest } from "@/services/albumApi";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogFooter, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -68,6 +70,9 @@ const MyFiles = () => {
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
+  const [newAlbumName, setNewAlbumName] = useState("");
+  const [newAlbumDescription, setNewAlbumDescription] = useState("");
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -123,6 +128,41 @@ const MyFiles = () => {
         console.error("Error fetching files:", error);
         throw error;
       }
+    }
+  });
+
+  // Fetch albums
+  const { data: albums = [], isLoading: albumsLoading } = useQuery({
+    queryKey: ["albums"],
+    queryFn: () => albumApi.getAlbums()
+  });
+
+  // Create album mutation
+  const createAlbumMutation = useMutation({
+    mutationFn: (data: CreateAlbumRequest) => albumApi.createAlbum(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['albums'] });
+      toast.success("Album created successfully");
+      setIsCreateAlbumOpen(false);
+      setNewAlbumName("");
+      setNewAlbumDescription("");
+    },
+    onError: (error) => {
+      console.error("Error creating album:", error);
+      toast.error("Failed to create album");
+    }
+  });
+
+  // Delete album mutation
+  const deleteAlbumMutation = useMutation({
+    mutationFn: (albumName: string) => albumApi.deleteAlbum({ album: albumName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['albums'] });
+      toast.success("Album deleted successfully");
+    },
+    onError: (error) => {
+      console.error("Error deleting album:", error);
+      toast.error("Failed to delete album");
     }
   });
 
@@ -236,6 +276,23 @@ const MyFiles = () => {
     }
   };
 
+  const handleCreateAlbum = () => {
+    if (!newAlbumName.trim()) {
+      toast.error("Please enter an album name");
+      return;
+    }
+    createAlbumMutation.mutate({
+      album: newAlbumName.trim(),
+      description: newAlbumDescription.trim() || undefined
+    });
+  };
+
+  const handleDeleteAlbum = (albumName: string) => {
+    if (confirm(`Are you sure you want to delete the album "${albumName}"?`)) {
+      deleteAlbumMutation.mutate(albumName);
+    }
+  };
+
   // Calculate storage statistics
   const storageStats = {
     total: allFiles.reduce((total, file) => total + (file.metadata?.size || 0), 0),
@@ -310,12 +367,22 @@ const MyFiles = () => {
       type: 'filetype',
       icon: <File className="h-4 w-4 mr-2" />
     },
-    ...Array.from(new Set(filteredFiles.filter(p => p.album).map(p => p.album as string)))
+    // Albums from API
+    ...albums.map(album => ({ 
+      id: `album-${album.name}`, 
+      name: album.name,
+      count: filteredFiles.filter(p => p.album === album.name).length,
+      type: 'album' as const,
+      icon: <FolderOpen className="h-4 w-4 mr-2" />
+    })),
+    // Legacy albums from files (in case API albums are not synced)
+    ...Array.from(new Set(filteredFiles.filter(p => p.album && !albums.find(a => a.name === p.album)).map(p => p.album as string)))
       .map(album => ({ 
         id: `album-${album}`, 
         name: album as string,
         count: filteredFiles.filter(p => p.album === album).length,
-        type: 'album' as const
+        type: 'album' as const,
+        icon: <FolderOpen className="h-4 w-4 mr-2" />
       })),
   ];
   
@@ -477,66 +544,125 @@ const MyFiles = () => {
         
         <div className="flex-1 overflow-auto">
           <div className="pt-4 px-2">
-            <div className="mb-4">
+            <div className="mt-4">
               <div className="flex items-center px-3 mb-2">
                 <h3 className="font-medium text-sm">Categories</h3>
               </div>
-              <ul className="space-y-1">
-                {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => (
-                  <li key={category.id}>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(category.id === 'all' ? null : category.id);
-                        if (isMobile) setSidebarOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
-                        (category.id === 'all' && !selectedCategory) || selectedCategory === category.id 
-                          ? 'bg-accent text-accent-foreground' 
-                          : 'hover:bg-accent/50'
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        {category.icon || <Cloud className="h-4 w-4 mr-2" />}
-                        {category.name}
-                      </div>
-                      <Badge variant="gray">{category.count}</Badge>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => {
+                    setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                    if (isMobile) setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                    selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
+                  }`}
+                >
+                  <div className="flex items-center">
+                    {category.icon}
+                    <span className="truncate">{category.name}</span>
+                  </div>
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {category.count}
+                  </Badge>
+                </button>
+              ))}
             </div>
             
-            <div className="mb-4">
+            <div className="mt-4">
               <div className="flex items-center justify-between px-3 mb-2">
                 <h3 className="font-medium text-sm">Albums</h3>
-                <button className="text-xs text-primary hover:underline">
-                  <FolderPlus className="h-3 w-3" />
-                </button>
-              </div>
-              <ul className="space-y-1">
-                {categories.filter(c => c.type === 'album').length ? (
-                  categories.filter(c => c.type === 'album').map((category) => (
-                    <li key={category.id}>
-                      <button
-                        onClick={() => {
-                          setSelectedCategory(category.id);
-                          if (isMobile) setSidebarOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 rounded-md flex items-center justify-between text-sm ${
-                          selectedCategory === category.id 
-                            ? 'bg-accent text-accent-foreground' 
-                            : 'hover:bg-accent/50'
-                        }`}
+                <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Album</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="album-name">Album Name</Label>
+                        <Input
+                          id="album-name"
+                          value={newAlbumName}
+                          onChange={(e) => setNewAlbumName(e.target.value)}
+                          placeholder="Enter album name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="album-description">Description (optional)</Label>
+                        <Input
+                          id="album-description"
+                          value={newAlbumDescription}
+                          onChange={(e) => setNewAlbumDescription(e.target.value)}
+                          placeholder="Enter album description"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsCreateAlbumOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleCreateAlbum}
+                        disabled={createAlbumMutation.isPending}
                       >
-                        <span>{category.name}</span>
-                        <Badge variant="gray">{category.count}</Badge>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-3 py-2 text-xs text-muted-foreground">No albums yet</li>
-                )}
-              </ul>
+                        {createAlbumMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create Album'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              {categories.filter(c => c.type === 'album').map((category) => (
+                <div key={category.id} className="relative group">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                      if (isMobile) setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                      selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {category.icon}
+                      <span className="truncate">{category.name}</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {category.count}
+                    </Badge>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAlbum(category.name);
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              {categories.filter(c => c.type === 'album').length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground">No albums yet</p>
+              )}
             </div>
           </div>
         </div>

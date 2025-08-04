@@ -449,6 +449,8 @@ const ExpenseManager = () => {
     .filter((t) => t.type === "credited")
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+  const netAmount = totalCredited - totalDebited;
+
   function BillDueDate({ bill }) {
     // Parse date – adapt format based on your actual string (e.g., "22 Jul 2025")
     const dueDate = new Date(bill.dueDate); // Or use `parse()` from date-fns if format is custom
@@ -992,7 +994,7 @@ const ExpenseManager = () => {
                           <div className="text-sm text-muted-foreground">
                             <p>Amount: ₹{bill.amount.toLocaleString()}</p>
                             {bill.dueDate && (
-                              <p style={style}>Due: {bill.dueDate}</p>
+                              <p>Due: {bill.dueDate}</p>
                             )}
                           </div>
                         </div>
