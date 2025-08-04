@@ -131,7 +131,7 @@ const MyFiles = () => {
     }
   });
 
-  // Fetch albums
+ // Fetch albums
   const { data: albums = [], isLoading: albumsLoading } = useQuery({
     queryKey: ["albums"],
     queryFn: () => albumApi.getAlbums()
@@ -368,7 +368,7 @@ const MyFiles = () => {
       icon: <File className="h-4 w-4 mr-2" />
     },
     // Albums from API
-    ...albums.map(album => ({ 
+    ...albums?.map(album => ({ 
       id: `album-${album.name}`, 
       name: album.name,
       count: filteredFiles.filter(p => p.album === album.name).length,

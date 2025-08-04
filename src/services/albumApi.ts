@@ -18,12 +18,12 @@ export interface DeleteAlbumRequest {
 }
 
 export class AlbumApiService {
-  private readonly baseUrl = 'https://droidtechknow.com/admin/api/album.php';
+  private readonly baseUrl = 'https://droidtechknow.com/admin/api/files/album.php';
 
   /**
    * Create a new album
    */
-  async createAlbum(data: CreateAlbumRequest): Promise<Album> {
+  async createAlbum(data: CreateAlbumRequest): Promise<any> {
     const response = await httpClient.post(this.baseUrl, data);
     return response;
   }
@@ -31,9 +31,9 @@ export class AlbumApiService {
   /**
    * Get all albums
    */
-  async getAlbums(): Promise<Album[]> {
+  async getAlbums(): Promise<any> {
     const response = await httpClient.get(this.baseUrl);
-    return response;
+    return response?.albums;
   }
 
   /**
