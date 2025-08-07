@@ -16,6 +16,8 @@ export interface ShareItem {
   fromUserId: string;
   albums?: string[];
   photos?: string[];
+  allPhotos?: any[];
+  albumPhotos?: any[];
 }
 
 export class ShareApiService {

@@ -180,53 +180,21 @@ const MyFiles = () => {
       if (!user?.id) return { albums: [], photos: [] };
       
       const shareData: ShareItem[] = await shareApi.getSharedContent(user.id);
-      console.log("Share data:", shareData);
       
       if (!shareData || shareData.length === 0) {
         return { albums: [], photos: [] };
       }
 
-      const allSharedPhotos = [];
-      const allSharedAlbums = [];
+      let allSharedPhotos = [];
+      let allSharedAlbums = [];
 
       // Loop through shared data and fetch actual content
       for (const share of shareData) {
         if (share.fromUserId) {
-          try {
-            // Fetch photos and albums from the sharing user
-            const photosResponse = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php?id=" + share.fromUserId);
-            const albumsResponse = await httpClient.get("https://droidtechknow.com/admin/api/files/album.php?id=" + share.fromUserId);
-            
-            console.log(photosResponse, albumsResponse, "s")
-
-            // Filter photos that were actually shared
-            if (share.photos && photosResponse) {
-              const sharedPhotos = photosResponse.filter((photo: any) => 
-                share.photos.map((p: any) => { return p.id; }).includes(photo.id)
-              ).map((photo: any) => ({
-                ...photo,
-                sharedBy: share.fromUserId
-              }));
-              allSharedPhotos.push(...sharedPhotos);
-            }
-
-            // Filter albums that were actually shared
-            if (share.albums && albumsResponse?.albums) {
-              const sharedAlbums = albumsResponse.albums.filter((album: any) => 
-                share.albums.map((p: any) => { return p.id; }).includes(album.id || album.name)
-              ).map((album: any) => ({
-                ...album,
-                sharedBy: share.fromUserId
-              }));
-              allSharedAlbums.push(...sharedAlbums);
-            }
-          } catch (error) {
-            console.error("Error fetching shared content from user:", share.fromUserId, error);
-          }
+          allSharedPhotos = [...allSharedPhotos, ...share?.allPhotos];
+          allSharedAlbums = [...allSharedAlbums, ...share?.albumPhotos];
         }
       }
-      console.log(allSharedPhotos, allSharedAlbums, "s65789")
-      
 
       return { albums: allSharedAlbums, photos: allSharedPhotos };
     },
