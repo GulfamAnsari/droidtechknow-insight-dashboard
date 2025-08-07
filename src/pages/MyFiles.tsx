@@ -195,12 +195,8 @@ const MyFiles = () => {
           try {
             // Fetch photos and albums from the sharing user
             const [photosResponse, albumsResponse] = await Promise.all([
-              httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php", {
-                headers: { 'fromUserId': share.fromUserId }
-              }),
-              httpClient.get("https://droidtechknow.com/admin/api/files/album.php", {
-                headers: { 'fromUserId': share.fromUserId }
-              })
+              httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php?id=" + share.fromUserId),
+              httpClient.get("https://droidtechknow.com/admin/api/files/album.php?id=" + share.fromUserId)
             ]);
 
             // Filter photos that were actually shared
