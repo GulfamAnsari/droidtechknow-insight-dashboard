@@ -437,19 +437,21 @@ const MyFiles = () => {
       })),
   ];
   
+  // Update shared view state when selected category changes
+  useEffect(() => {
+    setIsSharedView(selectedCategory === 'shared');
+  }, [selectedCategory]);
+
   // Get files for the selected category
   let displayFiles = filteredFiles;
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
-      setIsSharedView(true);
       displayFiles = sharedContent?.photos || [];
     } else if (selectedCategory === 'recent') {
-      setIsSharedView(false);
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       displayFiles = filteredFiles.filter(p => new Date(parseInt(p.lastModified)) > oneWeekAgo);
     } else if (selectedCategory.startsWith('album-')) {
-      setIsSharedView(false);
       const albumName = selectedCategory.replace('album-', '');
       displayFiles = filteredFiles.filter(p => p.album === albumName);
     } else if (selectedCategory.startsWith('filetype-')) {
@@ -466,8 +468,6 @@ const MyFiles = () => {
         displayFiles = filteredFiles.filter(p => !['photo', 'video', 'audio', 'document'].includes(p.fileType));
       }
     }
-  } else {
-    setIsSharedView(false);
   }
 
   // Group by date for display, using the correct date from lastModified or createdAt
