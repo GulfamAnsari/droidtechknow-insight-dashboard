@@ -179,9 +179,9 @@ const MyFiles = () => {
     queryFn: async () => {
       if (!user?.id) return { albums: [], photos: [] };
       
-      const shareData: ShareItem[] = await shareApi.getSharedContent(user.id);
-      
-      if (!shareData || shareData.length === 0) {
+      const shareData: any = await shareApi.getSharedContent(user.id);
+      const sharedWithMe: ShareItem[] = shareData?.sharedWithMe;
+      if (!sharedWithMe || sharedWithMe.length === 0) {
         return { albums: [], photos: [] };
       }
 
@@ -189,7 +189,7 @@ const MyFiles = () => {
       let allSharedAlbums = [];
 
       // Loop through shared data and fetch actual content
-      for (const share of shareData) {
+      for (const share of sharedWithMe) {
         if (share.fromUserId) {
           allSharedPhotos = [...allSharedPhotos, ...share?.allPhotos];
           allSharedAlbums = [...allSharedAlbums, ...share?.albumPhotos];

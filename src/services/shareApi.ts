@@ -42,9 +42,9 @@ export class ShareApiService {
   /**
    * Get shared content for a user
    */
-  async getSharedContent(userId: string): Promise<ShareItem[]> {
+  async getSharedContent(userId: string): Promise<any> {
     const response = await httpClient.get(`${this.baseUrl}?userId=${userId}`);
-    return Array.isArray(response) ? response : [];
+    return response;
   }
 }
 
