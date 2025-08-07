@@ -145,7 +145,7 @@ const ExpenseManager = () => {
   const [billReminders, setBillReminders] = useState([]);
 
   // Filter parameters
-  const [dateRange, setDateRange] = useState("30days");
+  const [dateRange, setDateRange] = useState("7days");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [allowedSenders, setAllowedSenders] = useState(true);
