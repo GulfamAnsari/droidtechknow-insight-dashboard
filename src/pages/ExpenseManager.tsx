@@ -117,7 +117,17 @@ const TRANSACTION_PATTERNS = {
   // Merchant patterns - enhanced for Indian context
   merchant: [
     // Enhanced merchant detection patterns
-    /(?:by\s+)?(?:ACH-DR-)?([\w\s.&'-]+?)(?=\s*(?:on|by|at|\/|$))/gi,
+    // Case 1: After 'by ...' (like ACH)
+    /by\s+([a-z0-9\s.-]+)[.\s]*$/i,
+
+    // Case 2: UPI format — last part after last slash
+    /\/([A-Z\s]+)$/i,
+
+    // Case 3: Name before ' on dd-mm-yy' (usually full merchant name)
+    /^([A-Z\s&.'-]+)\s+on\s+\d{2}-\d{2}-\d{2,4}$/i,
+
+    // Case 4: 'at MERCHANT' pattern
+    /at\s+([A-Z\s&.'-]+)/i,
     /(?:at|to|from|via)\s+([A-Za-z0-9&.\s-]{3,40})(?:\s+(?:on|for|with)|$)/gi,
     /(?:paid\s+to|transaction\s+at|purchase\s+at|payment\s+to)\s+([A-Za-z0-9&.\s-]{3,40})/gi,
     /(?:merchant|store|shop):\s*([A-Za-z0-9&.\s-]{3,40})/gi,
@@ -217,6 +227,8 @@ const ExpenseManager = () => {
       email.html
     )}`.toLowerCase();
 
+    console.log(content)
+    console.log('--------------------------------------------')
     // Extract amount
     let amount: number | undefined;
     for (const pattern of TRANSACTION_PATTERNS.amount) {
@@ -342,8 +354,6 @@ const ExpenseManager = () => {
           const content = `${email.subject} ${extractTextFromHtml(
             email.html
           )}`.toLowerCase();
-          console.log(content);
-          console.log(`######"######"######"######"######"######`);
           // Enhanced amount extraction patterns
           const amountPatterns = [
             /(?:total\s+amount\s+due|total\s+due|minimum\s+due|outstanding\s+amount|amount\s+payable)[^₹\d]*(?:₹|Rs\.?|INR)?\s*([\d,]+(?:\.\d{1,2})?)/i,
