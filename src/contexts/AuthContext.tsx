@@ -60,7 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log(data);
           if (data.authenticated) {
             // Store server auth data in localStorage and cookies
             Cookies.set('Cookie', data.auth_token, { expires: 30 });

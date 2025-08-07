@@ -277,7 +277,6 @@ const Music = () => {
   };
 
   const handleToggleLike = (songId: string) => {
-    console.log(songId, "d");
     const song =
       playlist.find((s) => s.id === songId) ||
       likedSongs.find((s) => s.id === songId) ||

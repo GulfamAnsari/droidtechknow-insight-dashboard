@@ -75,9 +75,10 @@ interface ParsedTransaction {
 }
 
 function extractTextFromHtml(htmlString) {
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = htmlString;
-  return tempDiv.textContent || tempDiv.innerText || "";
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
+  const body = doc.body;
+  return body ? body.textContent.trim() : "";
 }
 
 // Enhanced regex patterns for bank transaction parsing
@@ -342,6 +343,7 @@ const ExpenseManager = () => {
             email.html
           )}`.toLowerCase();
           console.log(content);
+          console.log(`######"######"######"######"######"######`);
           // Enhanced amount extraction patterns
           const amountPatterns = [
             /(?:total\s+amount\s+due|total\s+due|minimum\s+due|outstanding\s+amount|amount\s+payable)[^₹\d]*(?:₹|Rs\.?|INR)?\s*([\d,]+(?:\.\d{1,2})?)/i,
