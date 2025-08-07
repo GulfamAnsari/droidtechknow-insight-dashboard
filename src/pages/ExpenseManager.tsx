@@ -116,6 +116,7 @@ const TRANSACTION_PATTERNS = {
   // Merchant patterns - enhanced for Indian context
   merchant: [
     // Enhanced merchant detection patterns
+    /(?:by\s+)?(?:ACH-DR-)?([\w\s.&'-]+?)(?=\s*(?:on|by|at|\/|$))/gi,
     /(?:at|to|from|via)\s+([A-Za-z0-9&.\s-]{3,40})(?:\s+(?:on|for|with)|$)/gi,
     /(?:paid\s+to|transaction\s+at|purchase\s+at|payment\s+to)\s+([A-Za-z0-9&.\s-]{3,40})/gi,
     /(?:merchant|store|shop):\s*([A-Za-z0-9&.\s-]{3,40})/gi,
