@@ -194,29 +194,17 @@ const MyFiles = () => {
         if (share.fromUserId) {
           try {
             // Fetch photos and albums from the sharing user
-            const [photosResponse, albumsResponse] = await Promise.all([
-              httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php?id=" + share.fromUserId),
-              httpClient.get("https://droidtechknow.com/admin/api/files/album.php?id=" + share.fromUserId)
-            ]);
+            const photosResponse = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php?id=" + share.fromUserId);
+            const albumsResponse = await httpClient.get("https://droidtechknow.com/admin/api/files/album.php?id=" + share.fromUserId);
+            
+            console.log(photosResponse, albumsResponse, "s")
 
             // Filter photos that were actually shared
             if (share.photos && photosResponse) {
               const sharedPhotos = photosResponse.filter((photo: any) => 
-                share.photos.includes(photo.id)
+                share.photos.map((p: any) => { return p.id; }).includes(photo.id)
               ).map((photo: any) => ({
                 ...photo,
-                id: photo.id || String(Math.random()),
-                url: photo.url,
-                title: photo.title || 'Unnamed',
-                description: photo.description,
-                createdAt: photo.createdAt,
-                lastModified: photo.lastModified || Date.now().toString(),
-                location: photo.location,
-                album: photo.album,
-                favorite: photo.favorite || false,
-                fileType: photo.fileType || getFileType(photo.title, photo.metadata?.format || ''),
-                metadata: photo.metadata || {},
-                thumbnail: photo?.thumbnail,
                 sharedBy: share.fromUserId
               }));
               allSharedPhotos.push(...sharedPhotos);
@@ -225,7 +213,7 @@ const MyFiles = () => {
             // Filter albums that were actually shared
             if (share.albums && albumsResponse?.albums) {
               const sharedAlbums = albumsResponse.albums.filter((album: any) => 
-                share.albums.includes(album.id || album.name)
+                share.albums.map((p: any) => { return p.id; }).includes(album.id || album.name)
               ).map((album: any) => ({
                 ...album,
                 sharedBy: share.fromUserId
@@ -237,6 +225,8 @@ const MyFiles = () => {
           }
         }
       }
+      console.log(allSharedPhotos, allSharedAlbums, "s65789")
+      
 
       return { albums: allSharedAlbums, photos: allSharedPhotos };
     },
