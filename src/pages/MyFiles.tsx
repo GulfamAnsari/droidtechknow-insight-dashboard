@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users } from "lucide-react";
 import { albumApi, Album, CreateAlbumRequest } from "@/services/albumApi";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ import { useSwipeable } from "react-swipeable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import httpClient from '@/utils/httpClient';
+import { ShareDialog } from "@/components/files/ShareDialog";
+import { shareApi } from "@/services/shareApi";
 
 interface FileMetadata {
   format?: string;
@@ -74,6 +76,9 @@ const MyFiles = () => {
   const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState("");
   const [newAlbumDescription, setNewAlbumDescription] = useState("");
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
+  const [isSharedView, setIsSharedView] = useState(false);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -168,6 +173,13 @@ const MyFiles = () => {
     }
   });
 
+  // Fetch shared content
+  const { data: sharedContent } = useQuery({
+    queryKey: ["shared-content", user?.id],
+    queryFn: () => user?.id ? shareApi.getSharedContent(user.id) : null,
+    enabled: !!user?.id
+  });
+
   // Delete file mutation
   const deleteFileMutation = useMutation({
     mutationFn: async (fileIds: string[]) => {
@@ -200,11 +212,17 @@ const MyFiles = () => {
     }
   });
 
-  // Combine API files with local modifications
-  const allFiles = apiFiles ? apiFiles.map(apiFile => {
+  // Combine API files with local modifications and shared content
+  let allFiles = apiFiles ? apiFiles.map(apiFile => {
     const localFile = localFiles.find(local => local.id === apiFile.id);
     return localFile ? { ...apiFile, ...localFile } : apiFile;
   }) : [];
+
+  // Add shared files when viewing shared content
+  if (isSharedView && sharedContent) {
+    const sharedFiles = sharedContent.photos || [];
+    allFiles = [...allFiles, ...sharedFiles];
+  }
 
   // Filter files by search query
   const filteredFiles = allFiles.filter(file => 
@@ -295,6 +313,30 @@ const MyFiles = () => {
     }
   };
 
+  const handleShare = () => {
+    if (selectedFiles.length === 0 && selectedAlbums.length === 0) {
+      toast.error("Please select files or albums to share");
+      return;
+    }
+    setIsShareDialogOpen(true);
+  };
+
+  const handleShareComplete = () => {
+    setSelectedFiles([]);
+    setSelectedAlbums([]);
+    setIsSelectionMode(false);
+  };
+
+  const toggleAlbumSelection = (albumName: string) => {
+    setSelectedAlbums(prev => {
+      if (prev.includes(albumName)) {
+        return prev.filter(name => name !== albumName);
+      } else {
+        return [...prev, albumName];
+      }
+    });
+  };
+
   // Calculate storage statistics
   const storageStats = {
     total: allFiles.reduce((total, file) => total + (file.metadata?.size || 0), 0),
@@ -322,6 +364,13 @@ const MyFiles = () => {
       count: filteredFiles.length, 
       type: 'folder', 
       icon: <Cloud className="h-4 w-4 mr-2" /> 
+    },
+    { 
+      id: 'shared', 
+      name: 'Shared with Me', 
+      count: sharedContent?.photos?.length || 0, 
+      type: 'folder',
+      icon: <Users className="h-4 w-4 mr-2" /> 
     },
     { 
       id: 'recent', 
@@ -391,11 +440,16 @@ const MyFiles = () => {
   // Get files for the selected category
   let displayFiles = filteredFiles;
   if (selectedCategory) {
-    if (selectedCategory === 'recent') {
+    if (selectedCategory === 'shared') {
+      setIsSharedView(true);
+      displayFiles = sharedContent?.photos || [];
+    } else if (selectedCategory === 'recent') {
+      setIsSharedView(false);
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       displayFiles = filteredFiles.filter(p => new Date(parseInt(p.lastModified)) > oneWeekAgo);
     } else if (selectedCategory.startsWith('album-')) {
+      setIsSharedView(false);
       const albumName = selectedCategory.replace('album-', '');
       displayFiles = filteredFiles.filter(p => p.album === albumName);
     } else if (selectedCategory.startsWith('filetype-')) {
@@ -412,6 +466,8 @@ const MyFiles = () => {
         displayFiles = filteredFiles.filter(p => !['photo', 'video', 'audio', 'document'].includes(p.fileType));
       }
     }
+  } else {
+    setIsSharedView(false);
   }
 
   // Group by date for display, using the correct date from lastModified or createdAt
@@ -642,6 +698,14 @@ const MyFiles = () => {
                     }`}
                   >
                     <div className="flex items-center">
+                      {isSelectionMode && (
+                        <Checkbox 
+                          checked={selectedAlbums.includes(category.name)} 
+                          onCheckedChange={() => toggleAlbumSelection(category.name)}
+                          className="mr-2 h-4 w-4"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
                       {category.icon}
                       <span className="truncate">{category.name}</span>
                     </div>
@@ -727,15 +791,26 @@ const MyFiles = () => {
             </Button>
             
             {isSelectionMode && selectedFiles.length > 0 && (
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={handleBulkDeleteFiles}
-                className="gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete ({selectedFiles.length})
-              </Button>
+              <>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleBulkDeleteFiles}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete ({selectedFiles.length})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleShare}
+                  className="gap-2"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share ({selectedFiles.length + selectedAlbums.length})
+                </Button>
+              </>
             )}
             
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
@@ -863,7 +938,7 @@ const MyFiles = () => {
                           }`}
                           style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
                         >
-                          {console.log(file)}
+                          {/* File preview */}
                           {file.fileType === 'photo' ? (
                             <img
   loading="lazy"
@@ -915,6 +990,18 @@ const MyFiles = () => {
                               }}
                             >
                               <Download className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFiles([file.id]);
+                                setIsShareDialogOpen(true);
+                              }}
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -1015,6 +1102,13 @@ const MyFiles = () => {
                             downloadFile(file);
                           }}>
                             <Download className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFiles([file.id]);
+                            setIsShareDialogOpen(true);
+                          }}>
+                            <Share2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
@@ -1154,6 +1248,15 @@ const MyFiles = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        selectedFiles={selectedFiles}
+        selectedAlbums={selectedAlbums}
+        onShareComplete={handleShareComplete}
+      />
     </div>
   );
 };
