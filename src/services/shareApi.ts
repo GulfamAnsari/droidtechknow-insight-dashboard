@@ -12,6 +12,12 @@ export interface SharedData {
   photos: any[];
 }
 
+export interface ShareItem {
+  fromUserId: string;
+  albums?: string[];
+  photos?: string[];
+}
+
 export class ShareApiService {
   private readonly baseUrl = 'https://droidtechknow.com/admin/api/files/share.php';
 
@@ -34,9 +40,9 @@ export class ShareApiService {
   /**
    * Get shared content for a user
    */
-  async getSharedContent(userId: string): Promise<SharedData> {
+  async getSharedContent(userId: string): Promise<ShareItem[]> {
     const response = await httpClient.get(`${this.baseUrl}?userId=${userId}`);
-    return response || { albums: [], photos: [] };
+    return Array.isArray(response) ? response : [];
   }
 }
 

@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import httpClient from '@/utils/httpClient';
 import { ShareDialog } from "@/components/files/ShareDialog";
-import { shareApi } from "@/services/shareApi";
+import { shareApi, ShareItem } from "@/services/shareApi";
 
 interface FileMetadata {
   format?: string;
@@ -174,9 +174,76 @@ const MyFiles = () => {
   });
 
   // Fetch shared content
-  const { data: sharedContent } = useQuery({
+  const { data: sharedContent, isLoading: sharedContentLoading } = useQuery({
     queryKey: ["shared-content", user?.id],
-    queryFn: () => user?.id ? shareApi.getSharedContent(user.id) : null,
+    queryFn: async () => {
+      if (!user?.id) return { albums: [], photos: [] };
+      
+      const shareData: ShareItem[] = await shareApi.getSharedContent(user.id);
+      console.log("Share data:", shareData);
+      
+      if (!shareData || shareData.length === 0) {
+        return { albums: [], photos: [] };
+      }
+
+      const allSharedPhotos = [];
+      const allSharedAlbums = [];
+
+      // Loop through shared data and fetch actual content
+      for (const share of shareData) {
+        if (share.fromUserId) {
+          try {
+            // Fetch photos and albums from the sharing user
+            const [photosResponse, albumsResponse] = await Promise.all([
+              httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php", {
+                headers: { 'fromUserId': share.fromUserId }
+              }),
+              httpClient.get("https://droidtechknow.com/admin/api/files/album.php", {
+                headers: { 'fromUserId': share.fromUserId }
+              })
+            ]);
+
+            // Filter photos that were actually shared
+            if (share.photos && photosResponse) {
+              const sharedPhotos = photosResponse.filter((photo: any) => 
+                share.photos.includes(photo.id)
+              ).map((photo: any) => ({
+                ...photo,
+                id: photo.id || String(Math.random()),
+                url: photo.url,
+                title: photo.title || 'Unnamed',
+                description: photo.description,
+                createdAt: photo.createdAt,
+                lastModified: photo.lastModified || Date.now().toString(),
+                location: photo.location,
+                album: photo.album,
+                favorite: photo.favorite || false,
+                fileType: photo.fileType || getFileType(photo.title, photo.metadata?.format || ''),
+                metadata: photo.metadata || {},
+                thumbnail: photo?.thumbnail,
+                sharedBy: share.fromUserId
+              }));
+              allSharedPhotos.push(...sharedPhotos);
+            }
+
+            // Filter albums that were actually shared
+            if (share.albums && albumsResponse?.albums) {
+              const sharedAlbums = albumsResponse.albums.filter((album: any) => 
+                share.albums.includes(album.id || album.name)
+              ).map((album: any) => ({
+                ...album,
+                sharedBy: share.fromUserId
+              }));
+              allSharedAlbums.push(...sharedAlbums);
+            }
+          } catch (error) {
+            console.error("Error fetching shared content from user:", share.fromUserId, error);
+          }
+        }
+      }
+
+      return { albums: allSharedAlbums, photos: allSharedPhotos };
+    },
     enabled: !!user?.id
   });
 
@@ -220,8 +287,7 @@ const MyFiles = () => {
 
   // Add shared files when viewing shared content
   if (isSharedView && sharedContent) {
-    const sharedFiles = sharedContent.photos || [];
-    allFiles = [...allFiles, ...sharedFiles];
+    allFiles = sharedContent.photos || [];
   }
 
   // Filter files by search query
@@ -373,6 +439,13 @@ const MyFiles = () => {
       icon: <Users className="h-4 w-4 mr-2" /> 
     },
     { 
+      id: 'shared-by-me', 
+      name: 'Shared by Me', 
+      count: 0, // Will be calculated separately
+      type: 'folder',
+      icon: <Share2 className="h-4 w-4 mr-2" /> 
+    },
+    { 
       id: 'recent', 
       name: 'Recent', 
       count: filteredFiles.filter(p => {
@@ -437,9 +510,27 @@ const MyFiles = () => {
       })),
   ];
   
+  // Fetch items shared by current user
+  const { data: sharedByMeContent } = useQuery({
+    queryKey: ["shared-by-me", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { albums: [], photos: [] };
+      
+      try {
+        // This would need a new API endpoint to get items shared BY the current user
+        // For now, we'll return empty data
+        return { albums: [], photos: [] };
+      } catch (error) {
+        console.error("Error fetching content shared by user:", error);
+        return { albums: [], photos: [] };
+      }
+    },
+    enabled: !!user?.id
+  });
+
   // Update shared view state when selected category changes
   useEffect(() => {
-    setIsSharedView(selectedCategory === 'shared');
+    setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
   }, [selectedCategory]);
 
   // Get files for the selected category
@@ -447,6 +538,8 @@ const MyFiles = () => {
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
       displayFiles = sharedContent?.photos || [];
+    } else if (selectedCategory === 'shared-by-me') {
+      displayFiles = sharedByMeContent?.photos || [];
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
