@@ -102,24 +102,19 @@ export const formatDate = (timestamp: string): string => {
 export const groupFilesByDate = (files: any[]): { [date: string]: any[] } => {
   return files.reduce((groups: { [date: string]: any[] }, file) => {
     // Convert lastModified from epoch string to date string for grouping
-    const dateObj = new Date(parseInt(file.lastModified));
+    const dateObj = new Date(parseInt(file?.lastModified));
     
     // Format date as YYYY-MM-DD for grouping
     // Check if date is valid (not 1970-01-01)
     let dateKey;
     
-    if (dateObj.getFullYear() === 1970 && dateObj.getMonth() === 0 && dateObj.getDate() === 1) {
-      // Use createdAt as fallback if available, otherwise use current date
+  
       if (file.createdAt) {
-        const createdDate = new Date(file.createdAt);
+        const createdDate = new Date(file?.createdAt);
         dateKey = createdDate.toISOString().split('T')[0];
       } else {
         dateKey = new Date().toISOString().split('T')[0];
       }
-    } else {
-      dateKey = dateObj.toISOString().split('T')[0];
-    }
-    
     if (!groups[dateKey]) {
       groups[dateKey] = [];
     }
