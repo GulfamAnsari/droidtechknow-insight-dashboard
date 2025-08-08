@@ -134,9 +134,12 @@ const MyFiles = () => {
         }));
       } catch (error) {
         console.error("Error fetching files:", error);
-        throw error;
+        // Return empty array instead of throwing error to prevent app crash
+        return [];
       }
-    }
+    },
+    retry: 3,
+    retryDelay: 1000
   });
 
  // Fetch albums
@@ -506,11 +509,11 @@ const MyFiles = () => {
     // Reset sub-category when category changes
     if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
       setSelectedSubCategory(null);
-    } else if (selectedSubCategory === null) {
+    } else if (selectedSubCategory === null && (selectedCategory === 'shared' || selectedCategory === 'shared-by-me')) {
       // Default to photos when selecting shared categories
       setSelectedSubCategory('photos');
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, selectedSubCategory]);
 
   // Get files for the selected category
   let displayFiles = filteredFiles;
@@ -520,12 +523,18 @@ const MyFiles = () => {
         displayFiles = sharedContent?.photos || [];
       } else if (selectedSubCategory === 'albums') {
         displayFiles = sharedContent?.albums || [];
+      } else {
+        // Default to photos if no sub-category selected
+        displayFiles = sharedContent?.photos || [];
       }
     } else if (selectedCategory === 'shared-by-me') {
       if (selectedSubCategory === 'photos') {
         displayFiles = sharedByMeContent?.photos || [];
       } else if (selectedSubCategory === 'albums') {
         displayFiles = sharedByMeContent?.albums || [];
+      } else {
+        // Default to photos if no sub-category selected
+        displayFiles = sharedByMeContent?.photos || [];
       }
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
@@ -792,21 +801,40 @@ const MyFiles = () => {
                       {category.icon}
                       <span className="truncate">{category.name}</span>
                     </div>
-                    <Badge variant="secondary" className="ml-2 text-xs">
-                      {category.count}
-                    </Badge>
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteAlbum(category.name);
-                    }}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                     <Badge variant="secondary" className="ml-2 text-xs">
+                       {category.count}
+                     </Badge>
+                   </button>
+                   {/* Album Action Buttons */}
+                   <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                     {/* Share Album Button */}
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-6 w-6 p-0"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setSelectedAlbums([category.name]);
+                         setIsShareDialogOpen(true);
+                       }}
+                       title="Share Album"
+                     >
+                       <Share2 className="h-3 w-3" />
+                     </Button>
+                     {/* Delete Album Button */}
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         handleDeleteAlbum(category.name);
+                       }}
+                       title="Delete Album"
+                     >
+                       <Trash2 className="h-3 w-3" />
+                     </Button>
+                   </div>
                 </div>
               ))}
               {categories.filter(c => c.type === 'album').length === 0 && (
@@ -915,33 +943,42 @@ const MyFiles = () => {
         
         {/* Sub-tabs for shared categories */}
         {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
-          <div className="border-b px-4 md:px-6">
+          <div className="border-b px-4 md:px-6 bg-muted/30">
             <div className="flex space-x-1">
               <button
                 onClick={() => setSelectedSubCategory('photos')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   selectedSubCategory === 'photos'
-                    ? 'border-primary text-primary'
+                    ? 'border-primary text-primary bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
                 }`}
               >
                 Photos ({selectedCategory === 'shared' 
-                  ? sharedContent?.photos?.length || 0 
-                  : sharedByMeContent?.photos?.length || 0})
+                  ? (sharedContent?.photos?.length || 0)
+                  : (sharedByMeContent?.photos?.length || 0)})
               </button>
               <button
                 onClick={() => setSelectedSubCategory('albums')}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   selectedSubCategory === 'albums'
-                    ? 'border-primary text-primary'
+                    ? 'border-primary text-primary bg-background'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
                 }`}
               >
                 Albums ({selectedCategory === 'shared' 
-                  ? sharedContent?.albums?.length || 0 
-                  : sharedByMeContent?.albums?.length || 0})
+                  ? (sharedContent?.albums?.length || 0)
+                  : (sharedByMeContent?.albums?.length || 0)})
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Debug info for shared categories */}
+        {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
+          <div className="px-4 md:px-6 py-2 bg-muted/20 text-xs text-muted-foreground">
+            Debug: Category: {selectedCategory} | Sub-category: {selectedSubCategory} | 
+            Shared with me: {sharedContent?.photos?.length || 0} photos, {sharedContent?.albums?.length || 0} albums | 
+            Shared by me: {sharedByMeContent?.photos?.length || 0} photos, {sharedByMeContent?.albums?.length || 0} albums
           </div>
         )}
 
