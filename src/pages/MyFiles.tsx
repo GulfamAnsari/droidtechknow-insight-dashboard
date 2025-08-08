@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import httpClient from '@/utils/httpClient';
 import { ShareDialog } from "@/components/files/ShareDialog";
 import { shareApi, ShareItem } from "@/services/shareApi";
+import SharedAlbumView from "@/components/files/SharedAlbumView";
 
 interface FileMetadata {
   format?: string;
@@ -80,6 +81,7 @@ const MyFiles = () => {
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums' | null>(null);
+  const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -181,26 +183,51 @@ const MyFiles = () => {
   const { data: sharedContent, isLoading: sharedContentLoading } = useQuery({
     queryKey: ["shared-content", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { albums: [], photos: [] };
+      if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
       
       const shareData: any = await shareApi.getSharedContent(user.id);
       const sharedWithMe: ShareItem[] = shareData?.sharedWithMe;
       if (!sharedWithMe || sharedWithMe.length === 0) {
-        return { albums: [], photos: [] };
+        return { albums: [], photos: [], sharedAlbums: [] };
       }
 
       let allSharedPhotos = [];
       let allSharedAlbums = [];
+      let sharedAlbumsList = [];
 
-      // Loop through shared data and fetch actual content
+      // Loop through shared data and process albums and photos
       for (const share of sharedWithMe) {
         if (share.fromUserId) {
-          allSharedPhotos = [...allSharedPhotos, ...share?.allPhotos];
-          allSharedAlbums = [...allSharedAlbums, ...share?.albumPhotos];
+          // Add individual photos
+          allSharedPhotos = [...allSharedPhotos, ...(share?.allPhotos || [])];
+          
+          // Add album photos
+          allSharedAlbums = [...allSharedAlbums, ...(share?.albumPhotos || [])];
+          
+          // Group album photos by album name to create shared albums list
+          const albumPhotosMap: { [key: string]: any[] } = {};
+          share.albumPhotos?.forEach((photo: any) => {
+            if (photo.album) {
+              if (!albumPhotosMap[photo.album]) {
+                albumPhotosMap[photo.album] = [];
+              }
+              albumPhotosMap[photo.album].push(photo);
+            }
+          });
+          
+          // Convert to shared albums format
+          Object.entries(albumPhotosMap).forEach(([albumName, photos]) => {
+            sharedAlbumsList.push({
+              id: `shared-${share.fromUserId}-${albumName}`,
+              name: albumName,
+              photos: photos,
+              fromUserId: share.fromUserId
+            });
+          });
         }
       }
 
-      return { albums: allSharedAlbums, photos: allSharedPhotos };
+      return { albums: allSharedAlbums, photos: allSharedPhotos, sharedAlbums: sharedAlbumsList };
     },
     enabled: !!user?.id
   });
@@ -384,32 +411,57 @@ const MyFiles = () => {
   const { data: sharedByMeContent } = useQuery({
     queryKey: ["shared-by-me", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { albums: [], photos: [] };
+      if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
       
       try {
         const shareData: any = await shareApi.getSharedContent(user.id);
         const sharedByMe: ShareItem[] = shareData?.sharedByMe;
         if (!sharedByMe || sharedByMe.length === 0) {
-          return { albums: [], photos: [] };
+          return { albums: [], photos: [], sharedAlbums: [] };
         }
 
         let allSharedPhotos = [];
         let allSharedAlbums = [];
+        let sharedAlbumsList = [];
 
         // Loop through shared data and extract photos and albums
         for (const share of sharedByMe) {
+          // Add individual photos
           if (share.allPhotos) {
             allSharedPhotos = [...allSharedPhotos, ...share.allPhotos];
           }
+          
+          // Add album photos
           if (share.albumPhotos) {
             allSharedAlbums = [...allSharedAlbums, ...share.albumPhotos];
           }
+          
+          // Group album photos by album name to create shared albums list
+          const albumPhotosMap: { [key: string]: any[] } = {};
+          share.albumPhotos?.forEach((photo: any) => {
+            if (photo.album) {
+              if (!albumPhotosMap[photo.album]) {
+                albumPhotosMap[photo.album] = [];
+              }
+              albumPhotosMap[photo.album].push(photo);
+            }
+          });
+          
+          // Convert to shared albums format
+          Object.entries(albumPhotosMap).forEach(([albumName, photos]) => {
+            sharedAlbumsList.push({
+              id: `shared-by-me-${share.toUserId}-${albumName}`,
+              name: albumName,
+              photos: photos,
+              toUserId: share.toUserId
+            });
+          });
         }
 
-        return { albums: allSharedAlbums, photos: allSharedPhotos };
+        return { albums: allSharedAlbums, photos: allSharedPhotos, sharedAlbums: sharedAlbumsList };
       } catch (error) {
         console.error("Error fetching content shared by user:", error);
-        return { albums: [], photos: [] };
+        return { albums: [], photos: [], sharedAlbums: [] };
       }
     },
     enabled: !!user?.id
@@ -427,14 +479,14 @@ const MyFiles = () => {
     { 
       id: 'shared', 
       name: 'Shared with Me', 
-      count: (sharedContent?.photos?.length || 0) + (sharedContent?.albums?.length || 0), 
+      count: (sharedContent?.photos?.length || 0) + (sharedContent?.sharedAlbums?.length || 0), 
       type: 'folder',
       icon: <Users className="h-4 w-4 mr-2" /> 
     },
     { 
       id: 'shared-by-me', 
       name: 'Shared by Me', 
-      count: (sharedByMeContent?.photos?.length || 0) + (sharedByMeContent?.albums?.length || 0),
+      count: (sharedByMeContent?.photos?.length || 0) + (sharedByMeContent?.sharedAlbums?.length || 0),
       type: 'folder',
       icon: <Share2 className="h-4 w-4 mr-2" /> 
     },
@@ -506,40 +558,51 @@ const MyFiles = () => {
   // Update shared view state when selected category changes
   useEffect(() => {
     setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
-    // Reset sub-category when category changes
+    // Reset sub-category and selected album when category changes
     if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
       setSelectedSubCategory(null);
+      setSelectedSharedAlbum(null);
     } else if (selectedSubCategory === null && (selectedCategory === 'shared' || selectedCategory === 'shared-by-me')) {
       // Default to photos when selecting shared categories
       setSelectedSubCategory('photos');
+      setSelectedSharedAlbum(null);
     }
   }, [selectedCategory, selectedSubCategory]);
 
   // Get files for the selected category
   let displayFiles = filteredFiles;
+  let displayMode = 'files'; // 'files' | 'shared-albums'
+  
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
       if (selectedSubCategory === 'photos') {
         displayFiles = sharedContent?.photos || [];
+        displayMode = 'files';
       } else if (selectedSubCategory === 'albums') {
-        displayFiles = sharedContent?.albums || [];
+        displayFiles = sharedContent?.sharedAlbums || [];
+        displayMode = 'shared-albums';
       } else {
         // Default to photos if no sub-category selected
         displayFiles = sharedContent?.photos || [];
+        displayMode = 'files';
       }
     } else if (selectedCategory === 'shared-by-me') {
       if (selectedSubCategory === 'photos') {
         displayFiles = sharedByMeContent?.photos || [];
+        displayMode = 'files';
       } else if (selectedSubCategory === 'albums') {
-        displayFiles = sharedByMeContent?.albums || [];
+        displayFiles = sharedByMeContent?.sharedAlbums || [];
+        displayMode = 'shared-albums';
       } else {
         // Default to photos if no sub-category selected
         displayFiles = sharedByMeContent?.photos || [];
+        displayMode = 'files';
       }
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       displayFiles = filteredFiles.filter(p => new Date(parseInt(p.lastModified)) > oneWeekAgo);
+      displayMode = 'files';
     } else if (selectedCategory.startsWith('album-')) {
       const albumName = selectedCategory.replace('album-', '');
       displayFiles = filteredFiles.filter(p => p.album === albumName);
@@ -558,6 +621,11 @@ const MyFiles = () => {
       }
     }
   }
+
+  // Handle shared album selection
+  const handleSharedAlbumSelect = (album: any) => {
+    setSelectedSharedAlbum(album);
+  };
 
   // Group by date for display, using the correct date from lastModified or createdAt
   const filesByDate = groupFilesByDate(displayFiles);
@@ -702,6 +770,7 @@ const MyFiles = () => {
                     setSelectedCategory(category.id === selectedCategory ? null : category.id);
                     if (category.id === 'shared' || category.id === 'shared-by-me') {
                       setSelectedSubCategory('photos');
+                      setSelectedSharedAlbum(null);
                     }
                     if (isMobile) setSidebarOpen(false);
                   }}
@@ -946,7 +1015,10 @@ const MyFiles = () => {
           <div className="border-b px-4 md:px-6 bg-muted/30">
             <div className="flex space-x-1">
               <button
-                onClick={() => setSelectedSubCategory('photos')}
+                onClick={() => {
+                  setSelectedSubCategory('photos');
+                  setSelectedSharedAlbum(null);
+                }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   selectedSubCategory === 'photos'
                     ? 'border-primary text-primary bg-background'
@@ -958,7 +1030,10 @@ const MyFiles = () => {
                   : (sharedByMeContent?.photos?.length || 0)})
               </button>
               <button
-                onClick={() => setSelectedSubCategory('albums')}
+                onClick={() => {
+                  setSelectedSubCategory('albums');
+                  setSelectedSharedAlbum(null);
+                }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   selectedSubCategory === 'albums'
                     ? 'border-primary text-primary bg-background'
@@ -966,21 +1041,13 @@ const MyFiles = () => {
                 }`}
               >
                 Albums ({selectedCategory === 'shared' 
-                  ? (sharedContent?.albums?.length || 0)
-                  : (sharedByMeContent?.albums?.length || 0)})
+                  ? (sharedContent?.sharedAlbums?.length || 0)
+                  : (sharedByMeContent?.sharedAlbums?.length || 0)})
               </button>
             </div>
           </div>
         )}
 
-        {/* Debug info for shared categories */}
-        {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
-          <div className="px-4 md:px-6 py-2 bg-muted/20 text-xs text-muted-foreground">
-            Debug: Category: {selectedCategory} | Sub-category: {selectedSubCategory} | 
-            Shared with me: {sharedContent?.photos?.length || 0} photos, {sharedContent?.albums?.length || 0} albums | 
-            Shared by me: {sharedByMeContent?.photos?.length || 0} photos, {sharedByMeContent?.albums?.length || 0} albums
-          </div>
-        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-auto p-4 md:p-6" style={{ scrollbarWidth: "none" }}>
@@ -1049,7 +1116,16 @@ const MyFiles = () => {
             </div>
           )}
           
-          {displayFiles.length === 0 ? (
+          {/* Content display - either files or shared albums */}
+          {displayMode === 'shared-albums' ? (
+            <SharedAlbumView
+              albums={displayFiles}
+              selectedAlbum={selectedSharedAlbum}
+              onAlbumSelect={handleSharedAlbumSelect}
+              onDeleteFile={handleDeleteFile}
+              categoryType={selectedCategory === 'shared' ? 'shared' : 'shared-by-me'}
+            />
+          ) : displayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
               <p className="text-muted-foreground mb-4">No files found</p>
               <Button onClick={() => setIsUploadOpen(true)}>

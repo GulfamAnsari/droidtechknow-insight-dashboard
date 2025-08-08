@@ -13,7 +13,8 @@ export interface SharedData {
 }
 
 export interface ShareItem {
-  fromUserId: string;
+  fromUserId?: string;
+  toUserId?: number;
   albums?: string[];
   photos?: string[];
   allPhotos?: any[];
