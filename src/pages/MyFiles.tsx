@@ -79,6 +79,7 @@ const MyFiles = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums' | null>(null);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -376,7 +377,42 @@ const MyFiles = () => {
     other: allFiles.filter(file => !['photo', 'video', 'audio', 'document'].includes(file.fileType)).length,
   };
 
-  // Create categories based on the data
+  // Fetch items shared by current user
+  const { data: sharedByMeContent } = useQuery({
+    queryKey: ["shared-by-me", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { albums: [], photos: [] };
+      
+      try {
+        const shareData: any = await shareApi.getSharedContent(user.id);
+        const sharedByMe: ShareItem[] = shareData?.sharedByMe;
+        if (!sharedByMe || sharedByMe.length === 0) {
+          return { albums: [], photos: [] };
+        }
+
+        let allSharedPhotos = [];
+        let allSharedAlbums = [];
+
+        // Loop through shared data and extract photos and albums
+        for (const share of sharedByMe) {
+          if (share.allPhotos) {
+            allSharedPhotos = [...allSharedPhotos, ...share.allPhotos];
+          }
+          if (share.albumPhotos) {
+            allSharedAlbums = [...allSharedAlbums, ...share.albumPhotos];
+          }
+        }
+
+        return { albums: allSharedAlbums, photos: allSharedPhotos };
+      } catch (error) {
+        console.error("Error fetching content shared by user:", error);
+        return { albums: [], photos: [] };
+      }
+    },
+    enabled: !!user?.id
+  });
+
+  // Create categories based on the data (moved here so we can access sharedByMeContent)
   const categories: Category[] = [
     { 
       id: 'all', 
@@ -388,14 +424,14 @@ const MyFiles = () => {
     { 
       id: 'shared', 
       name: 'Shared with Me', 
-      count: sharedContent?.photos?.length || 0, 
+      count: (sharedContent?.photos?.length || 0) + (sharedContent?.albums?.length || 0), 
       type: 'folder',
       icon: <Users className="h-4 w-4 mr-2" /> 
     },
     { 
       id: 'shared-by-me', 
       name: 'Shared by Me', 
-      count: 0, // Will be calculated separately
+      count: (sharedByMeContent?.photos?.length || 0) + (sharedByMeContent?.albums?.length || 0),
       type: 'folder',
       icon: <Share2 className="h-4 w-4 mr-2" /> 
     },
@@ -463,37 +499,34 @@ const MyFiles = () => {
         icon: <FolderOpen className="h-4 w-4 mr-2" />
       })),
   ];
-  
-  // Fetch items shared by current user
-  const { data: sharedByMeContent } = useQuery({
-    queryKey: ["shared-by-me", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { albums: [], photos: [] };
-      
-      try {
-        // This would need a new API endpoint to get items shared BY the current user
-        // For now, we'll return empty data
-        return { albums: [], photos: [] };
-      } catch (error) {
-        console.error("Error fetching content shared by user:", error);
-        return { albums: [], photos: [] };
-      }
-    },
-    enabled: !!user?.id
-  });
 
   // Update shared view state when selected category changes
   useEffect(() => {
     setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
+    // Reset sub-category when category changes
+    if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
+      setSelectedSubCategory(null);
+    } else if (selectedSubCategory === null) {
+      // Default to photos when selecting shared categories
+      setSelectedSubCategory('photos');
+    }
   }, [selectedCategory]);
 
   // Get files for the selected category
   let displayFiles = filteredFiles;
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
-      displayFiles = sharedContent?.photos || [];
+      if (selectedSubCategory === 'photos') {
+        displayFiles = sharedContent?.photos || [];
+      } else if (selectedSubCategory === 'albums') {
+        displayFiles = sharedContent?.albums || [];
+      }
     } else if (selectedCategory === 'shared-by-me') {
-      displayFiles = sharedByMeContent?.photos || [];
+      if (selectedSubCategory === 'photos') {
+        displayFiles = sharedByMeContent?.photos || [];
+      } else if (selectedSubCategory === 'albums') {
+        displayFiles = sharedByMeContent?.albums || [];
+      }
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -658,6 +691,9 @@ const MyFiles = () => {
                   key={category.id}
                   onClick={() => {
                     setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                    if (category.id === 'shared' || category.id === 'shared-by-me') {
+                      setSelectedSubCategory('photos');
+                    }
                     if (isMobile) setSidebarOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
@@ -877,6 +913,38 @@ const MyFiles = () => {
           </div>
         </div>
         
+        {/* Sub-tabs for shared categories */}
+        {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
+          <div className="border-b px-4 md:px-6">
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setSelectedSubCategory('photos')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  selectedSubCategory === 'photos'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+                }`}
+              >
+                Photos ({selectedCategory === 'shared' 
+                  ? sharedContent?.photos?.length || 0 
+                  : sharedByMeContent?.photos?.length || 0})
+              </button>
+              <button
+                onClick={() => setSelectedSubCategory('albums')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  selectedSubCategory === 'albums'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+                }`}
+              >
+                Albums ({selectedCategory === 'shared' 
+                  ? sharedContent?.albums?.length || 0 
+                  : sharedByMeContent?.albums?.length || 0})
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main content */}
         <div className="flex-1 overflow-auto p-4 md:p-6" style={{ scrollbarWidth: "none" }}>
           {/* File type cards - hidden on mobile */}
