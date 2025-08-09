@@ -28,6 +28,7 @@ import AudioPlayer from "@/components/music/AudioPlayer";
 import SearchTabs from "@/components/music/SearchTabs";
 import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import FullscreenPlayerDesktop from "@/components/music/FullscreenPlayerDesktop";
+import FullscreenPlayerTablet from "@/components/music/FullscreenPlayerTablet";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
 import MusicHomepage from "@/components/music/MusicHomepage";
 import SongsModal from "@/components/music/SongsModal";
@@ -876,7 +877,39 @@ const Music = () => {
               setActiveTab={setActiveTab}
               activeTab={activeTab}
             />
-          ) : (
+          ) : window.innerWidth >= 1024 ? ( // Desktop
+            <FullscreenPlayerTablet
+              song={currentSong}
+              isPlaying={isPlaying}
+              onPlayPause={togglePlayPause}
+              onNext={playNext}
+              onPrevious={playPrevious}
+              onClose={() => setIsFullscreen(false)}
+              isRepeat={isRepeat}
+              isShuffle={isShuffle}
+              onToggleRepeat={() => setIsRepeat(!isRepeat)}
+              onToggleShuffle={() => setIsShuffle(!isShuffle)}
+              playlist={playlist}
+              currentIndex={currentIndex}
+              onPlaySong={playSong}
+              currentTime={currentTime}
+              duration={duration}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationUpdate={handleDurationUpdate}
+              volume={isMuted ? 0 : volume}
+              onVolumeChange={setVolume}
+              onToggleLike={(songId: string) => {
+                const song = playlist.find((s) => s.id === songId);
+                if (song) toggleLike(song);
+              }}
+              likedSongs={likedSongs.map((song) => song.id)}
+              onToggleMute={toggleMute}
+              isMuted={isMuted}
+              suggestedSongs={suggestedSongs}
+              setActiveTab={setActiveTab}
+              activeTab={activeTab}
+            />
+          ) : ( // Tablet
             <FullscreenPlayerDesktop
               song={currentSong}
               isPlaying={isPlaying}

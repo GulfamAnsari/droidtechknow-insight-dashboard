@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, X, Plus } from "lucide-react";
+import { Search, X, Plus, Loader2 } from "lucide-react";
 import { musicApi } from "@/services/musicApi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,7 +23,11 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Artist[]>([]);
   const [favoriteArtists, setFavoriteArtists] = useState<Artist[]>([]);
+  const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [popularLoading, setPopularLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMorePages, setHasMorePages] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -31,7 +35,36 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
     if (saved) {
       setFavoriteArtists(JSON.parse(saved));
     }
+    loadPopularArtists();
   }, []);
+
+  const loadPopularArtists = async (page = 1) => {
+    setPopularLoading(true);
+    try {
+      const artists = await musicApi.getPopularArtists(page, 20);
+      if (page === 1) {
+        setPopularArtists(artists);
+      } else {
+        setPopularArtists(prev => [...prev, ...artists]);
+      }
+      setHasMorePages(artists.length === 20);
+    } catch (error) {
+      console.error('Failed to load popular artists:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load popular artists",
+        variant: "destructive"
+      });
+    } finally {
+      setPopularLoading(false);
+    }
+  };
+
+  const loadMoreArtists = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    loadPopularArtists(nextPage);
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -90,6 +123,45 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
             <Button onClick={handleSearch} disabled={isLoading}>
               <Search className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Popular Artists */}
+          <div className="space-y-2">
+            <h3 className="font-medium">Popular Artists</h3>
+            <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
+              {popularArtists.map((artist) => (
+                <div key={artist.id} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex items-center gap-3">
+                    {artist.image?.[0]?.url && (
+                      <img
+                        src={artist.image[0].url}
+                        alt={artist.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    )}
+                    <span className="font-medium">{artist.name}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => addFavoriteArtist(artist)}
+                    disabled={favoriteArtists.some(a => a.id === artist.id)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {hasMorePages && (
+                <Button 
+                  variant="outline" 
+                  onClick={loadMoreArtists}
+                  disabled={popularLoading}
+                  className="w-full"
+                >
+                  {popularLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Load More Artists
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Search Results */}

@@ -80,7 +80,6 @@ const MyFiles = () => {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums' | null>(null);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -264,16 +263,11 @@ const MyFiles = () => {
     }
   });
 
-  // Combine API files with local modifications and shared content
+  // Combine API files with local modifications
   let allFiles = apiFiles ? apiFiles.map(apiFile => {
     const localFile = localFiles.find(local => local.id === apiFile.id);
     return localFile ? { ...apiFile, ...localFile } : apiFile;
   }) : [];
-
-  // Add shared files when viewing shared content
-  if (isSharedView && sharedContent) {
-    allFiles = sharedContent.photos || [];
-  }
 
   // Filter files by search query
   const filteredFiles = allFiles.filter(file => 
@@ -312,6 +306,11 @@ const MyFiles = () => {
   };
 
   const handleDeleteFile = (fileId: string) => {
+    // Prevent deletion of shared files
+    if (isSharedView && selectedCategory === 'shared') {
+      toast.error("Cannot delete shared files");
+      return;
+    }
     setFilesToDelete([fileId]);
     setIsDeleteDialogOpen(true);
   };
@@ -467,7 +466,20 @@ const MyFiles = () => {
     enabled: !!user?.id
   });
 
-  // Create categories based on the data (moved here so we can access sharedByMeContent)
+  // Add shared files when viewing shared content (moved after sharedByMeContent is available)
+  if (isSharedView && sharedContent) {
+    if (selectedCategory === 'shared') {
+      // Combine photos and albums for shared with me
+      const photos = sharedContent.photos || [];
+      const albumPhotos = sharedContent.albums || [];
+      allFiles = [...photos, ...albumPhotos];
+    } else if (selectedCategory === 'shared-by-me') {
+      // Combine photos and albums for shared by me  
+      const photos = sharedByMeContent?.photos || [];
+      const albumPhotos = sharedByMeContent?.albums || [];
+      allFiles = [...photos, ...albumPhotos];
+    }
+  }
   const categories: Category[] = [
     { 
       id: 'all', 
@@ -558,16 +570,11 @@ const MyFiles = () => {
   // Update shared view state when selected category changes
   useEffect(() => {
     setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
-    // Reset sub-category and selected album when category changes
+    // Reset selected album when category changes
     if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
-      setSelectedSubCategory(null);
-      setSelectedSharedAlbum(null);
-    } else if (selectedSubCategory === null && (selectedCategory === 'shared' || selectedCategory === 'shared-by-me')) {
-      // Default to photos when selecting shared categories
-      setSelectedSubCategory('photos');
       setSelectedSharedAlbum(null);
     }
-  }, [selectedCategory, selectedSubCategory]);
+  }, [selectedCategory]);
 
   // Get files for the selected category
   let displayFiles = filteredFiles;
@@ -575,26 +582,18 @@ const MyFiles = () => {
   
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
-      if (selectedSubCategory === 'photos') {
-        displayFiles = sharedContent?.photos || [];
-        displayMode = 'files';
-      } else if (selectedSubCategory === 'albums') {
-        displayFiles = sharedContent?.sharedAlbums || [];
-        displayMode = 'shared-albums';
-      } else {
-        // Default to photos if no sub-category selected
-        displayFiles = sharedContent?.photos || [];
-        displayMode = 'files';
-      }
-    } else if (selectedCategory === 'shared-by-me') {
-      if (selectedSubCategory === 'photos') {
-        displayFiles = sharedByMeContent?.photos || [];
-        displayMode = 'files';
-      } else if (selectedSubCategory === 'albums') {
-        displayFiles = sharedByMeContent?.sharedAlbums || [];
-        displayMode = 'shared-albums';
-      } else {
-        // Default to photos if no sub-category selected
+      // Combine photos and albums for shared with me
+      const photos = sharedContent?.photos || [];
+      const albums = sharedContent?.sharedAlbums || [];
+      displayFiles = [...photos, ...albums];
+      displayMode = 'files';
+    } else if (selectedCategory === 'shared-by-me' && sharedByMeContent) {
+      // Combine photos and albums for shared by me
+      const photos = sharedByMeContent.photos || [];
+      const albums = sharedByMeContent.sharedAlbums || [];
+      displayFiles = [...photos, ...albums]; 
+      displayMode = 'files';
+    } else if (selectedCategory === 'recent') {
         displayFiles = sharedByMeContent?.photos || [];
         displayMode = 'files';
       }
@@ -769,7 +768,6 @@ const MyFiles = () => {
                   onClick={() => {
                     setSelectedCategory(category.id === selectedCategory ? null : category.id);
                     if (category.id === 'shared' || category.id === 'shared-by-me') {
-                      setSelectedSubCategory('photos');
                       setSelectedSharedAlbum(null);
                     }
                     if (isMobile) setSidebarOpen(false);
@@ -977,6 +975,7 @@ const MyFiles = () => {
                   size="sm" 
                   onClick={handleBulkDeleteFiles}
                   className="gap-2"
+                  style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete ({selectedFiles.length})
@@ -1205,6 +1204,7 @@ const MyFiles = () => {
                                 e.stopPropagation();
                                 handleDeleteFile(file.id);
                               }}
+                              style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -1322,7 +1322,7 @@ const MyFiles = () => {
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteFile(file.id);
-                          }}>
+                          }} style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
@@ -1357,7 +1357,12 @@ const MyFiles = () => {
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}
+                  style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
