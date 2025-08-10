@@ -245,13 +245,13 @@ const FullscreenPlayerTablet = ({
 
   const renderSongList = (songs: Song[], title: string) => {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {songs.map((listSong, index) => (
           <div
             key={listSong.id}
             data-song-index={activeTab === "playlist" ? index : undefined}
-            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-muted/50 ${
-              listSong.id === song.id ? "bg-primary/10 ring-2 ring-primary/20" : ""
+            className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all hover:bg-white/10 ${
+              listSong.id === song.id ? "bg-white/20 ring-2 ring-white/30" : ""
             }`}
             onClick={() => handleSongClick(listSong)}
           >
@@ -259,25 +259,25 @@ const FullscreenPlayerTablet = ({
               <LazyImage
                 src={listSong.image?.[0]?.url}
                 alt={listSong.name}
-                className="w-12 h-12 rounded-md object-cover"
+                className="w-16 h-16 rounded-lg object-cover"
               />
               {listSong.id === song.id && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                   {isPlaying ? (
-                    <Pause className="h-4 w-4 text-white" />
+                    <Pause className="h-6 w-6 text-white" />
                   ) : (
-                    <Play className="h-4 w-4 text-white" />
+                    <Play className="h-6 w-6 text-white" />
                   )}
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="truncate font-medium">{listSong.name}</p>
-              <p className="truncate text-sm text-muted-foreground">
+              <p className="truncate font-medium text-white text-lg">{listSong.name}</p>
+              <p className="truncate text-white/70">
                 {listSong.artists?.primary?.map((a) => a.name).join(", ")}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -285,10 +285,10 @@ const FullscreenPlayerTablet = ({
                 }}
                 variant="ghost"
                 size="sm"
-                className={likedSongs.includes(listSong.id) ? "text-red-500" : ""}
+                className={`text-white hover:bg-white/20 ${likedSongs.includes(listSong.id) ? "text-red-500" : ""}`}
               >
                 <Heart
-                  className={`h-4 w-4 ${
+                  className={`h-5 w-5 ${
                     likedSongs.includes(listSong.id) ? "fill-current" : ""
                   }`}
                 />
@@ -296,6 +296,7 @@ const FullscreenPlayerTablet = ({
               <Button
                 size="sm"
                 variant="ghost"
+                className="text-white hover:bg-white/20"
                 onClick={(e) => {
                   e.stopPropagation();
                   downloadSong(listSong);
@@ -304,16 +305,16 @@ const FullscreenPlayerTablet = ({
               >
                 {downloadProgress[listSong.id] > 0 ? (
                   downloadProgress[listSong.id] === -1 ? (
-                    <X className="h-4 w-4 text-red-500" />
+                    <X className="h-5 w-5 text-red-500" />
                   ) : downloadProgress[listSong.id] === 100 ? (
-                    <Download className="h-4 w-4 text-green-500" />
+                    <Download className="h-5 w-5 text-green-500" />
                   ) : (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   )
                 ) : isOffline(listSong.id) ? (
-                  <Download className="h-4 w-4 text-green-500" />
+                  <Download className="h-5 w-5 text-green-500" />
                 ) : (
-                  <Download className="h-4 w-4" />
+                  <Download className="h-5 w-5" />
                 )}
               </Button>
             </div>
@@ -335,14 +336,15 @@ const FullscreenPlayerTablet = ({
       {/* Left Panel - Album Art and Controls */}
       <div className="flex-1 flex flex-col justify-center items-center p-8 min-w-0">
         {/* Header */}
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-white/80">Now Playing</h2>
           <Button
             onClick={onClose}
             variant="ghost"
             size="sm"
             className="text-white hover:bg-white/20"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </Button>
         </div>
 

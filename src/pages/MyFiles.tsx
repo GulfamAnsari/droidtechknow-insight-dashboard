@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users, X } from "lucide-react";
 import { albumApi, Album, CreateAlbumRequest } from "@/services/albumApi";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +82,7 @@ const MyFiles = () => {
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums'>('photos');
+  const [selectAll, setSelectAll] = useState(false);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -691,6 +692,60 @@ const MyFiles = () => {
   const handleBulkSelection = (selectedFiles: string[]) => {
     setSelectedFiles(selectedFiles);
   };
+
+  // Handle select all functionality
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedFiles([]);
+      setSelectAll(false);
+    } else {
+      setSelectedFiles(displayFiles.map(file => file.id));
+      setSelectAll(true);
+    }
+  };
+
+  // Download selected files as zip
+  const handleDownloadAll = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    const filesToDownload = displayFiles.filter(file => selectedFiles.includes(file.id));
+    
+    try {
+      const JSZip = await import('jszip');
+      const zip = new JSZip.default();
+      
+      for (const file of filesToDownload) {
+        try {
+          const fileUrl = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`;
+          const response = await fetch(fileUrl);
+          const blob = await response.blob();
+          
+          // Get file extension from metadata or URL
+          const extension = file.metadata?.format ? `.${file.metadata.format.split('/').pop()}` : '';
+          const fileName = `${file.title}${extension}`;
+          
+          zip.file(fileName, blob);
+        } catch (error) {
+          console.error(`Failed to add file ${file.title} to zip:`, error);
+        }
+      }
+      
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `files_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Downloaded ${selectedFiles.length} files successfully`);
+    } catch (error) {
+      console.error('Failed to create zip file:', error);
+      toast.error('Failed to download files');
+    }
+  };
   
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full inner-container">
@@ -759,29 +814,122 @@ const MyFiles = () => {
               <div className="flex items-center px-3 mb-2">
                 <h3 className="font-medium text-sm">Categories</h3>
               </div>
-              {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => {
-                    setSelectedCategory(category.id === selectedCategory ? null : category.id);
-                    if (category.id === 'shared' || category.id === 'shared-by-me') {
-                      setSelectedSharedAlbum(null);
-                    }
-                    if (isMobile) setSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
-                    selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
-                  }`}
-                >
-                  <div className="flex items-center">
-                    {category.icon}
-                    <span className="truncate">{category.name}</span>
-                  </div>
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {category.count}
-                  </Badge>
-                </button>
-              ))}
+              {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => {
+                // Special handling for shared categories
+                if (category.id === 'shared') {
+                  return (
+                    <div key={category.id} className="space-y-1">
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                          setSelectedSharedAlbum(null);
+                          if (isMobile) setSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                          selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          {category.icon}
+                          <span className="truncate">{category.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {category.count}
+                        </Badge>
+                      </button>
+                      {/* Show shared albums when this category is expanded */}
+                      {selectedCategory === 'shared' && sharedContent?.sharedAlbums && (
+                        <div className="ml-6 space-y-1">
+                          {sharedContent.sharedAlbums.map((album: any) => (
+                            <button
+                              key={album.id}
+                              onClick={() => {
+                                setSelectedSharedAlbum(album);
+                                if (isMobile) setSidebarOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
+                                selectedSharedAlbum?.id === album.id ? 'bg-primary/20' : ''
+                              }`}
+                            >
+                              <span className="truncate">{album.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {album.photos?.length || 0}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else if (category.id === 'shared-by-me') {
+                  return (
+                    <div key={category.id} className="space-y-1">
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                          setSelectedSharedAlbum(null);
+                          if (isMobile) setSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                          selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          {category.icon}
+                          <span className="truncate">{category.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {category.count}
+                        </Badge>
+                      </button>
+                      {/* Show shared-by-me albums when this category is expanded */}
+                      {selectedCategory === 'shared-by-me' && sharedByMeContent?.sharedAlbums && (
+                        <div className="ml-6 space-y-1">
+                          {sharedByMeContent.sharedAlbums.map((album: any) => (
+                            <button
+                              key={album.id}
+                              onClick={() => {
+                                setSelectedSharedAlbum(album);
+                                if (isMobile) setSidebarOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
+                                selectedSharedAlbum?.id === album.id ? 'bg-primary/20' : ''
+                              }`}
+                            >
+                              <span className="truncate">{album.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {album.photos?.length || 0}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  // Regular categories
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => {
+                        setSelectedCategory(category.id === selectedCategory ? null : category.id);
+                        if (isMobile) setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                        selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        {category.icon}
+                        <span className="truncate">{category.name}</span>
+                      </div>
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {category.count}
+                      </Badge>
+                    </button>
+                  );
+                }
+              })}
             </div>
             
             <div className="mt-4">
@@ -965,27 +1113,50 @@ const MyFiles = () => {
               {isSelectionMode ? "Cancel" : "Select"}
             </Button>
             
-            {isSelectionMode && selectedFiles.length > 0 && (
+            {isSelectionMode && (
               <>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleBulkDeleteFiles}
-                  className="gap-2"
-                  style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete ({selectedFiles.length})
-                </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleShare}
+                  onClick={handleSelectAll}
                   className="gap-2"
                 >
-                  <Share2 className="h-4 w-4" />
-                  Share ({selectedFiles.length + selectedAlbums.length})
+                  <Checkbox checked={selectAll} className="h-4 w-4" />
+                  {selectAll ? "Deselect All" : "Select All"}
                 </Button>
+                
+                {selectedFiles.length > 0 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDownloadAll}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download ({selectedFiles.length})
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleBulkDeleteFiles}
+                      className="gap-2"
+                      style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete ({selectedFiles.length})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleShare}
+                      className="gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share ({selectedFiles.length + selectedAlbums.length})
+                    </Button>
+                  </>
+                )}
               </>
             )}
             
@@ -1348,12 +1519,12 @@ const MyFiles = () => {
       
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+        <DialogContent className={`${isMobile ? 'max-w-full w-full h-full p-0 m-0 rounded-none' : 'max-w-[95vw] w-[95vw] h-[90vh] p-0'} overflow-hidden`}>
           <DialogTitle className="sr-only">File Preview</DialogTitle>
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
-              <div className="flex items-center space-x-2">
+              <h3 className="text-lg font-semibold truncate flex-1 mr-4">{selectedFile?.title}</h3>
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -1366,6 +1537,14 @@ const MyFiles = () => {
                 <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
                   <Download className="mr-2 h-4 w-4" />
                   Download
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="ml-2"
+                >
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -1394,7 +1573,13 @@ const MyFiles = () => {
                   <video 
                     src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
                     controls 
-                    className="max-h-full max-w-full" 
+                    className="max-h-full max-w-full rounded-lg shadow-lg"
+                    style={{ 
+                      maxHeight: 'calc(90vh - 200px)',
+                      backgroundColor: '#000'
+                    }}
+                    controlsList="nodownload"
+                    playsInline
                   />
                 ) : selectedFile?.fileType === 'audio' ? (
                   <div className="p-8 w-full">
