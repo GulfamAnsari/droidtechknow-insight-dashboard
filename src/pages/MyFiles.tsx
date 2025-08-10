@@ -81,6 +81,7 @@ const MyFiles = () => {
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums'>('photos');
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -593,10 +594,6 @@ const MyFiles = () => {
       const albums = sharedByMeContent.sharedAlbums || [];
       displayFiles = [...photos, ...albums]; 
       displayMode = 'files';
-    } else if (selectedCategory === 'recent') {
-        displayFiles = sharedByMeContent?.photos || [];
-        displayMode = 'files';
-      }
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -1235,8 +1232,8 @@ const MyFiles = () => {
                         </div>
                         <div className="mt-2 flex justify-between items-center w-full">
                           <div className='w-full'>
-                            <p style={{ whiteSpace: 'wrap '}} className="text-xs truncate">{file.title}</p>
-                            <p style={{ whiteSpace: 'wrap '}} className="text-[10px] text-muted-foreground">
+                            <p style={{ whiteSpace: 'nowrap' }} className="text-xs truncate">{file.title}</p>
+                            <p style={{ whiteSpace: 'nowrap' }} className="text-[10px] text-muted-foreground">
                               {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
                             </p>
                           </div>
