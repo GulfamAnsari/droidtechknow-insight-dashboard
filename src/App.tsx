@@ -1,4 +1,5 @@
 
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,12 +30,30 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+// Error boundary component for QueryClient issues
+const QueryErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+  try {
+    return <>{children}</>;
+  } catch (error) {
+    console.error('QueryClient error:', error);
+    return <div>Loading...</div>;
+  }
+};
+
+const App = () => {
+  // Ensure React is properly initialized before rendering providers
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return (
+    <QueryErrorBoundary>
+      <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <AuthProvider>
         <MusicProvider>
@@ -71,7 +90,9 @@ const App = () => (
         </MusicProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider>
-);
+        </QueryClientProvider>
+      </QueryErrorBoundary>
+    );
+  };
 
 export default App;
