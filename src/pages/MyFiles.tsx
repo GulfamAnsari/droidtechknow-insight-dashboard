@@ -468,20 +468,14 @@ const MyFiles = () => {
     enabled: !!user?.id
   });
 
-  // Add shared files when viewing shared content (moved after sharedByMeContent is available)
-  if (isSharedView && sharedContent) {
-    if (selectedCategory === 'shared') {
-      // Combine photos and albums for shared with me
-      const photos = sharedContent.photos || [];
-      const albumPhotos = sharedContent.albums || [];
-      allFiles = [...photos, ...albumPhotos];
-    } else if (selectedCategory === 'shared-by-me') {
-      // Combine photos and albums for shared by me  
-      const photos = sharedByMeContent?.photos || [];
-      const albumPhotos = sharedByMeContent?.albums || [];
-      allFiles = [...photos, ...albumPhotos];
+  // Update shared view state when selected category changes
+  useEffect(() => {
+    setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
+    // Reset selected album when category changes
+    if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
+      setSelectedSharedAlbum(null);
     }
-  }
+  }, [selectedCategory]);
   const categories: Category[] = [
     { 
       id: 'all', 
@@ -569,6 +563,21 @@ const MyFiles = () => {
       })),
   ];
 
+  // Process shared files directly when the category is selected
+  if (selectedCategory === 'shared' && sharedContent) {
+    console.log('Processing shared with me files:', sharedContent);
+    // For shared with me, combine photos and album photos
+    const photos = sharedContent.photos || [];
+    const albumPhotos = sharedContent.albums || [];
+    allFiles = [...photos, ...albumPhotos];
+  } else if (selectedCategory === 'shared-by-me' && sharedByMeContent) {
+    console.log('Processing shared by me files:', sharedByMeContent);
+    // For shared by me, combine photos and album photos
+    const photos = sharedByMeContent.photos || [];
+    const albumPhotos = sharedByMeContent.albums || [];
+    allFiles = [...photos, ...albumPhotos];
+  }
+
   // Update shared view state when selected category changes
   useEffect(() => {
     setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
@@ -582,18 +591,61 @@ const MyFiles = () => {
   let displayFiles = filteredFiles;
   let displayMode = 'files'; // 'files' | 'shared-albums'
   
+  
+  console.log('MyFiles Debug:', {
+    selectedCategory,
+    isSharedView,
+    sharedContent: sharedContent ? {
+      photos: sharedContent.photos?.length,
+      albums: sharedContent.albums?.length, 
+      sharedAlbums: sharedContent.sharedAlbums?.length
+    } : null,
+    sharedByMeContent: sharedByMeContent ? {
+      photos: sharedByMeContent.photos?.length,
+      albums: sharedByMeContent.albums?.length,
+      sharedAlbums: sharedByMeContent.sharedAlbums?.length
+    } : null,
+    displayFilesLength: displayFiles.length
+  });
+  
   if (selectedCategory) {
     if (selectedCategory === 'shared') {
-      // Combine photos and albums for shared with me
-      const photos = sharedContent?.photos || [];
-      const albums = sharedContent?.sharedAlbums || [];
-      displayFiles = [...photos, ...albums];
+      // Handle shared album selection
+      if (selectedSharedAlbum) {
+        displayFiles = selectedSharedAlbum.photos || [];
+      } else {
+        // Show combined photos and shared albums as files
+        const photos = sharedContent?.photos || [];
+        const sharedAlbums = sharedContent?.sharedAlbums || [];
+        // Convert shared albums to file-like objects for display
+        const albumAsFiles = sharedAlbums.map(album => ({
+          ...album,
+          fileType: 'album',
+          url: album.photos?.[0]?.url || '',
+          thumbnail: album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || '',
+          metadata: { size: album.photos?.length || 0 }
+        }));
+        displayFiles = [...photos, ...albumAsFiles];
+      }
       displayMode = 'files';
     } else if (selectedCategory === 'shared-by-me' && sharedByMeContent) {
-      // Combine photos and albums for shared by me
-      const photos = sharedByMeContent.photos || [];
-      const albums = sharedByMeContent.sharedAlbums || [];
-      displayFiles = [...photos, ...albums]; 
+      // Handle shared by me album selection
+      if (selectedSharedAlbum) {
+        displayFiles = selectedSharedAlbum.photos || [];
+      } else {
+        // Show combined photos and shared albums as files
+        const photos = sharedByMeContent.photos || [];
+        const sharedAlbums = sharedByMeContent.sharedAlbums || [];
+        // Convert shared albums to file-like objects for display
+        const albumAsFiles = sharedAlbums.map(album => ({
+          ...album,
+          fileType: 'album', 
+          url: album.photos?.[0]?.url || '',
+          thumbnail: album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || '',
+          metadata: { size: album.photos?.length || 0 }
+        }));
+        displayFiles = [...photos, ...albumAsFiles];
+      }
       displayMode = 'files';
     } else if (selectedCategory === 'recent') {
       const oneWeekAgo = new Date();
@@ -628,10 +680,16 @@ const MyFiles = () => {
   const filesByDate = groupFilesByDate(displayFiles);
   const dates = Object.keys(filesByDate).sort().reverse(); // Most recent first
   
-  // Handle file click to show preview
+  // Handle file click to show preview or navigate to album
   const handleFileClick = (file: FileItem) => {
     if (isSelectionMode) {
       toggleFileSelection(file.id);
+    } else if (file.fileType === 'album') {
+      // Handle album click for shared albums
+      const album = (selectedCategory === 'shared' ? sharedContent?.sharedAlbums : sharedByMeContent?.sharedAlbums)?.find(a => a.id === file.id);
+      if (album) {
+        setSelectedSharedAlbum(album);
+      }
     } else {
       setSelectedFile(file);
       setIsPreviewOpen(true);
