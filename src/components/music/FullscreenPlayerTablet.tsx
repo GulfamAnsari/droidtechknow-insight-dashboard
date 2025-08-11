@@ -394,8 +394,7 @@ const FullscreenPlayerTablet = ({
       {/* Left Panel - Album Art and Controls */}
       <div className="flex-1 flex flex-col justify-center items-center p-8 min-w-0">
         {/* Header */}
-        <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-white/80">Now Playing</h2>
+        {/* <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
           <Button
             onClick={onClose}
             variant="ghost"
@@ -404,22 +403,22 @@ const FullscreenPlayerTablet = ({
           >
             <X className="h-6 w-6" />
           </Button>
-        </div>
+        </div> */}
 
         {/* Album Art */}
         <div className="mb-8">
           <LazyImage
             src={song.image[2]?.url || song.image[1]?.url || song.image[0]?.url}
             alt={song.name}
-            className="w-80 h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+            className="w-60 h-60 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
             onClick={onPlayPause}
           />
         </div>
 
         {/* Song Info */}
         <div className="text-center mb-8 max-w-md">
-          <h1 className="text-3xl font-bold mb-2 truncate">{song.name}</h1>
-          <p className="text-xl text-white/80 truncate">
+          <h1 className="text-2xl font-bold mb-2 truncate">{song.name}</h1>
+          <p className="text-l text-white/80 truncate">
             {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
           </p>
         </div>
@@ -440,7 +439,7 @@ const FullscreenPlayerTablet = ({
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center gap-6 mb-8">
+        <div className="flex items-center gap-3 mb-8">
           <Button
             size="lg"
             variant="ghost"
@@ -541,9 +540,9 @@ const FullscreenPlayerTablet = ({
 
       {/* Right Panel - Playlist */}
       <div className="w-96 bg-black/20 backdrop-blur-sm border-l border-white/10">
-        <div className="p-4">
+        <div className="p-2 pt-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10">
+            <TabsList className="grid w-80 grid-cols-2 bg-white/10">
               <TabsTrigger
                 value="playlist"
                 className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white"
@@ -556,6 +555,14 @@ const FullscreenPlayerTablet = ({
               >
                 Suggested ({suggestedSongs.length})
               </TabsTrigger>
+              <Button
+                onClick={onClose}
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-4 right-3 text-white bg-white/20"
+                >
+                <X className="h-12 w-12" />
+              </Button>
             </TabsList>
 
             <TabsContent value="playlist" className="mt-4">

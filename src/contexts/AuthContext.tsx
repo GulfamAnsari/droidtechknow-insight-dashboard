@@ -41,7 +41,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         // First check localStorage for existing user
         const storedUser = localStorage.getItem('user');
-        if (storedUser) {
+        const userId = Cookies.get('userId');
+        if (storedUser && userId) {
           try {
             setUser(JSON.parse(storedUser));
           } catch (error) {
