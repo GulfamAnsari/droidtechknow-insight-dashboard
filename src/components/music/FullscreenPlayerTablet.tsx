@@ -324,8 +324,66 @@ const FullscreenPlayerTablet = ({
     );
   };
 
+  // Add keyboard event listeners
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          onPrevious();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          onNext();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (audioRef.current) {
+            audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+          }
+          break;
+        case ' ':
+          e.preventDefault();
+          onPlayPause();
+          break;
+      }
+    };
+
+    // Car steering wheel controls
+    const handleMediaKeys = (e: KeyboardEvent) => {
+      switch (e.code) {
+        case 'MediaTrackNext':
+          e.preventDefault();
+          onNext();
+          break;
+        case 'MediaTrackPrevious':
+          e.preventDefault();
+          onPrevious();
+          break;
+        case 'MediaPlayPause':
+          e.preventDefault();
+          onPlayPause();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener('keydown', handleMediaKeys);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('keydown', handleMediaKeys);
+    };
+  }, [onNext, onPrevious, onPlayPause, duration]);
+
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex text-white">
+    <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex text-white">
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}

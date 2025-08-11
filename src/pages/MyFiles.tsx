@@ -82,6 +82,7 @@ const MyFiles = () => {
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums'>('photos');
+  const [activeTab, setActiveTab] = useState<'photos' | 'albums'>('photos');
   const [selectAll, setSelectAll] = useState(false);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -474,6 +475,7 @@ const MyFiles = () => {
     // Reset selected album when category changes
     if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
       setSelectedSharedAlbum(null);
+      setActiveTab('photos'); // Reset to photos tab
     }
   }, [selectedCategory]);
   const categories: Category[] = [
@@ -716,10 +718,11 @@ const MyFiles = () => {
 
   // Define grid size options
   const gridSizeOptions = [
-    { name: "Small", size: 120 },
-    { name: "Medium", size: 150 },
-    { name: "Large", size: 200 },
-    { name: "X-Large", size: 250 }
+    { name: "Small", size: 100, cols: 5 },
+    { name: "Medium", size: 150, cols: 4 },
+    { name: "Large", size: 200, cols: 3 },
+    { name: "X-Large", size: 250, cols: 2 },
+    { name: "XX-Large", size: 300, cols: 1 }
   ];
   
   if (isLoading) {
@@ -1134,16 +1137,19 @@ const MyFiles = () => {
           
           <div className="flex items-center space-x-2">
             {viewMode === "grid" && !isSelectionMode && (
-              <div className="flex items-center space-x-2 mr-2">
-                <Slider 
-                  className="w-24" 
-                  value={[gridSize]} 
-                  min={50} 
-                  max={1000} 
-                  step={10}
-                  onValueChange={(value) => setGridSize(value[0])}
-                />
-              </div>
+            <div className="flex gap-1">
+              {gridSizeOptions.map((option) => (
+                <Button
+                  key={option.size}
+                  variant={gridSize === option.size ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGridSize(option.size)}
+                  className="px-2"
+                >
+                  {option.name}
+                </Button>
+              ))}
+            </div>
             )}
             
             <div className="flex items-center space-x-1 border rounded-md p-1">
@@ -1276,8 +1282,32 @@ const MyFiles = () => {
 
         {/* Main content */}
         <div className="flex-1 overflow-auto p-4 md:p-6" style={{ scrollbarWidth: "none" }}>
-          {/* File type cards - hidden on mobile */}
-          {!isMobile && (
+          {/* Show tabs for shared categories when not viewing an album */}
+          {isSharedView && !selectedSharedAlbum && (
+            <div className="mb-6">
+              <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
+                <Button
+                  variant={activeTab === 'photos' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('photos')}
+                  className="rounded-md"
+                >
+                  Photos
+                </Button>
+                <Button
+                  variant={activeTab === 'albums' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setActiveTab('albums')}
+                  className="rounded-md"
+                >
+                  Albums
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* File type cards - hide when in shared view */}
+          {!isMobile && !isSharedView && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
               <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
@@ -1341,16 +1371,30 @@ const MyFiles = () => {
             </div>
           )}
           
-          {/* Content display - either files or shared albums */}
-          {displayMode === 'shared-albums' ? (
-            <SharedAlbumView
-              albums={displayFiles}
-              selectedAlbum={selectedSharedAlbum}
-              onAlbumSelect={handleSharedAlbumSelect}
-              onDeleteFile={handleDeleteFile}
-              categoryType={selectedCategory === 'shared' ? 'shared' : 'shared-by-me'}
-            />
-          ) : displayFiles.length === 0 ? (
+          {/* Filter files based on active tab for shared content */}
+          {(() => {
+            let filteredDisplayFiles = displayFiles;
+            
+            if (isSharedView && !selectedSharedAlbum) {
+              if (activeTab === 'photos') {
+                filteredDisplayFiles = displayFiles.filter(file => file.fileType !== 'album');
+              } else if (activeTab === 'albums') {
+                filteredDisplayFiles = displayFiles.filter(file => file.fileType === 'album');
+              }
+            }
+            
+            return (
+              <div>
+                {/* Content display - either files or shared albums */}
+                {displayMode === 'shared-albums' ? (
+                  <SharedAlbumView
+                    albums={filteredDisplayFiles}
+                    selectedAlbum={selectedSharedAlbum}
+                    onAlbumSelect={handleSharedAlbumSelect}
+                    onDeleteFile={handleDeleteFile}
+                    categoryType={selectedCategory === 'shared' ? 'shared' : 'shared-by-me'}
+                  />
+                ) : filteredDisplayFiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
               <p className="text-muted-foreground mb-4">No files found</p>
               <Button onClick={() => setIsUploadOpen(true)}>
@@ -1358,16 +1402,18 @@ const MyFiles = () => {
                 Upload your first file
               </Button>
             </div>
-          ) : viewMode === 'grid' ? (
-            // Grid view - organized by date
-            <div className="space-y-8">
-              {dates.map((date) => (
-                <div key={date} className="space-y-3" style={{ margin: '0 0 4rem 0'}}>
-                  <h3 className="font-medium">
-                    {formatDate(filesByDate[date][0].lastModified)}
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap'}} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {filesByDate[date].map((file) => (
+                ) : viewMode === 'grid' ? (
+                  // Grid view - organized by date
+                  <div className="space-y-8">
+                    {Object.keys(groupFilesByDate(filteredDisplayFiles)).sort().reverse().map((date) => {
+                      const filesForDate = groupFilesByDate(filteredDisplayFiles)[date];
+                      return (
+                        <div key={date} className="space-y-3" style={{ margin: '0 0 4rem 0'}}>
+                          <h3 className="font-medium">
+                            {formatDate(filesForDate[0].lastModified)}
+                          </h3>
+                          <div style={{ display: 'flex', flexWrap: 'wrap'}} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            {filesForDate.map((file) => (
                       <div 
                         key={file.id}
                         className="group relative cursor-pointer mb-14"
@@ -1468,12 +1514,13 @@ const MyFiles = () => {
                           </div>
                         </div>
                       </div>
-                    ))}
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
+                ) : (
             // List view
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -1571,7 +1618,10 @@ const MyFiles = () => {
                 </tbody>
               </table>
             </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
       
