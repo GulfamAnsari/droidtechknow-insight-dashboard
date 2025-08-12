@@ -1,24 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { useDashboard } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users, X, Grid2X2 } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Grid3X3,
+  LayoutGrid,
+  FolderPlus,
+  Upload,
+  Cloud,
+  FileImage,
+  FileVideo,
+  FileText,
+  FileAudio,
+  File,
+  Menu,
+  ZoomIn,
+  ZoomOut,
+  Download,
+  ArrowDown,
+  ArrowUp,
+  Info,
+  Trash2,
+  UserCircle,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  FolderOpen,
+  Share2,
+  Users,
+  X,
+  Grid2X2,
+  Grid2x2,
+  Grid,
+  List
+} from "lucide-react";
 import { albumApi, Album, CreateAlbumRequest } from "@/services/albumApi";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogFooter, DialogDescription, DialogHeader } from "@/components/ui/dialog";
-import { getFileType, getFileIcon, formatFileSize, groupFilesByDate, formatDate, getFileTypeLabel, downloadFile, DownloadButton } from "@/components/files/FileUtils";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+  DialogHeader
+} from "@/components/ui/dialog";
+import {
+  getFileType,
+  getFileIcon,
+  formatFileSize,
+  groupFilesByDate,
+  formatDate,
+  getFileTypeLabel,
+  downloadFile,
+  DownloadButton
+} from "@/components/files/FileUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
 import { useSwipeable } from "react-swipeable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
-import httpClient from '@/utils/httpClient';
+import httpClient from "@/utils/httpClient";
 import { ShareDialog } from "@/components/files/ShareDialog";
 import { shareApi, ShareItem } from "@/services/shareApi";
 import SharedAlbumView from "@/components/files/SharedAlbumView";
@@ -51,12 +101,12 @@ interface Category {
   id: string;
   name: string;
   count: number;
-  type: 'folder' | 'album' | 'tag' | 'filetype';
+  type: "folder" | "album" | "tag" | "filetype";
   icon?: React.ReactNode;
 }
 
 // Get localStorage key for files
-const LOCAL_STORAGE_KEY = 'my-files-data';
+const LOCAL_STORAGE_KEY = "my-files-data";
 
 const MyFiles = () => {
   const { refreshData, isRefreshing } = useDashboard();
@@ -81,21 +131,23 @@ const MyFiles = () => {
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<'photos' | 'albums'>('photos');
-  const [activeTab, setActiveTab] = useState<'photos' | 'albums'>('photos');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<
+    "photos" | "albums"
+  >("photos");
+  const [activeTab, setActiveTab] = useState<"photos" | "albums">("photos");
   const [selectAll, setSelectAll] = useState(false);
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+
   // Initialize swipe handlers
   // This ensures hooks are called in the same order on every render
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => selectedFile && navigateFile('next'),
-    onSwipedRight: () => selectedFile && navigateFile('prev'),
+    onSwipedLeft: () => selectedFile && navigateFile("next"),
+    onSwipedRight: () => selectedFile && navigateFile("prev"),
     trackMouse: false
   });
-  
+
   // Load initial data from localStorage
   useEffect(() => {
     const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -115,24 +167,33 @@ const MyFiles = () => {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localFiles));
     }
   }, [localFiles]);
-  
-  const { data: apiFiles, isLoading, error, refetch } = useQuery({
+
+  const {
+    data: apiFiles,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
     queryKey: ["files"],
     queryFn: async () => {
       try {
-        const data = await httpClient.get("https://droidtechknow.com/admin/api/files/get_files.php");
-        
+        const data = await httpClient.get(
+          "https://droidtechknow.com/admin/api/files/get_files.php"
+        );
+
         return data.map((file: any) => ({
           id: file.id || String(Math.random()),
           url: file.url,
-          title: file.title || 'Unnamed',
+          title: file.title || "Unnamed",
           description: file.description,
           createdAt: file.createdAt,
           lastModified: file.lastModified || Date.now().toString(),
           location: file.location,
           album: file.album,
           favorite: file.favorite || false,
-          fileType: file.fileType || getFileType(file.title, file.metadata?.format || ''),
+          fileType:
+            file.fileType ||
+            getFileType(file.title, file.metadata?.format || ""),
           metadata: file.metadata || {},
           thumbnail: file?.thumbnail
         }));
@@ -146,7 +207,7 @@ const MyFiles = () => {
     retryDelay: 1000
   });
 
- // Fetch albums
+  // Fetch albums
   const { data: albums = [], isLoading: albumsLoading } = useQuery({
     queryKey: ["albums"],
     queryFn: () => albumApi.getAlbums()
@@ -156,7 +217,7 @@ const MyFiles = () => {
   const createAlbumMutation = useMutation({
     mutationFn: (data: CreateAlbumRequest) => albumApi.createAlbum(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['albums'] });
+      queryClient.invalidateQueries({ queryKey: ["albums"] });
       toast.success("Album created successfully");
       setIsCreateAlbumOpen(false);
       setNewAlbumName("");
@@ -170,9 +231,10 @@ const MyFiles = () => {
 
   // Delete album mutation
   const deleteAlbumMutation = useMutation({
-    mutationFn: (albumName: string) => albumApi.deleteAlbum({ album: albumName }),
+    mutationFn: (albumName: string) =>
+      albumApi.deleteAlbum({ album: albumName }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['albums'] });
+      queryClient.invalidateQueries({ queryKey: ["albums"] });
       toast.success("Album deleted successfully");
     },
     onError: (error) => {
@@ -186,7 +248,7 @@ const MyFiles = () => {
     queryKey: ["shared-content", user?.id],
     queryFn: async () => {
       if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
-      
+
       const shareData: any = await shareApi.getSharedContent(user.id);
       const sharedWithMe: ShareItem[] = shareData?.sharedWithMe;
       if (!sharedWithMe || sharedWithMe.length === 0) {
@@ -202,10 +264,10 @@ const MyFiles = () => {
         if (share.fromUserId) {
           // Add individual photos
           allSharedPhotos = [...allSharedPhotos, ...(share?.allPhotos || [])];
-          
+
           // Add album photos
           allSharedAlbums = [...allSharedAlbums, ...(share?.albumPhotos || [])];
-          
+
           // Group album photos by album name to create shared albums list
           const albumPhotosMap: { [key: string]: any[] } = {};
           share.albumPhotos?.forEach((photo: any) => {
@@ -216,7 +278,7 @@ const MyFiles = () => {
               albumPhotosMap[photo.album].push(photo);
             }
           });
-          
+
           // Convert to shared albums format
           Object.entries(albumPhotosMap).forEach(([albumName, photos]) => {
             sharedAlbumsList.push({
@@ -229,7 +291,11 @@ const MyFiles = () => {
         }
       }
 
-      return { albums: allSharedAlbums, photos: allSharedPhotos, sharedAlbums: sharedAlbumsList };
+      return {
+        albums: allSharedAlbums,
+        photos: allSharedPhotos,
+        sharedAlbums: sharedAlbumsList
+      };
     },
     enabled: !!user?.id
   });
@@ -238,24 +304,29 @@ const MyFiles = () => {
   const deleteFileMutation = useMutation({
     mutationFn: async (fileIds: string[]) => {
       const results = [];
-      
+
       for (const fileId of fileIds) {
-        const response = await httpClient.post('https://droidtechknow.com/admin/api/files/delete.php', { id: fileId });
-        
+        const response = await httpClient.post(
+          "https://droidtechknow.com/admin/api/files/delete.php",
+          { id: fileId }
+        );
+
         const result = response;
         results.push(result);
-        
+
         // Remove the file from local storage too
-        setLocalFiles(prev => prev.filter(file => file.id !== fileId));
+        setLocalFiles((prev) => prev.filter((file) => file.id !== fileId));
       }
-      
+
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['files'] });
-      toast.success(filesToDelete.length > 1 
-        ? `${filesToDelete.length} files deleted successfully` 
-        : "File deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      toast.success(
+        filesToDelete.length > 1
+          ? `${filesToDelete.length} files deleted successfully`
+          : "File deleted successfully"
+      );
       setSelectedFiles([]);
       setFilesToDelete([]);
       setIsSelectionMode(false);
@@ -267,24 +338,29 @@ const MyFiles = () => {
   });
 
   // Combine API files with local modifications
-  let allFiles = apiFiles ? apiFiles.map(apiFile => {
-    const localFile = localFiles.find(local => local.id === apiFile.id);
-    return localFile ? { ...apiFile, ...localFile } : apiFile;
-  }) : [];
+  let allFiles = apiFiles
+    ? apiFiles.map((apiFile) => {
+        const localFile = localFiles.find((local) => local.id === apiFile.id);
+        return localFile ? { ...apiFile, ...localFile } : apiFile;
+      })
+    : [];
 
   // Filter files by search query
-  const filteredFiles = allFiles.filter(file => 
-    file.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (file.album && file.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (file.description && file.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredFiles = allFiles.filter(
+    (file) =>
+      file.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (file.album &&
+        file.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (file.description &&
+        file.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-  
+
   const handleRefresh = () => {
     refreshData();
     refetch();
     toast.success("Files refreshed");
   };
-  
+
   const handleUploadSuccess = () => {
     refetch();
     toast.success("Files uploaded successfully!");
@@ -298,10 +374,10 @@ const MyFiles = () => {
   };
 
   const updateLocalFile = (file: FileItem) => {
-    setLocalFiles(current => {
-      const exists = current.findIndex(p => p.id === file.id);
+    setLocalFiles((current) => {
+      const exists = current.findIndex((p) => p.id === file.id);
       if (exists >= 0) {
-        return current.map(p => p.id === file.id ? file : p);
+        return current.map((p) => (p.id === file.id ? file : p));
       } else {
         return [...current, file];
       }
@@ -310,38 +386,38 @@ const MyFiles = () => {
 
   const handleDeleteFile = (fileId: string) => {
     // Prevent deletion of shared files
-    if (isSharedView && selectedCategory === 'shared') {
+    if (isSharedView && selectedCategory === "shared") {
       toast.error("Cannot delete shared files");
       return;
     }
     setFilesToDelete([fileId]);
     setIsDeleteDialogOpen(true);
   };
-  
+
   const handleBulkDeleteFiles = () => {
     if (selectedFiles.length > 0) {
       setFilesToDelete([...selectedFiles]);
       setIsDeleteDialogOpen(true);
     }
   };
-  
+
   const confirmDeleteFiles = () => {
     if (filesToDelete.length > 0) {
       deleteFileMutation.mutate(filesToDelete);
       setIsDeleteDialogOpen(false);
     }
   };
-  
+
   const toggleFileSelection = (fileId: string) => {
-    setSelectedFiles(prev => {
+    setSelectedFiles((prev) => {
       if (prev.includes(fileId)) {
-        return prev.filter(id => id !== fileId);
+        return prev.filter((id) => id !== fileId);
       } else {
         return [...prev, fileId];
       }
     });
   };
-  
+
   const toggleSelectionMode = () => {
     setIsSelectionMode(!isSelectionMode);
     if (isSelectionMode) {
@@ -381,9 +457,9 @@ const MyFiles = () => {
   };
 
   const toggleAlbumSelection = (albumName: string) => {
-    setSelectedAlbums(prev => {
+    setSelectedAlbums((prev) => {
       if (prev.includes(albumName)) {
-        return prev.filter(name => name !== albumName);
+        return prev.filter((name) => name !== albumName);
       } else {
         return [...prev, albumName];
       }
@@ -392,21 +468,36 @@ const MyFiles = () => {
 
   // Calculate storage statistics
   const storageStats = {
-    total: allFiles.reduce((total, file) => total + (file.metadata?.size || 0), 0),
-    images: allFiles.filter(file => file.fileType === 'photo').reduce((total, file) => total + (file.metadata?.size || 0), 0),
-    videos: allFiles.filter(file => file.fileType === 'video').reduce((total, file) => total + (file.metadata?.size || 0), 0),
-    documents: allFiles.filter(file => file.fileType === 'document').reduce((total, file) => total + (file.metadata?.size || 0), 0),
-    audio: allFiles.filter(file => file.fileType === 'audio').reduce((total, file) => total + (file.metadata?.size || 0), 0),
-    other: allFiles.filter(file => file.fileType === 'other').reduce((total, file) => total + (file.metadata?.size || 0), 0)
+    total: allFiles.reduce(
+      (total, file) => total + (file.metadata?.size || 0),
+      0
+    ),
+    images: allFiles
+      .filter((file) => file.fileType === "photo")
+      .reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    videos: allFiles
+      .filter((file) => file.fileType === "video")
+      .reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    documents: allFiles
+      .filter((file) => file.fileType === "document")
+      .reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    audio: allFiles
+      .filter((file) => file.fileType === "audio")
+      .reduce((total, file) => total + (file.metadata?.size || 0), 0),
+    other: allFiles
+      .filter((file) => file.fileType === "other")
+      .reduce((total, file) => total + (file.metadata?.size || 0), 0)
   };
-  
+
   // Count files by type
   const fileTypeCounts = {
-    images: allFiles.filter(file => file.fileType === 'photo').length,
-    videos: allFiles.filter(file => file.fileType === 'video').length,
-    audio: allFiles.filter(file => file.fileType === 'audio').length,
-    documents: allFiles.filter(file => file.fileType === 'document').length,
-    other: allFiles.filter(file => !['photo', 'video', 'audio', 'document'].includes(file.fileType)).length,
+    images: allFiles.filter((file) => file.fileType === "photo").length,
+    videos: allFiles.filter((file) => file.fileType === "video").length,
+    audio: allFiles.filter((file) => file.fileType === "audio").length,
+    documents: allFiles.filter((file) => file.fileType === "document").length,
+    other: allFiles.filter(
+      (file) => !["photo", "video", "audio", "document"].includes(file.fileType)
+    ).length
   };
 
   // Fetch items shared by current user
@@ -414,7 +505,7 @@ const MyFiles = () => {
     queryKey: ["shared-by-me", user?.id],
     queryFn: async () => {
       if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
-      
+
       try {
         const shareData: any = await shareApi.getSharedContent(user.id);
         const sharedByMe: ShareItem[] = shareData?.sharedByMe;
@@ -432,12 +523,12 @@ const MyFiles = () => {
           if (share.allPhotos) {
             allSharedPhotos = [...allSharedPhotos, ...share.allPhotos];
           }
-          
+
           // Add album photos
           if (share.albumPhotos) {
             allSharedAlbums = [...allSharedAlbums, ...share.albumPhotos];
           }
-          
+
           // Group album photos by album name to create shared albums list
           const albumPhotosMap: { [key: string]: any[] } = {};
           share.albumPhotos?.forEach((photo: any) => {
@@ -448,7 +539,7 @@ const MyFiles = () => {
               albumPhotosMap[photo.album].push(photo);
             }
           });
-          
+
           // Convert to shared albums format
           Object.entries(albumPhotosMap).forEach(([albumName, photos]) => {
             sharedAlbumsList.push({
@@ -460,7 +551,11 @@ const MyFiles = () => {
           });
         }
 
-        return { albums: allSharedAlbums, photos: allSharedPhotos, sharedAlbums: sharedAlbumsList };
+        return {
+          albums: allSharedAlbums,
+          photos: allSharedPhotos,
+          sharedAlbums: sharedAlbumsList
+        };
       } catch (error) {
         console.error("Error fetching content shared by user:", error);
         return { albums: [], photos: [], sharedAlbums: [] };
@@ -471,109 +566,120 @@ const MyFiles = () => {
 
   // Update shared view state when selected category changes
   useEffect(() => {
-    setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
+    setIsSharedView(
+      selectedCategory === "shared" || selectedCategory === "shared-by-me"
+    );
     // Reset selected album when category changes
-    if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
+    if (selectedCategory !== "shared" && selectedCategory !== "shared-by-me") {
       setSelectedSharedAlbum(null);
-      setActiveTab('photos'); // Reset to photos tab
+      setActiveTab("photos"); // Reset to photos tab
     }
   }, [selectedCategory]);
   const categories: Category[] = [
-    { 
-      id: 'all', 
-      name: 'All Files', 
-      count: filteredFiles.length, 
-      type: 'folder', 
-      icon: <Cloud className="h-4 w-4 mr-2" /> 
+    {
+      id: "all",
+      name: "All Files",
+      count: filteredFiles.length,
+      type: "folder",
+      icon: <Cloud className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'shared', 
-      name: 'Shared with Me', 
-      count: (sharedContent?.photos?.length || 0) + (sharedContent?.sharedAlbums?.length || 0), 
-      type: 'folder',
-      icon: <Users className="h-4 w-4 mr-2" /> 
+    {
+      id: "shared",
+      name: "Shared with Me",
+      count:
+        (sharedContent?.photos?.length || 0) +
+        (sharedContent?.sharedAlbums?.length || 0),
+      type: "folder",
+      icon: <Users className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'shared-by-me', 
-      name: 'Shared by Me', 
-      count: (sharedByMeContent?.photos?.length || 0) + (sharedByMeContent?.sharedAlbums?.length || 0),
-      type: 'folder',
-      icon: <Share2 className="h-4 w-4 mr-2" /> 
+    {
+      id: "shared-by-me",
+      name: "Shared by Me",
+      count:
+        (sharedByMeContent?.photos?.length || 0) +
+        (sharedByMeContent?.sharedAlbums?.length || 0),
+      type: "folder",
+      icon: <Share2 className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'recent', 
-      name: 'Recent', 
-      count: filteredFiles.filter(p => {
+    {
+      id: "recent",
+      name: "Recent",
+      count: filteredFiles.filter((p) => {
         const uploadDate = new Date(parseInt(p.lastModified));
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         return uploadDate > oneWeekAgo;
-      }).length, 
-      type: 'folder' 
+      }).length,
+      type: "folder"
     },
-    { 
-      id: 'filetype-images', 
-      name: 'Images', 
-      count: fileTypeCounts.images, 
-      type: 'filetype',
+    {
+      id: "filetype-images",
+      name: "Images",
+      count: fileTypeCounts.images,
+      type: "filetype",
       icon: <FileImage className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'filetype-videos', 
-      name: 'Videos', 
-      count: fileTypeCounts.videos, 
-      type: 'filetype',
+    {
+      id: "filetype-videos",
+      name: "Videos",
+      count: fileTypeCounts.videos,
+      type: "filetype",
       icon: <FileVideo className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'filetype-documents', 
-      name: 'Documents', 
-      count: fileTypeCounts.documents, 
-      type: 'filetype',
+    {
+      id: "filetype-documents",
+      name: "Documents",
+      count: fileTypeCounts.documents,
+      type: "filetype",
       icon: <FileText className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'filetype-audio', 
-      name: 'Audio', 
-      count: fileTypeCounts.audio, 
-      type: 'filetype',
+    {
+      id: "filetype-audio",
+      name: "Audio",
+      count: fileTypeCounts.audio,
+      type: "filetype",
       icon: <FileAudio className="h-4 w-4 mr-2" />
     },
-    { 
-      id: 'filetype-other', 
-      name: 'Other', 
-      count: fileTypeCounts.other, 
-      type: 'filetype',
+    {
+      id: "filetype-other",
+      name: "Other",
+      count: fileTypeCounts.other,
+      type: "filetype",
       icon: <File className="h-4 w-4 mr-2" />
     },
     // Albums from API
-    ...albums?.map(album => ({ 
-      id: `album-${album.name}`, 
+    ...albums?.map((album) => ({
+      id: `album-${album.name}`,
       name: album.name,
-      count: filteredFiles.filter(p => p.album === album.name).length,
-      type: 'album' as const,
+      count: filteredFiles.filter((p) => p.album === album.name).length,
+      type: "album" as const,
       icon: <FolderOpen className="h-4 w-4 mr-2" />
     })),
     // Legacy albums from files (in case API albums are not synced)
-    ...Array.from(new Set(filteredFiles.filter(p => p.album && !albums.find(a => a.name === p.album)).map(p => p.album as string)))
-      .map(album => ({ 
-        id: `album-${album}`, 
-        name: album as string,
-        count: filteredFiles.filter(p => p.album === album).length,
-        type: 'album' as const,
-        icon: <FolderOpen className="h-4 w-4 mr-2" />
-      })),
+    ...Array.from(
+      new Set(
+        filteredFiles
+          .filter((p) => p.album && !albums.find((a) => a.name === p.album))
+          .map((p) => p.album as string)
+      )
+    ).map((album) => ({
+      id: `album-${album}`,
+      name: album as string,
+      count: filteredFiles.filter((p) => p.album === album).length,
+      type: "album" as const,
+      icon: <FolderOpen className="h-4 w-4 mr-2" />
+    }))
   ];
 
   // Process shared files directly when the category is selected
-  if (selectedCategory === 'shared' && sharedContent) {
-    console.log('Processing shared with me files:', sharedContent);
+  if (selectedCategory === "shared" && sharedContent) {
+    console.log("Processing shared with me files:", sharedContent);
     // For shared with me, combine photos and album photos
     const photos = sharedContent.photos || [];
     const albumPhotos = sharedContent.albums || [];
     allFiles = [...photos, ...albumPhotos];
-  } else if (selectedCategory === 'shared-by-me' && sharedByMeContent) {
-    console.log('Processing shared by me files:', sharedByMeContent);
+  } else if (selectedCategory === "shared-by-me" && sharedByMeContent) {
+    console.log("Processing shared by me files:", sharedByMeContent);
     // For shared by me, combine photos and album photos
     const photos = sharedByMeContent.photos || [];
     const albumPhotos = sharedByMeContent.albums || [];
@@ -582,36 +688,41 @@ const MyFiles = () => {
 
   // Update shared view state when selected category changes
   useEffect(() => {
-    setIsSharedView(selectedCategory === 'shared' || selectedCategory === 'shared-by-me');
+    setIsSharedView(
+      selectedCategory === "shared" || selectedCategory === "shared-by-me"
+    );
     // Reset selected album when category changes
-    if (selectedCategory !== 'shared' && selectedCategory !== 'shared-by-me') {
+    if (selectedCategory !== "shared" && selectedCategory !== "shared-by-me") {
       setSelectedSharedAlbum(null);
     }
   }, [selectedCategory]);
 
   // Get files for the selected category
   let displayFiles = filteredFiles;
-  let displayMode = 'files'; // 'files' | 'shared-albums'
-  
-  
-  console.log('MyFiles Debug:', {
+  let displayMode = "files"; // 'files' | 'shared-albums'
+
+  console.log("MyFiles Debug:", {
     selectedCategory,
     isSharedView,
-    sharedContent: sharedContent ? {
-      photos: sharedContent.photos?.length,
-      albums: sharedContent.albums?.length, 
-      sharedAlbums: sharedContent.sharedAlbums?.length
-    } : null,
-    sharedByMeContent: sharedByMeContent ? {
-      photos: sharedByMeContent.photos?.length,
-      albums: sharedByMeContent.albums?.length,
-      sharedAlbums: sharedByMeContent.sharedAlbums?.length
-    } : null,
+    sharedContent: sharedContent
+      ? {
+          photos: sharedContent.photos?.length,
+          albums: sharedContent.albums?.length,
+          sharedAlbums: sharedContent.sharedAlbums?.length
+        }
+      : null,
+    sharedByMeContent: sharedByMeContent
+      ? {
+          photos: sharedByMeContent.photos?.length,
+          albums: sharedByMeContent.albums?.length,
+          sharedAlbums: sharedByMeContent.sharedAlbums?.length
+        }
+      : null,
     displayFilesLength: displayFiles.length
   });
-  
+
   if (selectedCategory) {
-    if (selectedCategory === 'shared') {
+    if (selectedCategory === "shared") {
       // Handle shared album selection
       if (selectedSharedAlbum) {
         displayFiles = selectedSharedAlbum.photos || [];
@@ -620,17 +731,18 @@ const MyFiles = () => {
         const photos = sharedContent?.photos || [];
         const sharedAlbums = sharedContent?.sharedAlbums || [];
         // Convert shared albums to file-like objects for display
-        const albumAsFiles = sharedAlbums.map(album => ({
+        const albumAsFiles = sharedAlbums.map((album) => ({
           ...album,
-          fileType: 'album',
-          url: album.photos?.[0]?.url || '',
-          thumbnail: album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || '',
+          fileType: "album",
+          url: album.photos?.[0]?.url || "",
+          thumbnail:
+            album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || "",
           metadata: { size: album.photos?.length || 0 }
         }));
         displayFiles = [...photos, ...albumAsFiles];
       }
-      displayMode = 'files';
-    } else if (selectedCategory === 'shared-by-me' && sharedByMeContent) {
+      displayMode = "files";
+    } else if (selectedCategory === "shared-by-me" && sharedByMeContent) {
       // Handle shared by me album selection
       if (selectedSharedAlbum) {
         displayFiles = selectedSharedAlbum.photos || [];
@@ -639,36 +751,41 @@ const MyFiles = () => {
         const photos = sharedByMeContent.photos || [];
         const sharedAlbums = sharedByMeContent.sharedAlbums || [];
         // Convert shared albums to file-like objects for display
-        const albumAsFiles = sharedAlbums.map(album => ({
+        const albumAsFiles = sharedAlbums.map((album) => ({
           ...album,
-          fileType: 'album', 
-          url: album.photos?.[0]?.url || '',
-          thumbnail: album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || '',
+          fileType: "album",
+          url: album.photos?.[0]?.url || "",
+          thumbnail:
+            album.photos?.[0]?.thumbnail || album.photos?.[0]?.url || "",
           metadata: { size: album.photos?.length || 0 }
         }));
         displayFiles = [...photos, ...albumAsFiles];
       }
-      displayMode = 'files';
-    } else if (selectedCategory === 'recent') {
+      displayMode = "files";
+    } else if (selectedCategory === "recent") {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      displayFiles = filteredFiles.filter(p => new Date(parseInt(p.lastModified)) > oneWeekAgo);
-      displayMode = 'files';
-    } else if (selectedCategory.startsWith('album-')) {
-      const albumName = selectedCategory.replace('album-', '');
-      displayFiles = filteredFiles.filter(p => p.album === albumName);
-    } else if (selectedCategory.startsWith('filetype-')) {
-      const fileType = selectedCategory.replace('filetype-', '');
-      if (fileType === 'images') {
-        displayFiles = filteredFiles.filter(p => p.fileType === 'photo');
-      } else if (fileType === 'videos') {
-        displayFiles = filteredFiles.filter(p => p.fileType === 'video');
-      } else if (fileType === 'audio') {
-        displayFiles = filteredFiles.filter(p => p.fileType === 'audio');
-      } else if (fileType === 'documents') {
-        displayFiles = filteredFiles.filter(p => p.fileType === 'document');
-      } else if (fileType === 'other') {
-        displayFiles = filteredFiles.filter(p => !['photo', 'video', 'audio', 'document'].includes(p.fileType));
+      displayFiles = filteredFiles.filter(
+        (p) => new Date(parseInt(p.lastModified)) > oneWeekAgo
+      );
+      displayMode = "files";
+    } else if (selectedCategory.startsWith("album-")) {
+      const albumName = selectedCategory.replace("album-", "");
+      displayFiles = filteredFiles.filter((p) => p.album === albumName);
+    } else if (selectedCategory.startsWith("filetype-")) {
+      const fileType = selectedCategory.replace("filetype-", "");
+      if (fileType === "images") {
+        displayFiles = filteredFiles.filter((p) => p.fileType === "photo");
+      } else if (fileType === "videos") {
+        displayFiles = filteredFiles.filter((p) => p.fileType === "video");
+      } else if (fileType === "audio") {
+        displayFiles = filteredFiles.filter((p) => p.fileType === "audio");
+      } else if (fileType === "documents") {
+        displayFiles = filteredFiles.filter((p) => p.fileType === "document");
+      } else if (fileType === "other") {
+        displayFiles = filteredFiles.filter(
+          (p) => !["photo", "video", "audio", "document"].includes(p.fileType)
+        );
       }
     }
   }
@@ -681,14 +798,18 @@ const MyFiles = () => {
   // Group by date for display, using the correct date from lastModified or createdAt
   const filesByDate = groupFilesByDate(displayFiles);
   const dates = Object.keys(filesByDate).sort().reverse(); // Most recent first
-  
+
   // Handle file click to show preview or navigate to album
   const handleFileClick = (file: FileItem) => {
     if (isSelectionMode) {
       toggleFileSelection(file.id);
-    } else if (file.fileType === 'album') {
+    } else if (file.fileType === "album") {
       // Handle album click for shared albums
-      const album = (selectedCategory === 'shared' ? sharedContent?.sharedAlbums : sharedByMeContent?.sharedAlbums)?.find(a => a.id === file.id);
+      const album = (
+        selectedCategory === "shared"
+          ? sharedContent?.sharedAlbums
+          : sharedByMeContent?.sharedAlbums
+      )?.find((a) => a.id === file.id);
       if (album) {
         setSelectedSharedAlbum(album);
       }
@@ -699,32 +820,27 @@ const MyFiles = () => {
   };
 
   // Function to navigate to next/prev file
-  const navigateFile = (direction: 'next' | 'prev') => {
+  const navigateFile = (direction: "next" | "prev") => {
     if (!selectedFile || !displayFiles || displayFiles.length <= 1) return;
-    
-    const currentIndex = displayFiles.findIndex(file => file.id === selectedFile.id);
+
+    const currentIndex = displayFiles.findIndex(
+      (file) => file.id === selectedFile.id
+    );
     if (currentIndex === -1) return;
-    
+
     let newIndex;
-    
-    if (direction === 'next') {
-      newIndex = currentIndex === displayFiles.length - 1 ? 0 : currentIndex + 1;
+
+    if (direction === "next") {
+      newIndex =
+        currentIndex === displayFiles.length - 1 ? 0 : currentIndex + 1;
     } else {
-      newIndex = currentIndex === 0 ? displayFiles.length - 1 : currentIndex - 1;
+      newIndex =
+        currentIndex === 0 ? displayFiles.length - 1 : currentIndex - 1;
     }
-    
+
     setSelectedFile(displayFiles[newIndex]);
   };
 
-  // Define grid size options
-  const gridSizeOptions = [
-    { name: "Small", size: 100, cols: 5 },
-    { name: "Medium", size: 150, cols: 4 },
-    { name: "Large", size: 200, cols: 3 },
-    { name: "X-Large", size: 250, cols: 2 },
-    { name: "XX-Large", size: 300, cols: 1 }
-  ];
-  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -733,14 +849,14 @@ const MyFiles = () => {
       </div>
     );
   }
-  
+
   if (error) {
     toast.error("Failed to load files. Please try again.");
     return (
       <div className="text-center p-6">
         <p className="text-destructive mb-4">Failed to load files</p>
-        <button 
-          onClick={() => refetch()} 
+        <button
+          onClick={() => refetch()}
           className="text-primary hover:underline"
         >
           Try again
@@ -748,7 +864,7 @@ const MyFiles = () => {
       </div>
     );
   }
-  
+
   // Fix the bulk selection callback
   const handleBulkSelection = (selectedFiles: string[]) => {
     setSelectedFiles(selectedFiles);
@@ -760,7 +876,7 @@ const MyFiles = () => {
       setSelectedFiles([]);
       setSelectAll(false);
     } else {
-      setSelectedFiles(displayFiles.map(file => file.id));
+      setSelectedFiles(displayFiles.map((file) => file.id));
       setSelectAll(true);
     }
   };
@@ -768,77 +884,103 @@ const MyFiles = () => {
   // Download selected files as zip
   const handleDownloadAll = async () => {
     if (selectedFiles.length === 0) return;
-    
-    const filesToDownload = displayFiles.filter(file => selectedFiles.includes(file.id));
-    
+
+    const filesToDownload = displayFiles.filter((file) =>
+      selectedFiles.includes(file.id)
+    );
+
     try {
-      const JSZip = await import('jszip');
+      const JSZip = await import("jszip");
       const zip = new JSZip.default();
-      
+
       for (const file of filesToDownload) {
         try {
-          const fileUrl = file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`;
+          const fileUrl = file.url.startsWith("http")
+            ? file.url
+            : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`;
           const response = await fetch(fileUrl);
           const blob = await response.blob();
-          
+
           // Get file extension from metadata or URL
-          const extension = file.metadata?.format ? `.${file.metadata.format.split('/').pop()}` : '';
+          const extension = file.metadata?.format
+            ? `.${file.metadata.format.split("/").pop()}`
+            : "";
           const fileName = `${file.title}${extension}`;
-          
+
           zip.file(fileName, blob);
         } catch (error) {
           console.error(`Failed to add file ${file.title} to zip:`, error);
         }
       }
-      
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
       // Create download link
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(zipBlob);
-      link.download = `files_${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `files_${new Date().toISOString().split("T")[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success(`Downloaded ${selectedFiles.length} files successfully`);
     } catch (error) {
-      console.error('Failed to create zip file:', error);
-      toast.error('Failed to download files');
+      console.error("Failed to create zip file:", error);
+      toast.error("Failed to download files");
     }
   };
-  
+
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden w-full inner-container">
       {/* Mobile sidebar toggle - now positioned properly in top left */}
       {isMobile && (
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="absolute left-4 top-4 z-50 h-10 w-10"
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
           <Menu className="h-5 w-5" />
         </Button>
       )}
-      
+
       {/* Sidebar */}
-      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out' : 'w-64'} 
-                       ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
-                       bg-background border-r flex flex-col h-full overflow-hidden`}>
+      <div
+        className={`${
+          isMobile
+            ? "fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 ease-in-out"
+            : "w-64"
+        } 
+                       ${
+                         isMobile && !sidebarOpen
+                           ? "-translate-x-full"
+                           : "translate-x-0"
+                       } 
+                       bg-background border-r flex flex-col h-full overflow-hidden`}
+      >
         <div className="p-4 border-b">
           <h2 className="font-semibold text-lg flex items-center">
             <Cloud className="mr-2 h-5 w-5 text-primary" /> My Cloud
           </h2>
-          <p className="text-xs text-muted-foreground">Manage your files and documents</p>
+          <p className="text-xs text-muted-foreground">
+            Manage your files and documents
+          </p>
         </div>
-        
+
         {/* Storage usage section */}
         <div className="p-4 border-b">
           <h3 className="text-sm font-medium mb-2">Storage</h3>
           <div className="space-y-2">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary" style={{ width: `${Math.min((storageStats.total / (1024*1024*1000)) * 100, 100)}%` }}></div>
+              <div
+                className="h-full bg-primary"
+                style={{
+                  width: `${Math.min(
+                    (storageStats.total / (1024 * 1024 * 1000)) * 100,
+                    100
+                  )}%`
+                }}
+              ></div>
             </div>
             <div className="text-xs text-muted-foreground">
               {formatFileSize(storageStats.total)} used of 1 GB
@@ -849,160 +991,198 @@ const MyFiles = () => {
                   <div className="h-2 w-2 bg-blue-500 rounded-full mr-1"></div>
                   <span>Images</span>
                 </div>
-                <div className="mt-1 font-medium">{formatFileSize(storageStats.images)}</div>
+                <div className="mt-1 font-medium">
+                  {formatFileSize(storageStats.images)}
+                </div>
               </div>
               <div className="text-xs">
                 <div className="flex items-center">
                   <div className="h-2 w-2 bg-red-500 rounded-full mr-1"></div>
                   <span>Videos</span>
                 </div>
-                <div className="mt-1 font-medium">{formatFileSize(storageStats.videos)}</div>
+                <div className="mt-1 font-medium">
+                  {formatFileSize(storageStats.videos)}
+                </div>
               </div>
               <div className="text-xs">
                 <div className="flex items-center">
                   <div className="h-2 w-2 bg-green-500 rounded-full mr-1"></div>
                   <span>Docs</span>
                 </div>
-                <div className="mt-1 font-medium">{formatFileSize(storageStats.documents)}</div>
+                <div className="mt-1 font-medium">
+                  {formatFileSize(storageStats.documents)}
+                </div>
               </div>
             </div>
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-auto">
           <div className="pt-4 px-2">
             <div className="mt-4">
               <div className="flex items-center px-3 mb-2">
                 <h3 className="font-medium text-sm">Categories</h3>
               </div>
-              {categories.filter(c => c.type === 'folder' || c.type === 'filetype').map((category) => {
-                // Special handling for shared categories
-                if (category.id === 'shared') {
-                  return (
-                    <div key={category.id} className="space-y-1">
-                      <button
-                        onClick={() => {
-                          setSelectedCategory(category.id === selectedCategory ? null : category.id);
-                          setSelectedSharedAlbum(null);
-                          if (isMobile) setSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
-                          selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          {category.icon}
-                          <span className="truncate">{category.name}</span>
-                        </div>
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {category.count}
-                        </Badge>
-                      </button>
-                      {/* Show shared albums when this category is expanded */}
-                      {selectedCategory === 'shared' && sharedContent?.sharedAlbums && (
-                        <div className="ml-6 space-y-1">
-                          {sharedContent.sharedAlbums.map((album: any) => (
-                            <button
-                              key={album.id}
-                              onClick={() => {
-                                setSelectedSharedAlbum(album);
-                                if (isMobile) setSidebarOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
-                                selectedSharedAlbum?.id === album.id ? 'bg-primary/20' : ''
-                              }`}
-                            >
-                              <span className="truncate">{album.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {album.photos?.length || 0}
-                              </Badge>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else if (category.id === 'shared-by-me') {
-                  return (
-                    <div key={category.id} className="space-y-1">
-                      <button
-                        onClick={() => {
-                          setSelectedCategory(category.id === selectedCategory ? null : category.id);
-                          setSelectedSharedAlbum(null);
-                          if (isMobile) setSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
-                          selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          {category.icon}
-                          <span className="truncate">{category.name}</span>
-                        </div>
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {category.count}
-                        </Badge>
-                      </button>
-                      {/* Show shared-by-me albums when this category is expanded */}
-                      {selectedCategory === 'shared-by-me' && sharedByMeContent?.sharedAlbums && (
-                        <div className="ml-6 space-y-1">
-                          {sharedByMeContent.sharedAlbums.map((album: any) => (
-                            <button
-                              key={album.id}
-                              onClick={() => {
-                                setSelectedSharedAlbum(album);
-                                if (isMobile) setSidebarOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
-                                selectedSharedAlbum?.id === album.id ? 'bg-primary/20' : ''
-                              }`}
-                            >
-                              <span className="truncate">{album.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                {album.photos?.length || 0}
-                              </Badge>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  // Regular categories
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => {
-                        setSelectedCategory(category.id === selectedCategory ? null : category.id);
-                        if (isMobile) setSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
-                        selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        {category.icon}
-                        <span className="truncate">{category.name}</span>
+              {categories
+                .filter((c) => c.type === "folder" || c.type === "filetype")
+                .map((category) => {
+                  // Special handling for shared categories
+                  if (category.id === "shared") {
+                    return (
+                      <div key={category.id} className="space-y-1">
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(
+                              category.id === selectedCategory
+                                ? null
+                                : category.id
+                            );
+                            setSelectedSharedAlbum(null);
+                            if (isMobile) setSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                            selectedCategory === category.id
+                              ? "bg-primary text-primary-foreground"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            {category.icon}
+                            <span className="truncate">{category.name}</span>
+                          </div>
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {category.count}
+                          </Badge>
+                        </button>
+                        {/* Show shared albums when this category is expanded */}
+                        {selectedCategory === "shared" &&
+                          sharedContent?.sharedAlbums && (
+                            <div className="ml-6 space-y-1">
+                              {sharedContent.sharedAlbums.map((album: any) => (
+                                <button
+                                  key={album.id}
+                                  onClick={() => {
+                                    setSelectedSharedAlbum(album);
+                                    if (isMobile) setSidebarOpen(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
+                                    selectedSharedAlbum?.id === album.id
+                                      ? "bg-primary/20"
+                                      : ""
+                                  }`}
+                                >
+                                  <span className="truncate">{album.name}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {album.photos?.length || 0}
+                                  </Badge>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                       </div>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {category.count}
-                      </Badge>
-                    </button>
-                  );
-                }
-              })}
+                    );
+                  } else if (category.id === "shared-by-me") {
+                    return (
+                      <div key={category.id} className="space-y-1">
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(
+                              category.id === selectedCategory
+                                ? null
+                                : category.id
+                            );
+                            setSelectedSharedAlbum(null);
+                            if (isMobile) setSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                            selectedCategory === category.id
+                              ? "bg-primary text-primary-foreground"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            {category.icon}
+                            <span className="truncate">{category.name}</span>
+                          </div>
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {category.count}
+                          </Badge>
+                        </button>
+                        {/* Show shared-by-me albums when this category is expanded */}
+                        {selectedCategory === "shared-by-me" &&
+                          sharedByMeContent?.sharedAlbums && (
+                            <div className="ml-6 space-y-1">
+                              {sharedByMeContent.sharedAlbums.map(
+                                (album: any) => (
+                                  <button
+                                    key={album.id}
+                                    onClick={() => {
+                                      setSelectedSharedAlbum(album);
+                                      if (isMobile) setSidebarOpen(false);
+                                    }}
+                                    className={`w-full flex items-center justify-between px-3 py-1 text-xs rounded transition-colors hover:bg-muted ${
+                                      selectedSharedAlbum?.id === album.id
+                                        ? "bg-primary/20"
+                                        : ""
+                                    }`}
+                                  >
+                                    <span className="truncate">
+                                      {album.name}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {album.photos?.length || 0}
+                                    </Badge>
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    );
+                  } else {
+                    // Regular categories
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setSelectedCategory(
+                            category.id === selectedCategory
+                              ? null
+                              : category.id
+                          );
+                          if (isMobile) setSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                          selectedCategory === category.id
+                            ? "bg-primary text-primary-foreground"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          {category.icon}
+                          <span className="truncate">{category.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {category.count}
+                        </Badge>
+                      </button>
+                    );
+                  }
+                })}
             </div>
-            
+
             <div className="mt-4">
               <div className="flex items-center justify-between px-3 mb-2">
                 <h3 className="font-medium text-sm">Albums</h3>
-                <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
+                <Dialog
+                  open={isCreateAlbumOpen}
+                  onOpenChange={setIsCreateAlbumOpen}
+                >
                   <DialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                    >
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
@@ -1021,20 +1201,27 @@ const MyFiles = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="album-description">Description (optional)</Label>
+                        <Label htmlFor="album-description">
+                          Description (optional)
+                        </Label>
                         <Input
                           id="album-description"
                           value={newAlbumDescription}
-                          onChange={(e) => setNewAlbumDescription(e.target.value)}
+                          onChange={(e) =>
+                            setNewAlbumDescription(e.target.value)
+                          }
                           placeholder="Enter album description"
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsCreateAlbumOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsCreateAlbumOpen(false)}
+                      >
                         Cancel
                       </Button>
-                      <Button 
+                      <Button
                         onClick={handleCreateAlbum}
                         disabled={createAlbumMutation.isPending}
                       >
@@ -1044,80 +1231,90 @@ const MyFiles = () => {
                             Creating...
                           </>
                         ) : (
-                          'Create Album'
+                          "Create Album"
                         )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>
-              {categories.filter(c => c.type === 'album').map((category) => (
-                <div key={category.id} className="relative group">
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(category.id === selectedCategory ? null : category.id);
-                      if (isMobile) setSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
-                      selectedCategory === category.id ? 'bg-primary text-primary-foreground' : ''
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      {isSelectionMode && (
-                        <Checkbox 
-                          checked={selectedAlbums.includes(category.name)} 
-                          onCheckedChange={() => toggleAlbumSelection(category.name)}
-                          className="mr-2 h-4 w-4"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      )}
-                      {category.icon}
-                      <span className="truncate">{category.name}</span>
+              {categories
+                .filter((c) => c.type === "album")
+                .map((category) => (
+                  <div key={category.id} className="relative group">
+                    <button
+                      onClick={() => {
+                        setSelectedCategory(
+                          category.id === selectedCategory ? null : category.id
+                        );
+                        if (isMobile) setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-colors hover:bg-muted ${
+                        selectedCategory === category.id
+                          ? "bg-primary text-primary-foreground"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        {isSelectionMode && (
+                          <Checkbox
+                            checked={selectedAlbums.includes(category.name)}
+                            onCheckedChange={() =>
+                              toggleAlbumSelection(category.name)
+                            }
+                            className="mr-2 h-4 w-4"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        )}
+                        {category.icon}
+                        <span className="truncate">{category.name}</span>
+                      </div>
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {category.count}
+                      </Badge>
+                    </button>
+                    {/* Album Action Buttons */}
+                    <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+                      {/* Share Album Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAlbums([category.name]);
+                          setIsShareDialogOpen(true);
+                        }}
+                        title="Share Album"
+                      >
+                        <Share2 className="h-3 w-3" />
+                      </Button>
+                      {/* Delete Album Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteAlbum(category.name);
+                        }}
+                        title="Delete Album"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
-                     <Badge variant="secondary" className="ml-2 text-xs">
-                       {category.count}
-                     </Badge>
-                   </button>
-                   {/* Album Action Buttons */}
-                   <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
-                     {/* Share Album Button */}
-                     <Button
-                       variant="ghost"
-                       size="sm"
-                       className="h-6 w-6 p-0"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         setSelectedAlbums([category.name]);
-                         setIsShareDialogOpen(true);
-                       }}
-                       title="Share Album"
-                     >
-                       <Share2 className="h-3 w-3" />
-                     </Button>
-                     {/* Delete Album Button */}
-                     <Button
-                       variant="ghost"
-                       size="sm"
-                       className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         handleDeleteAlbum(category.name);
-                       }}
-                       title="Delete Album"
-                     >
-                       <Trash2 className="h-3 w-3" />
-                     </Button>
-                   </div>
-                </div>
-              ))}
-              {categories.filter(c => c.type === 'album').length === 0 && (
-                <p className="px-3 py-2 text-xs text-muted-foreground">No albums yet</p>
+                  </div>
+                ))}
+              {categories.filter((c) => c.type === "album").length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground">
+                  No albums yet
+                </p>
               )}
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Main content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
         {/* Header */}
@@ -1126,93 +1323,149 @@ const MyFiles = () => {
             {/* Add proper spacing for mobile menu toggle */}
             <div className={`relative w-full md:w-80`}>
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground ml-2" />
-              <Input 
-                placeholder="Search files..." 
-                className="pl-10" 
+              <Input
+                placeholder="Search files..."
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            {viewMode === "grid" && !isSelectionMode && (
-            <div className="flex gap-1">
-              {gridSizeOptions.map((option) => (
-                <Button
-                  key={option.size}
-                  variant={gridSize === option.size ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setGridSize(option.size)}
-                  className="px-2"
-                >
-                  {option.name}
-                </Button>
-              ))}
-            </div>
-            )}
-            
             <div className="flex items-center space-x-1 border rounded-md p-1">
+              {/* 1 column - List */}
               <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-accent' : 'hover:bg-muted'}`}
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-accent' : 'hover:bg-muted'}`}
+                onClick={() => {
+                  setViewMode("grid");
+                  setGridSize(300);
+                }}
+                className={`p-1.5 rounded ${
+                  gridSize === 300 ? "bg-accent" : "hover:bg-muted"
+                }`}
+                title="1 Column"
               >
                 <LayoutGrid className="h-4 w-4" />
               </button>
+
+              {/* 2 columns */}
+              <button
+                onClick={() => {
+                  setViewMode("grid");
+                  setGridSize(250);
+                }}
+                className={`p-1.5 rounded ${
+                  gridSize === 250 ? "bg-accent" : "hover:bg-muted"
+                }`}
+                title="2 Columns"
+              >
+                <Grid2x2 className="h-4 w-4" />{" "}
+                {/* You can use a custom 2x2 icon */}
+              </button>
+
+              {/* 3 columns */}
+              <button
+                onClick={() => {
+                  setViewMode("grid");
+                  setGridSize(200);
+                }}
+                className={`p-1.5 rounded ${
+                  gridSize === 200 ? "bg-accent" : "hover:bg-muted"
+                }`}
+                title="3 Columns"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </button>
+
+              {/* 4 columns */}
+              <button
+                onClick={() => {
+                  setViewMode("grid");
+                  setGridSize(150);
+                }}
+                className={`p-1.5 rounded ${
+                  gridSize === 150 ? "bg-accent" : "hover:bg-muted"
+                }`}
+                title="4 Columns"
+              >
+                <Grid className="h-4 w-4" />{" "}
+                {/* You may need to create/import this */}
+              </button>
+
+              {/* 5 columns */}
+              <button
+                onClick={() => {
+                  setViewMode("grid");
+                  setGridSize(100);
+                }}
+                className={`p-1.5 rounded ${
+                  gridSize === 100 ? "bg-accent" : "hover:bg-muted"
+                }`}
+                title="5 Columns"
+              >
+                <Grid className="h-4 w-4" /> {/* Generic grid icon */}
+              </button>
+              <button
+                onClick={() => { setViewMode("list"); setGridSize(null); }}
+                className={`p-1.5 rounded ${
+                  viewMode === "list" ? "bg-accent" : "hover:bg-muted"
+                }`}
+              >
+                <List className="h-4 w-4" />
+              </button>
             </div>
-            
-            <Button 
-              variant={isSelectionMode ? "default" : "outline"} 
-              size="sm" 
+
+            <Button
+              variant={isSelectionMode ? "default" : "outline"}
+              size="sm"
               onClick={toggleSelectionMode}
               className="gap-2"
             >
               <Checkbox checked={isSelectionMode} className="h-4 w-4" />
               {isSelectionMode ? "Cancel" : "Select"}
             </Button>
-            
+
             {isSelectionMode && (
               <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleSelectAll}
                   className="gap-2"
                 >
                   <Checkbox checked={selectAll} className="h-4 w-4" />
                   {selectAll ? "Deselect All" : "Select All"}
                 </Button>
-                
+
                 {selectedFiles.length > 0 && (
                   <>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleDownloadAll}
                       className="gap-2"
                     >
                       <Download className="h-4 w-4" />
                       Download ({selectedFiles.length})
                     </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
+                    <Button
+                      variant="destructive"
+                      size="sm"
                       onClick={handleBulkDeleteFiles}
                       className="gap-2"
-                      style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
+                      style={{
+                        display:
+                          isSharedView && selectedCategory === "shared"
+                            ? "none"
+                            : "flex"
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                       Delete ({selectedFiles.length})
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleShare}
                       className="gap-2"
                     >
@@ -1223,7 +1476,7 @@ const MyFiles = () => {
                 )}
               </>
             )}
-            
+
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
                 <Button size="icon">
@@ -1231,74 +1484,41 @@ const MyFiles = () => {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl">
-                <UploadArea 
-                  onUploadSuccess={handleUploadSuccess} 
-                  userId={user?.id} 
-                  album={selectedCategory?.startsWith('album-') ? selectedCategory.replace('album-', '') : undefined}
+                <UploadArea
+                  onUploadSuccess={handleUploadSuccess}
+                  userId={user?.id}
+                  album={
+                    selectedCategory?.startsWith("album-")
+                      ? selectedCategory.replace("album-", "")
+                      : undefined
+                  }
                 />
               </DialogContent>
             </Dialog>
           </div>
         </div>
-        
-        {/* Sub-tabs for shared categories */}
-        {/* {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
-          <div className="border-b px-4 md:px-6 bg-muted/30">
-            <div className="flex space-x-1">
-              <button
-                onClick={() => {
-                  setSelectedSubCategory('photos');
-                  setSelectedSharedAlbum(null);
-                  setActiveTab('photos')
-                }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  selectedSubCategory === 'photos'
-                    ? 'border-primary text-primary bg-background'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-                }`}
-              >
-                Photos ({selectedCategory === 'shared' 
-                  ? (sharedContent?.photos?.length || 0)
-                  : (sharedByMeContent?.photos?.length || 0)})
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedSubCategory('albums');
-                  setSelectedSharedAlbum(null);
-                }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  selectedSubCategory === 'albums'
-                    ? 'border-primary text-primary bg-background'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-                }`}
-              >
-                Albums ({selectedCategory === 'shared' 
-                  ? (sharedContent?.sharedAlbums?.length || 0)
-                  : (sharedByMeContent?.sharedAlbums?.length || 0)})
-              </button>
-            </div>
-          </div>
-        )} */}
-
 
         {/* Main content */}
-        <div className="flex-1 overflow-auto p-4 md:p-6" style={{ scrollbarWidth: "none" }}>
+        <div
+          className="flex-1 overflow-auto p-4 md:p-6"
+          style={{ scrollbarWidth: "none" }}
+        >
           {/* Show tabs for shared categories when not viewing an album */}
           {isSharedView && !selectedSharedAlbum && (
             <div className="mb-6">
               <div className="flex space-x-1 bg-muted rounded-lg p-1 w-fit">
                 <Button
-                  variant={activeTab === 'photos' ? 'default' : 'ghost'}
+                  variant={activeTab === "photos" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setActiveTab('photos')}
+                  onClick={() => setActiveTab("photos")}
                   className="rounded-md"
                 >
                   Photos
                 </Button>
                 <Button
-                  variant={activeTab === 'albums' ? 'default' : 'ghost'}
+                  variant={activeTab === "albums" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setActiveTab('albums')}
+                  onClick={() => setActiveTab("albums")}
                   className="rounded-md"
                 >
                   Albums
@@ -1306,350 +1526,516 @@ const MyFiles = () => {
               </div>
             </div>
           )}
-          
+
           {/* File type cards - hide when in shared view */}
           {!isMobile && !isSharedView && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-6 md:mb-8">
-              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-images')}>
+              <Card
+                className="hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedCategory("filetype-images")}
+              >
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
                   <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
                     <FileImage className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
                   </div>
                   <div>
                     <p className="font-medium text-sm md:text-base">Images</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.images} files</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {fileTypeCounts.images} files
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-videos')}>
+
+              <Card
+                className="hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedCategory("filetype-videos")}
+              >
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
                   <div className="p-2 md:p-3 bg-red-100 dark:bg-red-900 rounded-lg">
                     <FileVideo className="h-6 w-6 md:h-8 md:w-8 text-red-500" />
                   </div>
                   <div>
                     <p className="font-medium text-sm md:text-base">Videos</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.videos} files</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {fileTypeCounts.videos} files
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-documents')}>
+
+              <Card
+                className="hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedCategory("filetype-documents")}
+              >
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
                   <div className="p-2 md:p-3 bg-green-100 dark:bg-green-900 rounded-lg">
                     <FileText className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm md:text-base">Documents</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.documents} files</p>
+                    <p className="font-medium text-sm md:text-base">
+                      Documents
+                    </p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {fileTypeCounts.documents} files
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-audio')}>
+
+              <Card
+                className="hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedCategory("filetype-audio")}
+              >
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
                   <div className="p-2 md:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
                     <FileAudio className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
                   </div>
                   <div>
                     <p className="font-medium text-sm md:text-base">Audio</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.audio} files</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {fileTypeCounts.audio} files
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className="hover:shadow-md cursor-pointer" onClick={() => setSelectedCategory('filetype-other')}>
+
+              <Card
+                className="hover:shadow-md cursor-pointer"
+                onClick={() => setSelectedCategory("filetype-other")}
+              >
                 <CardContent className="p-3 md:p-4 flex items-center space-x-2 md:space-x-4">
                   <div className="p-2 md:p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
                     <File className="h-6 w-6 md:h-8 md:w-8 text-gray-500" />
                   </div>
                   <div>
                     <p className="font-medium text-sm md:text-base">Other</p>
-                    <p className="text-xs md:text-sm text-muted-foreground">{fileTypeCounts.other} files</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {fileTypeCounts.other} files
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
-          
+
           {/* Filter files based on active tab for shared content */}
           {(() => {
             let filteredDisplayFiles = displayFiles;
-            
+
             if (isSharedView && !selectedSharedAlbum) {
-              if (activeTab === 'photos') {
-                filteredDisplayFiles = displayFiles.filter(file => file.fileType !== 'album');
-              } else if (activeTab === 'albums') {
-                filteredDisplayFiles = displayFiles.filter(file => file.fileType === 'album');
+              if (activeTab === "photos") {
+                filteredDisplayFiles = displayFiles.filter(
+                  (file) => file.fileType !== "album"
+                );
+              } else if (activeTab === "albums") {
+                filteredDisplayFiles = displayFiles.filter(
+                  (file) => file.fileType === "album"
+                );
               }
             }
-            
+
             return (
               <div>
                 {/* Content display - either files or shared albums */}
-                {activeTab === 'albums' ? (
+                {activeTab === "albums" ? (
                   <SharedAlbumView
                     albums={filteredDisplayFiles}
                     selectedAlbum={selectedSharedAlbum}
                     onAlbumSelect={handleSharedAlbumSelect}
                     onDeleteFile={handleDeleteFile}
-                    categoryType={selectedCategory === 'shared' ? 'shared' : 'shared-by-me'}
+                    categoryType={
+                      selectedCategory === "shared" ? "shared" : "shared-by-me"
+                    }
                   />
                 ) : filteredDisplayFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64">
-              <p className="text-muted-foreground mb-4">No files found</p>
-              <Button onClick={() => setIsUploadOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload your first file
-              </Button>
-            </div>
-                ) : viewMode === 'grid' ? (
+                  <div className="flex flex-col items-center justify-center h-64">
+                    <p className="text-muted-foreground mb-4">No files found</p>
+                    <Button onClick={() => setIsUploadOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload your first file
+                    </Button>
+                  </div>
+                ) : viewMode === "grid" ? (
                   // Grid view - organized by date
                   <div className="space-y-8">
-                    {Object.keys(groupFilesByDate(filteredDisplayFiles)).sort().reverse().map((date) => {
-                      const filesForDate = groupFilesByDate(filteredDisplayFiles)[date];
-                      return (
-                        <div key={date} className="space-y-3" style={{ margin: '0 0 4rem 0'}}>
-                          <h3 className="font-medium">
-                            {formatDate(filesForDate[0].lastModified)}
-                          </h3>
-                          <div style={{ display: 'flex', flexWrap: 'wrap'}} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                            {filesForDate.map((file) => (
-                      <div 
-                        key={file.id}
-                        className="group relative cursor-pointer mb-14"
-                        onClick={() => handleFileClick(file)}
-                        style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
-                      >
-                        {isSelectionMode && (
-                          <div className="absolute top-2 left-2 z-10">
-                            <Checkbox 
-                              checked={selectedFiles.includes(file.id)} 
-                              onCheckedChange={() => toggleFileSelection(file.id)}
-                              className="h-5 w-5 bg-white border-2 border-primary rounded"
-                            />
-                          </div>
-                        )}
-                        <div 
-                          className={`bg-muted rounded-md overflow-hidden flex items-center justify-center border transition-all ${
-                            isSelectionMode && selectedFiles.includes(file.id) 
-                              ? 'border-primary border-2' 
-                              : 'hover:border-primary'
-                          }`}
-                          style={{ height: `${gridSize}px`, width: `${gridSize}px`}}
-                        >
-                          {/* File preview */}
-                          {file.fileType === 'photo' ? (
-                            <img
-  loading="lazy"
-                              src={file.url.startsWith('http') ? file.thumbnail || file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.thumbnail || file.url}`} 
-                              alt={file.title}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : file.fileType === 'video' ? (
-                            <div className="relative h-full w-full bg-black flex items-center justify-center">
-                              <FileVideo className="h-10 w-10 text-red-500" />
+                    {Object.keys(groupFilesByDate(filteredDisplayFiles))
+                      .sort()
+                      .reverse()
+                      .map((date) => {
+                        const filesForDate =
+                          groupFilesByDate(filteredDisplayFiles)[date];
+                        return (
+                          <div
+                            key={date}
+                            className="space-y-3"
+                            style={{ margin: "0 0 4rem 0" }}
+                          >
+                            <h3 className="font-medium">
+                              {formatDate(filesForDate[0].lastModified)}
+                            </h3>
+                            <div
+                              style={{ display: "flex", flexWrap: "wrap" }}
+                              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
+                            >
+                              {filesForDate.map((file) => (
+                                <div
+                                  key={file.id}
+                                  className="group relative cursor-pointer mb-14"
+                                  onClick={() => handleFileClick(file)}
+                                  style={{
+                                    height: `${gridSize}px`,
+                                    width: `${gridSize}px`
+                                  }}
+                                >
+                                  {isSelectionMode && (
+                                    <div className="absolute top-2 left-2 z-10">
+                                      <Checkbox
+                                        checked={selectedFiles.includes(
+                                          file.id
+                                        )}
+                                        onCheckedChange={() =>
+                                          toggleFileSelection(file.id)
+                                        }
+                                        className="h-5 w-5 bg-white border-2 border-primary rounded"
+                                      />
+                                    </div>
+                                  )}
+                                  <div
+                                    className={`bg-muted rounded-md overflow-hidden flex items-center justify-center border transition-all ${
+                                      isSelectionMode &&
+                                      selectedFiles.includes(file.id)
+                                        ? "border-primary border-2"
+                                        : "hover:border-primary"
+                                    }`}
+                                    style={{
+                                      height: `${gridSize}px`,
+                                      width: `${gridSize}px`
+                                    }}
+                                  >
+                                    {/* File preview */}
+                                    {file.fileType === "photo" ? (
+                                      <img
+                                        loading="lazy"
+                                        src={
+                                          file.url.startsWith("http")
+                                            ? file.thumbnail || file.url
+                                            : `https://droidtechknow.com/admin/api/files/uploads/${
+                                                file.thumbnail || file.url
+                                              }`
+                                        }
+                                        alt={file.title}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : file.fileType === "video" ? (
+                                      <div className="relative h-full w-full bg-black flex items-center justify-center">
+                                        <FileVideo className="h-10 w-10 text-red-500" />
+                                      </div>
+                                    ) : (
+                                      <div className="h-full w-full flex items-center justify-center">
+                                        {getFileIcon(
+                                          file.fileType,
+                                          file.metadata?.format || ""
+                                        )}
+                                      </div>
+                                    )}
+
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-start p-2 gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedFile(file);
+                                          setIsPreviewOpen(true);
+                                        }}
+                                      >
+                                        <Info className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteFile(file.id);
+                                        }}
+                                        style={{
+                                          display:
+                                            isSharedView &&
+                                            selectedCategory === "shared"
+                                              ? "none"
+                                              : "flex"
+                                        }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          downloadFile(file);
+                                        }}
+                                      >
+                                        <Download className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedFiles([file.id]);
+                                          setIsShareDialogOpen(true);
+                                        }}
+                                      >
+                                        <Share2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 flex justify-between items-center w-full">
+                                    <div className="w-full">
+                                      <p
+                                        style={{ whiteSpace: "nowrap" }}
+                                        className="text-xs truncate"
+                                      >
+                                        {file.title}
+                                      </p>
+                                      <p
+                                        style={{ whiteSpace: "nowrap" }}
+                                        className="text-[10px] text-muted-foreground"
+                                      >
+                                        {getFileTypeLabel(file.fileType)} •{" "}
+                                        {formatFileSize(
+                                          file.metadata?.size || 0
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                              {getFileIcon(file.fileType, file.metadata?.format || '')}
-                            </div>
-                          )}
-                          
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end items-start p-2 gap-1">
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFile(file);
-                                setIsPreviewOpen(true);
-                              }}
-                            >
-                              <Info className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteFile(file.id);
-                              }}
-                              style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadFile(file);
-                              }}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-7 w-7 rounded-full bg-black/30 text-white hover:bg-black/60"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFiles([file.id]);
-                                setIsShareDialogOpen(true);
-                              }}
-                            >
-                              <Share2 className="h-3.5 w-3.5" />
-                            </Button>
                           </div>
-                        </div>
-                        <div className="mt-2 flex justify-between items-center w-full">
-                          <div className='w-full'>
-                            <p style={{ whiteSpace: 'nowrap' }} className="text-xs truncate">{file.title}</p>
-                            <p style={{ whiteSpace: 'nowrap' }} className="text-[10px] text-muted-foreground">
-                              {getFileTypeLabel(file.fileType)} • {formatFileSize(file.metadata?.size || 0)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 ) : (
-            // List view
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    {isSelectionMode && <th className="p-2"><Checkbox /></th>}
-                    <th className="text-left font-medium text-sm p-2">Name</th>
-                    <th className="text-left font-medium text-sm p-2">Type</th>
-                    <th className="text-left font-medium text-sm p-2">Date</th>
-                    <th className="text-left font-medium text-sm p-2">Size</th>
-                    <th className="text-left font-medium text-sm p-2">Album</th>
-                    <th className="text-left font-medium text-sm p-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayFiles.map((file) => (
-                    <tr 
-                      key={file.id} 
-                      className={`hover:bg-muted/50 cursor-pointer ${
-                        isSelectionMode && selectedFiles.includes(file.id) ? 'bg-muted/80' : ''
-                      }`} 
-                      onClick={() => handleFileClick(file)}
-                    >
-                      {isSelectionMode && (
-                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox 
-                            checked={selectedFiles.includes(file.id)} 
-                            onCheckedChange={() => toggleFileSelection(file.id)}
-                          />
-                        </td>
-                      )}
-                      <td className="p-2">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
-                            {file.fileType === 'photo' ? (
-                              <img
-  loading="lazy"
-                                src={file.url.startsWith('http') ? file.url : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`} 
-                                alt={file.title}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              getFileIcon(file.fileType, file.metadata?.format || '')
+                  // List view
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          {isSelectionMode && (
+                            <th className="p-2">
+                              <Checkbox />
+                            </th>
+                          )}
+                          <th className="text-left font-medium text-sm p-2">
+                            Name
+                          </th>
+                          <th className="text-left font-medium text-sm p-2">
+                            Type
+                          </th>
+                          <th className="text-left font-medium text-sm p-2">
+                            Date
+                          </th>
+                          <th className="text-left font-medium text-sm p-2">
+                            Size
+                          </th>
+                          <th className="text-left font-medium text-sm p-2">
+                            Album
+                          </th>
+                          <th className="text-left font-medium text-sm p-2">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayFiles.map((file) => (
+                          <tr
+                            key={file.id}
+                            className={`hover:bg-muted/50 cursor-pointer ${
+                              isSelectionMode && selectedFiles.includes(file.id)
+                                ? "bg-muted/80"
+                                : ""
+                            }`}
+                            onClick={() => handleFileClick(file)}
+                          >
+                            {isSelectionMode && (
+                              <td
+                                className="p-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Checkbox
+                                  checked={selectedFiles.includes(file.id)}
+                                  onCheckedChange={() =>
+                                    toggleFileSelection(file.id)
+                                  }
+                                />
+                              </td>
                             )}
-                          </div>
-                          <span className="text-sm">{file.title}</span>
-                        </div>
-                      </td>
-                      <td className="p-2 text-sm">
-                        {getFileTypeLabel(file.fileType)}
-                      </td>
-                      <td className="p-2 text-sm">
-                        {new Date(parseInt(file.lastModified)).toLocaleDateString()}
-                      </td>
-                      <td className="p-2 text-sm">
-                        {file.metadata?.size ? formatFileSize(file.metadata.size) : 'Unknown'}
-                      </td>
-                      <td className="p-2 text-sm">
-                        {file.album ? (
-                          <Badge variant="blue">{file.album}</Badge>
-                        ) : "-"}
-                      </td>
-                      <td className="p-2 text-sm" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFile(file);
-                            setIsPreviewOpen(true);
-                          }}>
-                            <Info className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFile(file.id);
-                          }} style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
-                            e.stopPropagation();
-                            downloadFile(file);
-                          }}>
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFiles([file.id]);
-                            setIsShareDialogOpen(true);
-                          }}>
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            <td className="p-2">
+                              <div className="flex items-center space-x-3">
+                                <div className="h-10 w-10 bg-muted rounded overflow-hidden flex items-center justify-center">
+                                  {file.fileType === "photo" ? (
+                                    <img
+                                      loading="lazy"
+                                      src={
+                                        file.url.startsWith("http")
+                                          ? file.url
+                                          : `https://droidtechknow.com/admin/api/files/uploads/${file.url}`
+                                      }
+                                      alt={file.title}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    getFileIcon(
+                                      file.fileType,
+                                      file.metadata?.format || ""
+                                    )
+                                  )}
+                                </div>
+                                <span className="text-sm">{file.title}</span>
+                              </div>
+                            </td>
+                            <td className="p-2 text-sm">
+                              {getFileTypeLabel(file.fileType)}
+                            </td>
+                            <td className="p-2 text-sm">
+                              {new Date(
+                                parseInt(file.lastModified)
+                              ).toLocaleDateString()}
+                            </td>
+                            <td className="p-2 text-sm">
+                              {file.metadata?.size
+                                ? formatFileSize(file.metadata.size)
+                                : "Unknown"}
+                            </td>
+                            <td className="p-2 text-sm">
+                              {file.album ? (
+                                <Badge variant="blue">{file.album}</Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td
+                              className="p-2 text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFile(file);
+                                    setIsPreviewOpen(true);
+                                  }}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteFile(file.id);
+                                  }}
+                                  style={{
+                                    display:
+                                      isSharedView &&
+                                      selectedCategory === "shared"
+                                        ? "none"
+                                        : "flex"
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadFile(file);
+                                  }}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFiles([file.id]);
+                                    setIsShareDialogOpen(true);
+                                  }}
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             );
           })()}
         </div>
       </div>
-      
+
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className={`${isMobile ? 'max-w-full w-full h-full p-0 m-0 rounded-none' : 'max-w-[95vw] w-[95vw] h-[90vh] p-0'} overflow-hidden`}>
+        <DialogContent
+          className={`${
+            isMobile
+              ? "max-w-full w-full h-full p-0 m-0 rounded-none"
+              : "max-w-[95vw] w-[95vw] h-[90vh] p-0"
+          } overflow-hidden`}
+        >
           <DialogTitle className="sr-only">File Preview</DialogTitle>
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold truncate flex-1 mr-4">{selectedFile?.title}</h3>
+              <h3 className="text-lg font-semibold truncate flex-1 mr-4">
+                {selectedFile?.title}
+              </h3>
               <div className="flex items-center space-x-2 flex-shrink-0">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => selectedFile && handleDeleteFile(selectedFile.id)}
-                  style={{ display: (isSharedView && selectedCategory === 'shared') ? 'none' : 'flex' }}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    selectedFile && handleDeleteFile(selectedFile.id)
+                  }
+                  style={{
+                    display:
+                      isSharedView && selectedCategory === "shared"
+                        ? "none"
+                        : "flex"
+                  }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedFile && downloadFile(selectedFile)}
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setIsPreviewOpen(false)}
                   className="ml-2"
                 >
@@ -1657,68 +2043,103 @@ const MyFiles = () => {
                 </Button>
               </div>
             </div>
-            
-            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...swipeHandlers}>
+
+            <div
+              className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center"
+              {...swipeHandlers}
+            >
               {/* Fixed position navigation buttons with consistent positioning */}
-              <button 
+              <button
                 className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
-                onClick={() => navigateFile('prev')}
+                onClick={() => navigateFile("prev")}
                 aria-label="Previous file"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              
+
               {/* File preview container with fixed max dimensions */}
               <div className="w-full h-full flex items-center justify-center">
-                {selectedFile?.fileType === 'photo' ? (
+                {selectedFile?.fileType === "photo" ? (
                   <img
-  loading="lazy"
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
-                    alt={selectedFile?.title} 
+                    loading="lazy"
+                    src={
+                      selectedFile?.url.startsWith("http")
+                        ? selectedFile.url
+                        : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
+                    }
+                    alt={selectedFile?.title}
                     className="max-h-full max-w-full object-contain"
-                    style={{ maxHeight: 'calc(90vh - 140px)' }} // Ensure image fits within the container
+                    style={{ maxHeight: "calc(90vh - 140px)" }} // Ensure image fits within the container
                   />
-                ) : selectedFile?.fileType === 'video' ? (
-                  <video 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} 
-                    controls 
+                ) : selectedFile?.fileType === "video" ? (
+                  <video
+                    src={
+                      selectedFile?.url.startsWith("http")
+                        ? selectedFile.url
+                        : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
+                    }
+                    controls
                     className="max-h-full max-w-full rounded-lg shadow-lg"
-                    style={{ 
-                      maxHeight: 'calc(90vh - 200px)',
-                      backgroundColor: '#000'
+                    style={{
+                      maxHeight: "calc(90vh - 200px)",
+                      backgroundColor: "#000"
                     }}
                     controlsList="nodownload"
                     playsInline
                   />
-                ) : selectedFile?.fileType === 'audio' ? (
+                ) : selectedFile?.fileType === "audio" ? (
                   <div className="p-8 w-full">
-                    <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`} controls className="w-full" />
+                    <audio
+                      src={
+                        selectedFile?.url.startsWith("http")
+                          ? selectedFile.url
+                          : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
+                      }
+                      controls
+                      className="w-full"
+                    />
                     <div className="mt-4 flex justify-center">
-                      {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                      {selectedFile &&
+                        getFileIcon(
+                          selectedFile.fileType,
+                          selectedFile.metadata?.format || ""
+                        )}
                     </div>
                   </div>
-                ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
-                  <iframe 
-                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`}#toolbar=0`} 
-                    className="w-full h-full" 
+                ) : selectedFile?.fileType === "document" &&
+                  selectedFile?.metadata?.format === "application/pdf" ? (
+                  <iframe
+                    src={`${
+                      selectedFile?.url.startsWith("http")
+                        ? selectedFile.url
+                        : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
+                    }#toolbar=0`}
+                    className="w-full h-full"
                     title={selectedFile?.title}
                   />
                 ) : (
                   <div className="text-center p-8">
                     <div className="flex justify-center mb-4">
-                      {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
+                      {selectedFile &&
+                        getFileIcon(
+                          selectedFile.fileType,
+                          selectedFile.metadata?.format || ""
+                        )}
                     </div>
                     <p>Preview not available for this file type</p>
                     <p className="text-sm text-muted-foreground mt-2">
-                      {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
+                      {selectedFile && getFileTypeLabel(selectedFile.fileType)}{" "}
+                      -{" "}
+                      {selectedFile &&
+                        formatFileSize(selectedFile.metadata.size || 0)}
                     </p>
                   </div>
                 )}
               </div>
-              
-              <button 
+
+              <button
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
-                onClick={() => navigateFile('next')}
+                onClick={() => navigateFile("next")}
                 aria-label="Next file"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -1731,26 +2152,45 @@ const MyFiles = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="p-4 text-sm bg-background border-t">
-              <p><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</p>
-              <p><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</p>
-              <p><span className="font-medium">Modified:</span> {selectedFile && formatDate(selectedFile.lastModified)}</p>
+              <p>
+                <span className="font-medium">Type:</span>{" "}
+                {selectedFile && getFileTypeLabel(selectedFile.fileType)}
+              </p>
+              <p>
+                <span className="font-medium">Size:</span>{" "}
+                {selectedFile &&
+                  formatFileSize(selectedFile.metadata?.size || 0)}
+              </p>
+              <p>
+                <span className="font-medium">Modified:</span>{" "}
+                {selectedFile && formatDate(selectedFile.lastModified)}
+              </p>
               {selectedFile?.description && (
-                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
+                <p>
+                  <span className="font-medium">Description:</span>{" "}
+                  {selectedFile.description}
+                </p>
               )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete {filesToDelete.length > 1 ? 'Files' : 'File'}</DialogTitle>
+            <DialogTitle>
+              Delete {filesToDelete.length > 1 ? "Files" : "File"}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {filesToDelete.length > 1 ? `these ${filesToDelete.length} files` : 'this file'}? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              {filesToDelete.length > 1
+                ? `these ${filesToDelete.length} files`
+                : "this file"}
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-start">
