@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import UploadArea from "@/components/gallery/UploadArea";
 import FileGrid from "@/components/files/FileGrid";
-import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users, X } from "lucide-react";
+import { Loader2, Search, Grid3X3, LayoutGrid, FolderPlus, Upload, Cloud, FileImage, FileVideo, FileText, FileAudio, File, Menu, ZoomIn, ZoomOut, Download, ArrowDown, ArrowUp, Info, Trash2, UserCircle, ChevronLeft, ChevronRight, Plus, FolderOpen, Share2, Users, X, Grid2X2 } from "lucide-react";
 import { albumApi, Album, CreateAlbumRequest } from "@/services/albumApi";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -1242,13 +1242,14 @@ const MyFiles = () => {
         </div>
         
         {/* Sub-tabs for shared categories */}
-        {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
+        {/* {(selectedCategory === 'shared' || selectedCategory === 'shared-by-me') && (
           <div className="border-b px-4 md:px-6 bg-muted/30">
             <div className="flex space-x-1">
               <button
                 onClick={() => {
                   setSelectedSubCategory('photos');
                   setSelectedSharedAlbum(null);
+                  setActiveTab('photos')
                 }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   selectedSubCategory === 'photos'
@@ -1277,7 +1278,7 @@ const MyFiles = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
 
         {/* Main content */}
@@ -1386,7 +1387,7 @@ const MyFiles = () => {
             return (
               <div>
                 {/* Content display - either files or shared albums */}
-                {displayMode === 'shared-albums' ? (
+                {activeTab === 'albums' ? (
                   <SharedAlbumView
                     albums={filteredDisplayFiles}
                     selectedAlbum={selectedSharedAlbum}
