@@ -102,9 +102,22 @@ const httpClient = {
      //fetchOptions.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
      //fetchOptions.headers.set('Pragma', 'no-cache');
    //fetchOptions.headers.set('Expires', '0');
+   function noCache(url) {
+    const apiUrl = new URL(url, window.location.origin);
+    apiUrl.searchParams.set('nocache', Date.now().toString());
+    return apiUrl.toString();
+  }
+
+    const response = await fetch(noCache(url), {
+      ...fetchOptions,
+      cache: 'no-store', // <-- explicitly disable HTTP cache
+    });
     
+
     // Send the request
-    const response = await fetch(url, fetchOptions);
+    // const separator = url.includes('?') ? '&' : '?';
+    // const noCacheUrl = `${url}${separator}nocache=${Date.now()}`;
+    // const response = await fetch(noCache(url), fetchOptions);
     
     // Handle common response processing
     if (!response.ok) {

@@ -71,7 +71,8 @@ const LyricsView = ({ songName, artistName, songId, onClose }: LyricsViewProps) 
 
       throw new Error('Lyrics not found');
     },
-    enabled: !!(songName && artistName)
+    enabled: !!(songName && artistName),
+    staleTime: 0,
   });
 
   return (

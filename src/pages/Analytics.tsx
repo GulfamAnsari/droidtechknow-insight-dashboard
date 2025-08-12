@@ -161,6 +161,7 @@ const Analytics = () => {
   } = useQuery({
     queryKey: ["analytics", queryParams],
     queryFn: () => fetchAnalytics(queryParams),
+    staleTime: 0,
   });
   
   // Extract unique referrers for filter dropdown with normalized domains

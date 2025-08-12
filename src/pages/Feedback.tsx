@@ -36,6 +36,7 @@ const Feedback = () => {
   } = useQuery({
     queryKey: ["feedbacks"],
     queryFn: fetchFeedback,
+    staleTime: 0,
   });
 
   // Parse comments from JSON strings

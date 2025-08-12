@@ -37,7 +37,8 @@ const Charts = ({ onPlaySong }: ChartsProps) => {
         skipAuth: true
       });
       return response;
-    }
+    },
+    staleTime: 0,
   });
 
   const formatDuration = (seconds: number) => {

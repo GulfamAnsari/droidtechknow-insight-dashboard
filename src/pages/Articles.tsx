@@ -118,6 +118,7 @@ const Articles = () => {
   } = useQuery({
     queryKey: ["articles"],
     queryFn: fetchArticles,
+    staleTime: 0,
   });
 
   // Initialize edited article when a article is selected for editing

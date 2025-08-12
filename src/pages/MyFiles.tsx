@@ -204,13 +204,15 @@ const MyFiles = () => {
       }
     },
     retry: 3,
-    retryDelay: 1000
+    retryDelay: 1000,
+    staleTime: 0,
   });
 
   // Fetch albums
   const { data: albums = [], isLoading: albumsLoading } = useQuery({
     queryKey: ["albums"],
-    queryFn: () => albumApi.getAlbums()
+    queryFn: () => albumApi.getAlbums(),
+    staleTime: 0,
   });
 
   // Create album mutation
@@ -297,6 +299,7 @@ const MyFiles = () => {
         sharedAlbums: sharedAlbumsList
       };
     },
+    staleTime: 0,
     enabled: !!user?.id
   });
 
@@ -561,6 +564,7 @@ const MyFiles = () => {
         return { albums: [], photos: [], sharedAlbums: [] };
       }
     },
+    staleTime: 0,
     enabled: !!user?.id
   });
 
