@@ -60,8 +60,8 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter basename={"/admin/apps/"}> 
-            {/* <BrowserRouter>  */}
+            {/* <BrowserRouter basename={"/admin/apps/"}>  */}
+            <BrowserRouter> 
               <Routes>
                 <Route path="/login" element={<Login />} />
                 
