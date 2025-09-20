@@ -86,7 +86,8 @@ const FullscreenPlayerTablet = ({
   const playlistRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } = useMusicContext();
+  const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
+    useMusicContext();
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -147,20 +148,26 @@ const FullscreenPlayerTablet = ({
   };
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);  
+    const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleFastForward = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+      audioRef.current.currentTime = Math.min(
+        duration,
+        audioRef.current.currentTime + 30
+      );
     }
   };
 
   const handleRewind = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 30);
+      audioRef.current.currentTime = Math.max(
+        0,
+        audioRef.current.currentTime - 30
+      );
     }
   };
 
@@ -257,30 +264,24 @@ const FullscreenPlayerTablet = ({
     return offlineSongs.some((song) => song.id === songId);
   };
 
+  const [lastTap, setLastTap] = useState<number>(0);
 
-  // State to track double tap
-  const [lastTap, setLastTap] = useState<number | null>(null);
+  const handleDoubleTap = (e: React.TouchEvent) => {
+    const currentTime = new Date().getTime();
+    const tapGap = currentTime - lastTap;
 
-  const handlePosterDoubleTap = (e: React.TouchEvent<HTMLDivElement>) => {
-    const currentTime = Date.now();
+    if (tapGap < 300 && tapGap > 0) {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const tapX = e.touches[0].clientX - rect.left;
 
-    if (lastTap && currentTime - lastTap < 300) {
-      // Detected double tap
-      const touchX = e.changedTouches[0].clientX;
-      const screenWidth = window.innerWidth;
-
-      if (touchX < screenWidth / 2) {
-        // Left side double tap → rewind
-        handleRewind();
+      if (tapX < rect.width / 2) {
+        handleRewind(); // Left side double-tap
       } else {
-        // Right side double tap → fast forward
-        handleFastForward();
+        handleFastForward(); // Right side double-tap
       }
-    } else {
-      setLastTap(currentTime);
     }
+    setLastTap(currentTime);
   };
-
   const renderSongList = (songs: Song[], title: string) => {
     return (
       <div className="space-y-3">
@@ -310,7 +311,9 @@ const FullscreenPlayerTablet = ({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="truncate font-medium text-white text-lg">{listSong.name}</p>
+              <p className="truncate font-medium text-white text-lg">
+                {listSong.name}
+              </p>
               <p className="truncate text-white/70">
                 {listSong.artists?.primary?.map((a) => a.name).join(", ")}
               </p>
@@ -323,7 +326,9 @@ const FullscreenPlayerTablet = ({
                 }}
                 variant="ghost"
                 size="sm"
-                className={`text-white hover:bg-white/20 ${likedSongs.includes(listSong.id) ? "text-red-500" : ""}`}
+                className={`text-white hover:bg-white/20 ${
+                  likedSongs.includes(listSong.id) ? "text-red-500" : ""
+                }`}
               >
                 <Heart
                   className={`h-5 w-5 ${
@@ -366,27 +371,33 @@ const FullscreenPlayerTablet = ({
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           onPrevious();
           break;
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           onNext();
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           e.preventDefault();
           if (audioRef.current) {
-            audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+            audioRef.current.currentTime = Math.max(
+              0,
+              audioRef.current.currentTime - 10
+            );
           }
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
           if (audioRef.current) {
-            audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+            audioRef.current.currentTime = Math.min(
+              duration,
+              audioRef.current.currentTime + 10
+            );
           }
           break;
-        case ' ':
+        case " ":
           e.preventDefault();
           onPlayPause();
           break;
@@ -396,27 +407,27 @@ const FullscreenPlayerTablet = ({
     // Car steering wheel controls
     const handleMediaKeys = (e: KeyboardEvent) => {
       switch (e.code) {
-        case 'MediaTrackNext':
+        case "MediaTrackNext":
           e.preventDefault();
           onNext();
           break;
-        case 'MediaTrackPrevious':
+        case "MediaTrackPrevious":
           e.preventDefault();
           onPrevious();
           break;
-        case 'MediaPlayPause':
+        case "MediaPlayPause":
           e.preventDefault();
           onPlayPause();
           break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    window.addEventListener('keydown', handleMediaKeys);
+    window.addEventListener("keydown", handleKeyPress);
+    window.addEventListener("keydown", handleMediaKeys);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      window.removeEventListener('keydown', handleMediaKeys);
+      window.removeEventListener("keydown", handleKeyPress);
+      window.removeEventListener("keydown", handleMediaKeys);
     };
   }, [onNext, onPrevious, onPlayPause, duration]);
 
@@ -442,12 +453,7 @@ const FullscreenPlayerTablet = ({
             <X className="h-6 w-6" />
           </Button>
         </div> */}
-
-        {/* Album Art */}
-        <div className="mb-8"
-            onTouchEnd={(e) => {
-              handlePosterDoubleTap(e); // 👈 detect double tap here
-            }}>
+        <div className="mb-8 relative" onTouchStart={handleDoubleTap}>
           <LazyImage
             src={song.image[2]?.url || song.image[1]?.url || song.image[0]?.url}
             alt={song.name}
@@ -460,7 +466,8 @@ const FullscreenPlayerTablet = ({
         <div className="text-center mb-8 max-w-md">
           <h1 className="text-2xl font-bold mb-2 truncate">{song.name}</h1>
           <p className="text-l text-white/80 truncate">
-            {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+            {song.artists?.primary?.map((a) => a.name).join(", ") ||
+              "Unknown Artist"}
           </p>
         </div>
 
@@ -598,7 +605,11 @@ const FullscreenPlayerTablet = ({
       {/* Right Panel - Playlist */}
       <div className="w-96 bg-black/20 backdrop-blur-sm border-l border-white/10">
         <div className="p-2 pt-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid w-80 grid-cols-2 bg-white/10">
               <TabsTrigger
                 value="playlist"
@@ -614,10 +625,10 @@ const FullscreenPlayerTablet = ({
               </TabsTrigger>
               <Button
                 onClick={onClose}
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-4 right-3 text-white bg-white/20"
-                >
+                variant="ghost"
+                size="sm"
+                className="absolute top-4 right-3 text-white bg-white/20"
+              >
                 <X className="h-12 w-12" />
               </Button>
             </TabsList>
