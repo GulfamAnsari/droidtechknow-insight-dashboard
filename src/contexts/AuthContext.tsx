@@ -45,6 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedUser && userId) {
           try {
             setUser(JSON.parse(storedUser));
+            setIsLoading(false);
+            return; // If we have local auth, don't make API calls
           } catch (error) {
             console.error('Failed to parse user data:', error);
             localStorage.removeItem('user');
@@ -53,21 +55,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
 
-        // Also check server-side session (for Google OAuth)
-        const response = await fetch('https://droidtechknow.com/admin/api/auth/google-auth.php?route=check-auth', {
-          method: 'GET',
-          credentials: 'include'
-        });
+        // Only check server-side session if online
+        if (navigator.onLine) {
+          try {
+            const response = await fetch('https://droidtechknow.com/admin/api/auth/google-auth.php?route=check-auth', {
+              method: 'GET',
+              credentials: 'include'
+            });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.authenticated) {
-            // Store server auth data in localStorage and cookies
-            Cookies.set('Cookie', data.auth_token, { expires: 30 });
-            Cookies.set('userId', data.data.id, { expires: 30 });
-            localStorage.setItem('user', JSON.stringify(data.data));
-            setUser(data.data);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.authenticated) {
+                // Store server auth data in localStorage and cookies
+                Cookies.set('Cookie', data.auth_token, { expires: 30 });
+                Cookies.set('userId', data.data.id, { expires: 30 });
+                localStorage.setItem('user', JSON.stringify(data.data));
+                setUser(data.data);
+              }
+            }
+          } catch (error) {
+            console.log('Auth check failed (offline mode):', error);
           }
+        } else {
+          console.log('Offline mode: Skipping server auth check');
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -76,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     
-    checkAuthStatus();
+    checkAuthStatus();     
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {

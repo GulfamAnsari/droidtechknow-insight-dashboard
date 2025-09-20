@@ -110,36 +110,52 @@ export const MusicProvider = ({ children }: MusicProviderProps) => {
     localStorage.setItem("offlineSongs", JSON.stringify(offlineSongs));
   }, [offlineSongs]);
 
-  useEffect(() => {
-    loadLikedSongs();
-  }, []);
+  // Don't auto-load liked songs on startup for offline support
+  // useEffect(() => {
+  //   loadLikedSongs();
+  // }, []);
 
   const loadLikedSongs = async () => {
     try {
+      // Only load if online
+      if (!navigator.onLine) {
+        console.log('Offline mode: Skipping API call for liked songs');
+        return;
+      }
+      
       const response = await httpClient.get(
         `https://droidtechknow.com/admin/api/music/likedsongs.php`
       );
       setLikedSongs(response.songs);
       return response;
     } catch (error) {
-      toast('Error loading liked songs:', error);
+      console.log('Error loading liked songs (offline mode):', error);
+      // Don't show toast in offline mode
     }
   };
 
   const saveLikedSongToAPI = async (song: Song) => {
     try {
+      if (!navigator.onLine) {
+        console.log('Offline mode: Skipping API call to save liked song');
+        return;
+      }
       await httpClient.post("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
     } catch (error) {
-      toast('Error loading liked songs:', error);
+      console.log('Error saving liked song (offline mode):', error);
     }
   };
 
 
   const deleteUnlikedSongToAPI = async (song: Song) => {
     try {
+      if (!navigator.onLine) {
+        console.log('Offline mode: Skipping API call to delete liked song');
+        return;
+      }
       await httpClient.delete("https://droidtechknow.com/admin/api/music/likedsongs.php", song);
     } catch (error) {
-      toast('Error deleting song liked songs:', error);
+      console.log('Error deleting liked song (offline mode):', error);
     }
   };
 
