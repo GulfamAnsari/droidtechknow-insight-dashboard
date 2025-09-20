@@ -431,6 +431,25 @@ const FullscreenPlayer = ({
       </div>
     );
   };
+   const [lastTap, setLastTap] = useState<number>(0);
+
+  const handleDoubleTap = (e: React.TouchEvent) => {
+    const currentTime = new Date().getTime();
+    const tapGap = currentTime - lastTap;
+
+    if (tapGap < 300 && tapGap > 0) {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const tapX = e.touches[0].clientX - rect.left;
+
+      if (tapX < rect.width / 2) {
+        handleRewind(); // Left side double-tap
+      } else {
+        handleFastForward(); // Right side double-tap
+      }
+    }
+    setLastTap(currentTime);
+  };
+  
 
   const renderSongList = (songs: Song[], title: string) => {
     return (
@@ -528,7 +547,7 @@ const FullscreenPlayer = ({
       {/* Main Content Container */}
       <div className="flex min-h-screen w-full">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center w-full max-w-md pointer-events-auto">
+          <div className="flex flex-col items-center w-full max-w-md pointer-events-auto" onTouchStart={handleDoubleTap}>
             {/* Album Art */}
             <div
               className="mb-6 md:mb-8"

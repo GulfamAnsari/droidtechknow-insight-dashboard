@@ -441,7 +441,7 @@ const FullscreenPlayerTablet = ({
       />
 
       {/* Left Panel - Album Art and Controls */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 min-w-0">
+      <div className="flex-1 flex flex-col justify-center items-center p-8 min-w-0"onTouchStart={handleDoubleTap}>
         {/* Header */}
         {/* <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
           <Button
