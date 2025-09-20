@@ -8,6 +8,7 @@ import {
   SkipBack,
   SkipForward,
   FastForward,
+  Rewind,
   Volume2,
   Repeat,
   Shuffle,
@@ -154,6 +155,12 @@ const FullscreenPlayerTablet = ({
   const handleFastForward = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+    }
+  };
+
+  const handleRewind = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 30);
     }
   };
 
@@ -446,7 +453,7 @@ const FullscreenPlayerTablet = ({
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex items-center gap-1 mb-8">
           <Button
             size="lg"
             variant="ghost"
@@ -467,6 +474,14 @@ const FullscreenPlayerTablet = ({
           </Button>
           <Button
             size="lg"
+            variant="ghost"
+            onClick={handleRewind}
+            className="text-white hover:bg-white/20"
+          >
+            <Rewind className="h-6 w-6" />
+          </Button>
+          <Button
+            size="lg"
             onClick={onPlayPause}
             className="bg-white text-black hover:bg-white/90 rounded-full p-4"
           >
@@ -479,18 +494,18 @@ const FullscreenPlayerTablet = ({
           <Button
             size="lg"
             variant="ghost"
-            onClick={onNext}
-            className="text-white hover:bg-white/20"
-          >
-            <SkipForward className="h-8 w-8" />
-          </Button>
-          <Button
-            size="lg"
-            variant="ghost"
             onClick={handleFastForward}
             className="text-white hover:bg-white/20"
           >
             <FastForward className="h-6 w-6" />
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            onClick={onNext}
+            className="text-white hover:bg-white/20"
+          >
+            <SkipForward className="h-8 w-8" />
           </Button>
           <Button
             size="lg"

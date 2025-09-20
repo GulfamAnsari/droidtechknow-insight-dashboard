@@ -8,6 +8,7 @@ import {
   SkipBack,
   SkipForward,
   FastForward,
+  Rewind,
   Volume2,
   Repeat,
   Shuffle,
@@ -270,6 +271,12 @@ const FullscreenPlayer = ({
   const handleFastForward = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+    }
+  };
+
+  const handleRewind = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 30);
     }
   };
 
@@ -565,7 +572,7 @@ const FullscreenPlayer = ({
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
+            <div className="flex items-center gap-2 md:gap-3 mb-6 md:mb-8">
               <Button
                 size="lg"
                 variant="ghost"
@@ -586,6 +593,14 @@ const FullscreenPlayer = ({
               </Button>
               <Button
                 size="lg"
+                variant="ghost"
+                onClick={handleRewind}
+                className="text-white hover:bg-white/20"
+              >
+                <Rewind className="h-5 w-5 md:h-6 md:w-6" />
+              </Button>
+              <Button
+                size="lg"
                 onClick={onPlayPause}
                 className="bg-white text-black hover:bg-white/90 rounded-full p-3 md:p-4"
               >
@@ -598,18 +613,18 @@ const FullscreenPlayer = ({
               <Button
                 size="lg"
                 variant="ghost"
-                onClick={onNext}
-                className="text-white hover:bg-white/20"
-              >
-                <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
                 onClick={handleFastForward}
                 className="text-white hover:bg-white/20"
               >
                 <FastForward className="h-5 w-5 md:h-6 md:w-6" />
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={onNext}
+                className="text-white hover:bg-white/20"
+              >
+                <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
               </Button>
               <Button
                 size="lg"
