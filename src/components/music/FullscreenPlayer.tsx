@@ -635,16 +635,16 @@ const FullscreenPlayer = ({
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="flex flex-col items-center w-full max-w-md">
+          <div
+            className="flex flex-col items-center w-full max-w-md"
+            onTouchStart={(e) => handleTouchStart(e, true)}
+            onTouchEnd={(e) => {
+              handleTouchEnd(e, true);
+              handlePosterDoubleTap(e); // 👈 detect double tap here
+            }}
+          >
             {/* Album Art */}
-            <div
-              className="mb-6 md:mb-8"
-              onTouchStart={(e) => handleTouchStart(e, true)}
-              onTouchEnd={(e) => {
-                handleTouchEnd(e, true);
-                handlePosterDoubleTap(e); // 👈 detect double tap here
-              }}
-            >
+            <div className="mb-6 md:mb-8">
               <LazyImage
                 src={
                   song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
