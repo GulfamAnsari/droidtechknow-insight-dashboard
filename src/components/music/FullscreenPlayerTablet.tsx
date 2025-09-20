@@ -257,6 +257,30 @@ const FullscreenPlayerTablet = ({
     return offlineSongs.some((song) => song.id === songId);
   };
 
+
+  // State to track double tap
+  const [lastTap, setLastTap] = useState<number | null>(null);
+
+  const handlePosterDoubleTap = (e: React.TouchEvent<HTMLDivElement>) => {
+    const currentTime = Date.now();
+
+    if (lastTap && currentTime - lastTap < 300) {
+      // Detected double tap
+      const touchX = e.changedTouches[0].clientX;
+      const screenWidth = window.innerWidth;
+
+      if (touchX < screenWidth / 2) {
+        // Left side double tap → rewind
+        handleRewind();
+      } else {
+        // Right side double tap → fast forward
+        handleFastForward();
+      }
+    } else {
+      setLastTap(currentTime);
+    }
+  };
+
   const renderSongList = (songs: Song[], title: string) => {
     return (
       <div className="space-y-3">
@@ -420,7 +444,10 @@ const FullscreenPlayerTablet = ({
         </div> */}
 
         {/* Album Art */}
-        <div className="mb-8">
+        <div className="mb-8"
+            onTouchEnd={(e) => {
+              handlePosterDoubleTap(e); // 👈 detect double tap here
+            }}>
           <LazyImage
             src={song.image[2]?.url || song.image[1]?.url || song.image[0]?.url}
             alt={song.name}
