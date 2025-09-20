@@ -7,6 +7,7 @@ import {
   Pause,
   SkipBack,
   SkipForward,
+  FastForward,
   Volume2,
   Repeat,
   Shuffle,
@@ -264,6 +265,12 @@ const FullscreenPlayer = ({
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleFastForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+    }
   };
 
   const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
@@ -549,7 +556,7 @@ const FullscreenPlayer = ({
                 onValueChange={handleSeek}
                 max={100}
                 step={0.1}
-                className="w-full"
+                className="w-full py-4"
               />
               <div className="flex justify-between text-sm text-white/60 mt-2">
                 <span>{formatTime(currentTime)}</span>
@@ -558,7 +565,7 @@ const FullscreenPlayer = ({
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
               <Button
                 size="lg"
                 variant="ghost"
@@ -595,6 +602,14 @@ const FullscreenPlayer = ({
                 className="text-white hover:bg-white/20"
               >
                 <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={handleFastForward}
+                className="text-white hover:bg-white/20"
+              >
+                <FastForward className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
               <Button
                 size="lg"

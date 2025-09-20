@@ -7,6 +7,7 @@ import {
   Pause,
   SkipBack,
   SkipForward,
+  FastForward,
   Volume2,
   Repeat,
   Shuffle,
@@ -145,9 +146,15 @@ const FullscreenPlayerTablet = ({
   };
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const mins = Math.floor(seconds / 60);  
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleFastForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+    }
   };
 
   const downloadSong = async (song: Song) => {
@@ -430,7 +437,7 @@ const FullscreenPlayerTablet = ({
             onValueChange={handleSeek}
             max={100}
             step={0.1}
-            className="w-full"
+            className="w-full py-4"
           />
           <div className="flex justify-between text-sm text-white/60 mt-2">
             <span>{formatTime(currentTime)}</span>
@@ -439,7 +446,7 @@ const FullscreenPlayerTablet = ({
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-2 mb-8">
           <Button
             size="lg"
             variant="ghost"
@@ -476,6 +483,14 @@ const FullscreenPlayerTablet = ({
             className="text-white hover:bg-white/20"
           >
             <SkipForward className="h-8 w-8" />
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            onClick={handleFastForward}
+            className="text-white hover:bg-white/20"
+          >
+            <FastForward className="h-6 w-6" />
           </Button>
           <Button
             size="lg"
