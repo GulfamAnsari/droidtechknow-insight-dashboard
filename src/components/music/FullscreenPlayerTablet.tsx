@@ -441,7 +441,10 @@ const FullscreenPlayerTablet = ({
       />
 
       {/* Left Panel - Album Art and Controls */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 min-w-0"onTouchStart={handleDoubleTap}>
+      <div
+        className="flex-1 flex flex-col justify-center items-center p-8 min-w-0"
+        onTouchStart={handleDoubleTap}
+      >
         {/* Header */}
         {/* <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
           <Button
@@ -453,7 +456,7 @@ const FullscreenPlayerTablet = ({
             <X className="h-6 w-6" />
           </Button>
         </div> */}
-        <div className="mb-8 relative" onTouchStart={handleDoubleTap}>
+        <div className="mb-8 relative">
           <LazyImage
             src={song.image[2]?.url || song.image[1]?.url || song.image[0]?.url}
             alt={song.name}
@@ -472,133 +475,91 @@ const FullscreenPlayerTablet = ({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full max-w-md mb-8">
+        <div className="w-full max-w-md mb-10 px-2">
           <Slider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
             onValueChange={handleSeek}
             max={100}
             step={0.1}
-            className="w-full py-4"
+            className="w-full py-6" // increased padding for touch area
           />
-          <div className="flex justify-between text-sm text-white/60 mt-2">
+          <div className="flex justify-between text-sm text-white/60 mt-3">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center gap-1 mb-8">
+        <div className="flex items-center gap-4 mb-10">
           <Button
             size="lg"
             variant="ghost"
             onClick={onToggleShuffle}
-            className={`text-white hover:bg-white/20 ${
+            className={`text-white hover:bg-white/20 p-4 rounded-full ${
               isShuffle ? "text-primary" : ""
             }`}
           >
-            <Shuffle className="h-6 w-6" />
+            <Shuffle className="h-8 w-8" />
           </Button>
+
           <Button
             size="lg"
             variant="ghost"
             onClick={onPrevious}
-            className="text-white hover:bg-white/20"
+            className="text-white hover:bg-white/20 p-4 rounded-full"
           >
-            <SkipBack className="h-8 w-8" />
+            <SkipBack className="h-10 w-10" />
           </Button>
+
           <Button
             size="lg"
             variant="ghost"
             onClick={handleRewind}
-            className="text-white hover:bg-white/20"
+            className="text-white hover:bg-white/20 p-4 rounded-full"
           >
-            <Rewind className="h-6 w-6" />
+            <Rewind className="h-8 w-8" />
           </Button>
+
           <Button
             size="lg"
             onClick={onPlayPause}
-            className="bg-white text-black hover:bg-white/90 rounded-full p-4"
+            className="bg-white text-black hover:bg-white/90 rounded-full p-6 shadow-lg"
           >
             {isPlaying ? (
-              <Pause className="h-8 w-8" />
+              <Pause className="h-10 w-10" />
             ) : (
-              <Play className="h-8 w-8" />
+              <Play className="h-10 w-10" />
             )}
           </Button>
+
           <Button
             size="lg"
             variant="ghost"
             onClick={handleFastForward}
-            className="text-white hover:bg-white/20"
+            className="text-white hover:bg-white/20 p-4 rounded-full"
           >
-            <FastForward className="h-6 w-6" />
+            <FastForward className="h-8 w-8" />
           </Button>
+
           <Button
             size="lg"
             variant="ghost"
             onClick={onNext}
-            className="text-white hover:bg-white/20"
+            className="text-white hover:bg-white/20 p-4 rounded-full"
           >
-            <SkipForward className="h-8 w-8" />
+            <SkipForward className="h-10 w-10" />
           </Button>
+
           <Button
             size="lg"
             variant="ghost"
             onClick={onToggleRepeat}
-            className={`text-white hover:bg-white/20 ${
+            className={`text-white hover:bg-white/20 p-4 rounded-full ${
               isRepeat ? "text-primary" : ""
             }`}
           >
-            <Repeat className="h-6 w-6" />
+            <Repeat className="h-8 w-8" />
           </Button>
-        </div>
-
-        {/* Bottom Controls */}
-        <div className="flex flex-col gap-4 w-full max-w-md">
-          {/* Volume Control */}
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={onToggleMute}
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20"
-            >
-              <Volume2 className="h-5 w-5" />
-            </Button>
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={100}
-              step={1}
-              className="flex-1"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-center gap-4">
-            <Button
-              onClick={() => onToggleLike(song.id)}
-              variant="ghost"
-              size="sm"
-              className={`text-white hover:bg-white/20 ${
-                likedSongs.includes(song.id) ? "text-red-500" : ""
-              }`}
-            >
-              <Heart
-                className={`h-5 w-5 ${
-                  likedSongs.includes(song.id) ? "fill-current" : ""
-                }`}
-              />
-            </Button>
-            <Button
-              onClick={() => downloadSong(song)}
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20"
-            >
-              <Download className="h-5 w-5" />
-            </Button>
-          </div>
         </div>
       </div>
 
