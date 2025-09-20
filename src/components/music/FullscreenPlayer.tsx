@@ -211,13 +211,19 @@ const FullscreenPlayer = ({
 
   const handleFastForward = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 30);
+      audioRef.current.currentTime = Math.min(
+        duration,
+        audioRef.current.currentTime + 30
+      );
     }
   };
 
   const handleRewind = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 30);
+      audioRef.current.currentTime = Math.max(
+        0,
+        audioRef.current.currentTime - 30
+      );
     }
   };
 
@@ -287,27 +293,33 @@ const FullscreenPlayer = ({
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           onPrevious();
           break;
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           onNext();
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           e.preventDefault();
           if (audioRef.current) {
-            audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+            audioRef.current.currentTime = Math.max(
+              0,
+              audioRef.current.currentTime - 10
+            );
           }
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
           if (audioRef.current) {
-            audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+            audioRef.current.currentTime = Math.min(
+              duration,
+              audioRef.current.currentTime + 10
+            );
           }
           break;
-        case ' ':
+        case " ":
           e.preventDefault();
           onPlayPause();
           break;
@@ -317,27 +329,27 @@ const FullscreenPlayer = ({
     // Car steering wheel controls
     const handleMediaKeys = (e: KeyboardEvent) => {
       switch (e.code) {
-        case 'MediaTrackNext':
+        case "MediaTrackNext":
           e.preventDefault();
           onNext();
           break;
-        case 'MediaTrackPrevious':
+        case "MediaTrackPrevious":
           e.preventDefault();
           onPrevious();
           break;
-        case 'MediaPlayPause':
+        case "MediaPlayPause":
           e.preventDefault();
           onPlayPause();
           break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    window.addEventListener('keydown', handleMediaKeys);
+    window.addEventListener("keydown", handleKeyPress);
+    window.addEventListener("keydown", handleMediaKeys);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-      window.removeEventListener('keydown', handleMediaKeys);
+      window.removeEventListener("keydown", handleKeyPress);
+      window.removeEventListener("keydown", handleMediaKeys);
     };
   }, [onNext, onPrevious, onPlayPause, duration]);
 
@@ -526,6 +538,29 @@ const FullscreenPlayer = ({
     );
   };
 
+  // State to track double tap
+  const [lastTap, setLastTap] = useState<number | null>(null);
+
+  const handlePosterDoubleTap = (e: React.TouchEvent<HTMLDivElement>) => {
+    const currentTime = Date.now();
+
+    if (lastTap && currentTime - lastTap < 300) {
+      // Detected double tap
+      const touchX = e.changedTouches[0].clientX;
+      const screenWidth = window.innerWidth;
+
+      if (touchX < screenWidth / 2) {
+        // Left side double tap → rewind
+        handleRewind();
+      } else {
+        // Right side double tap → fast forward
+        handleFastForward();
+      }
+    } else {
+      setLastTap(currentTime);
+    }
+  };
+
   return (
     <div
       className={`fixed inset-0 w-screen h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col text-white transition-transform duration-200 overflow-hidden ${
@@ -605,7 +640,10 @@ const FullscreenPlayer = ({
             <div
               className="mb-6 md:mb-8"
               onTouchStart={(e) => handleTouchStart(e, true)}
-              onTouchEnd={(e) => handleTouchEnd(e, true)}
+              onTouchEnd={(e) => {
+                handleTouchEnd(e, true);
+                handlePosterDoubleTap(e); // 👈 detect double tap here
+              }}
             >
               <LazyImage
                 src={
