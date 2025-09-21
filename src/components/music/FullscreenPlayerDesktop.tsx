@@ -590,18 +590,8 @@ const FullscreenPlayer = ({
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleShuffle}
-                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
-                  isShuffle ? "text-primary bg-primary/20" : ""
-                }`}
-              >
-                <Shuffle className="h-7 w-7 md:h-8 md:w-8" />
-              </Button>
+            {/* Main Controls */}
+            <div className="flex items-center justify-center gap-4 md:gap-6 mb-6 md:mb-8">
               <Button
                 size="lg"
                 variant="ghost"
@@ -644,6 +634,20 @@ const FullscreenPlayer = ({
                 className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
               >
                 <SkipForward className="h-8 w-8 md:h-9 md:w-9" />
+              </Button>
+            </div>
+
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-center gap-8 md:gap-12 mb-8 md:mb-10">
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={onToggleShuffle}
+                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
+                  isShuffle ? "text-primary bg-primary/20" : ""
+                }`}
+              >
+                <Shuffle className="h-7 w-7 md:h-8 md:w-8" />
               </Button>
               <Button
                 size="lg"

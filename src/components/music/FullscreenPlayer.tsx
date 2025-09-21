@@ -172,14 +172,23 @@ const FullscreenPlayer = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent, onImage: boolean = false) => {
-    if (!touchStart || !onImage) return;
+    if (!touchStart) return;
 
     const touch = e.changedTouches[0];
     const deltaX = touch.clientX - touchStart.x;
     const deltaY = touch.clientY - touchStart.y;
 
+    // Check for horizontal swipe left to open suggested songs
+    if (!onImage && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX < 0) {
+        // Swipe left - show suggested songs
+        setActiveTab("suggestions");
+        setShowList(true);
+      }
+    }
+
     // Check if it's a vertical swipe on the image (more vertical than horizontal)
-    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+    if (onImage && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
       setIsSwipeAnimating(true);
       if (deltaY < 0) {
         // Swipe up - next song
@@ -637,20 +646,20 @@ const FullscreenPlayer = ({
         ) : (
           <div
             className="flex flex-col items-center w-full max-w-md"
-            onTouchStart={(e) => handleTouchStart(e, true)}
-            onTouchEnd={(e) => {
-              handleTouchEnd(e, true);
-              handlePosterDoubleTap(e); // 👈 detect double tap here
-            }}
+            onTouchStart={(e) => handleTouchStart(e, false)}
+            onTouchEnd={(e) => handleTouchEnd(e, false)}
           >
             {/* Album Art */}
-            <div className="mb-8 md:mb-10">
+            <div
+              onTouchStart={(e) => handleTouchStart(e, true)}
+              onTouchEnd={(e) => handleTouchEnd(e, true)}
+            >
               <LazyImage
                 src={
                   song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
                 }
                 alt={song.name}
-                className="w-80 h-80 md:w-96 md:h-96 lg:w-[400px] lg:h-[400px] rounded-3xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+                className="w-80 h-80 md:w-96 md:h-96 lg:w-[400px] lg:h-[400px] rounded-3xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform mb-8 md:mb-10"
                 onClick={onPlayPause}
               />
             </div>
@@ -681,18 +690,8 @@ const FullscreenPlayer = ({
               </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleShuffle}
-                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full ${
-                  isShuffle ? "text-primary bg-primary/20" : ""
-                }`}
-              >
-                <Shuffle className="h-6 w-6 md:h-7 md:w-7" />
-              </Button>
+            {/* Main Controls */}
+            <div className="flex items-center justify-center gap-4 md:gap-6 mb-6 md:mb-8">
               <Button
                 size="lg"
                 variant="ghost"
@@ -735,6 +734,20 @@ const FullscreenPlayer = ({
                 className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
               >
                 <SkipForward className="h-7 w-7 md:h-8 md:w-8" />
+              </Button>
+            </div>
+
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-center gap-8 md:gap-12 mb-8 md:mb-10">
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={onToggleShuffle}
+                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full ${
+                  isShuffle ? "text-primary bg-primary/20" : ""
+                }`}
+              >
+                <Shuffle className="h-6 w-6 md:h-7 md:w-7" />
               </Button>
               <Button
                 size="lg"
