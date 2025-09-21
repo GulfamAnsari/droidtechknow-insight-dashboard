@@ -456,79 +456,79 @@ const FullscreenPlayerTablet = ({
             <X className="h-6 w-6" />
           </Button>
         </div> */}
-        <div className="mb-8 relative">
+        <div className="mb-10 relative">
           <LazyImage
             src={song.image[2]?.url || song.image[1]?.url || song.image[0]?.url}
             alt={song.name}
-            className="w-60 h-60 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+            className="w-80 h-80 rounded-3xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
             onClick={onPlayPause}
           />
         </div>
 
         {/* Song Info */}
-        <div className="text-center mb-8 max-w-md">
-          <h1 className="text-2xl font-bold mb-2 truncate">{song.name}</h1>
-          <p className="text-l text-white/80 truncate">
+        <div className="text-center mb-10 max-w-md">
+          <h1 className="text-3xl font-bold mb-3 truncate">{song.name}</h1>
+          <p className="text-xl text-foreground/80 truncate">
             {song.artists?.primary?.map((a) => a.name).join(", ") ||
               "Unknown Artist"}
           </p>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full max-w-md mb-10 px-2">
+        <div className="w-full max-w-lg mb-12 px-2">
           <Slider
             value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
             onValueChange={handleSeek}
             max={100}
             step={0.1}
-            className="w-full py-6" // increased padding for touch area
+            className="w-full py-8" // increased padding for touch area
           />
-          <div className="flex justify-between text-sm text-white/60 mt-3">
+          <div className="flex justify-between text-base text-muted-foreground mt-4">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center gap-4 mb-10">
+        <div className="flex items-center gap-6 mb-12">
           <Button
             size="lg"
             variant="ghost"
             onClick={onToggleShuffle}
-            className={`text-white hover:bg-white/20 p-4 rounded-full ${
-              isShuffle ? "text-primary" : ""
+            className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
+              isShuffle ? "text-primary bg-primary/20" : ""
             }`}
           >
-            <Shuffle className="h-8 w-8" />
+            <Shuffle className="h-9 w-9" />
           </Button>
 
           <Button
             size="lg"
             variant="ghost"
             onClick={onPrevious}
-            className="text-white hover:bg-white/20 p-4 rounded-full"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
           >
-            <SkipBack className="h-10 w-10" />
+            <SkipBack className="h-11 w-11" />
           </Button>
 
           <Button
             size="lg"
             variant="ghost"
             onClick={handleRewind}
-            className="text-white hover:bg-white/20 p-4 rounded-full"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
           >
-            <Rewind className="h-8 w-8" />
+            <Rewind className="h-9 w-9" />
           </Button>
 
           <Button
             size="lg"
             onClick={onPlayPause}
-            className="bg-white text-black hover:bg-white/90 rounded-full p-6 shadow-lg"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-6 shadow-lg"
           >
             {isPlaying ? (
-              <Pause className="h-10 w-10" />
+              <Pause className="h-11 w-11" />
             ) : (
-              <Play className="h-10 w-10" />
+              <Play className="h-11 w-11" />
             )}
           </Button>
 
@@ -536,29 +536,29 @@ const FullscreenPlayerTablet = ({
             size="lg"
             variant="ghost"
             onClick={handleFastForward}
-            className="text-white hover:bg-white/20 p-4 rounded-full"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
           >
-            <FastForward className="h-8 w-8" />
+            <FastForward className="h-9 w-9" />
           </Button>
 
           <Button
             size="lg"
             variant="ghost"
             onClick={onNext}
-            className="text-white hover:bg-white/20 p-4 rounded-full"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
           >
-            <SkipForward className="h-10 w-10" />
+            <SkipForward className="h-11 w-11" />
           </Button>
 
           <Button
             size="lg"
             variant="ghost"
             onClick={onToggleRepeat}
-            className={`text-white hover:bg-white/20 p-4 rounded-full ${
-              isRepeat ? "text-primary" : ""
+            className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
+              isRepeat ? "text-primary bg-primary/20" : ""
             }`}
           >
-            <Repeat className="h-8 w-8" />
+            <Repeat className="h-9 w-9" />
           </Button>
         </div>
       </div>

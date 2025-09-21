@@ -550,7 +550,7 @@ const FullscreenPlayer = ({
           <div className="flex flex-col items-center w-full max-w-md pointer-events-auto" onTouchStart={handleDoubleTap}>
             {/* Album Art */}
             <div
-              className="mb-6 md:mb-8"
+              className="mb-8 md:mb-10"
               onTouchStart={(e) => handleTouchStart(e, true)}
               onTouchEnd={(e) => handleTouchEnd(e, true)}
             >
@@ -559,101 +559,101 @@ const FullscreenPlayer = ({
                   song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
                 }
                 alt={song.name}
-                className="w-64 h-64 md:w-80 md:h-80 rounded-2xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
+                className="w-96 h-96 md:w-[400px] md:h-[400px] lg:w-[450px] lg:h-[450px] rounded-3xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform"
                 onClick={onPlayPause}
               />
             </div>
 
             {/* Song Info */}
-            <div className="text-center mb-6 md:mb-8 max-w-full px-4">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 truncate">
+            <div className="text-center mb-8 md:mb-10 max-w-full px-4">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 truncate">
                 {song.name}
               </h1>
-              <p className="text-lg md:text-xl text-white/80 truncate">
+              <p className="text-2xl md:text-3xl lg:text-4xl text-foreground/80 truncate">
                 {song.artists?.primary?.map((a) => a.name).join(", ") ||
                   "Unknown Artist"}
               </p>
             </div>
 
             {/* Progress bar */}
-            <div className="w-full max-w-md mb-6 md:mb-8 px-4">
+            <div className="w-full max-w-lg mb-8 md:mb-10 px-4">
               <Slider
                 value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
                 onValueChange={handleSeek}
                 max={100}
                 step={0.1}
-                className="w-full py-4"
+                className="w-full py-8"
               />
-              <div className="flex justify-between text-sm text-white/60 mt-2">
+              <div className="flex justify-between text-lg text-muted-foreground mt-4">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center gap-2 md:gap-3 mb-6 md:mb-8">
+            <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={onToggleShuffle}
-                className={`text-white hover:bg-white/20 ${
-                  isShuffle ? "text-primary" : ""
+                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
+                  isShuffle ? "text-primary bg-primary/20" : ""
                 }`}
               >
-                <Shuffle className="h-5 w-5 md:h-6 md:w-6" />
+                <Shuffle className="h-7 w-7 md:h-8 md:w-8" />
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={onPrevious}
-                className="text-white hover:bg-white/20"
+                className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
               >
-                <SkipBack className="h-6 w-6 md:h-8 md:w-8" />
+                <SkipBack className="h-8 w-8 md:h-9 md:w-9" />
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={handleRewind}
-                className="text-white hover:bg-white/20"
+                className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
               >
-                <Rewind className="h-5 w-5 md:h-6 md:w-6" />
+                <Rewind className="h-7 w-7 md:h-8 md:w-8" />
               </Button>
               <Button
                 size="lg"
                 onClick={onPlayPause}
-                className="bg-white text-black hover:bg-white/90 rounded-full p-3 md:p-4"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-6 md:p-7"
               >
                 {isPlaying ? (
-                  <Pause className="h-6 w-6 md:h-8 md:w-8" />
+                  <Pause className="h-10 w-10 md:h-12 md:w-12" />
                 ) : (
-                  <Play className="h-6 w-6 md:h-8 md:w-8" />
+                  <Play className="h-10 w-10 md:h-12 md:w-12" />
                 )}
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={handleFastForward}
-                className="text-white hover:bg-white/20"
+                className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
               >
-                <FastForward className="h-5 w-5 md:h-6 md:w-6" />
+                <FastForward className="h-7 w-7 md:h-8 md:w-8" />
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={onNext}
-                className="text-white hover:bg-white/20"
+                className="text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full"
               >
-                <SkipForward className="h-6 w-6 md:h-8 md:w-8" />
+                <SkipForward className="h-8 w-8 md:h-9 md:w-9" />
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={onToggleRepeat}
-                className={`text-white hover:bg-white/20 ${
-                  isRepeat ? "text-primary" : ""
+                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-5 rounded-full ${
+                  isRepeat ? "text-primary bg-primary/20" : ""
                 }`}
               >
-                <Repeat className="h-5 w-5 md:h-6 md:w-6" />
+                <Repeat className="h-7 w-7 md:h-8 md:w-8" />
               </Button>
             </div>
 
