@@ -449,7 +449,7 @@ const FullscreenPlayer = ({
     }
     setLastTap(currentTime);
   };
-  
+
 
   const renderSongList = (songs: Song[], title: string) => {
     return (

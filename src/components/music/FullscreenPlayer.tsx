@@ -646,7 +646,7 @@ const FullscreenPlayer = ({
         ) : (
           <div
             className="flex flex-col items-center w-full max-w-md"
-            onTouchStart={(e) => handleTouchStart(e, false)}
+            onTouchStart={(e) => {  handleTouchStart(e, false); handlePosterDoubleTap(e) }}
             onTouchEnd={(e) => handleTouchEnd(e, false)}
           >
             {/* Album Art */}
