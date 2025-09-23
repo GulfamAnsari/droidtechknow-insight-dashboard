@@ -541,7 +541,7 @@ const FullscreenPlayerTablet = ({
         </div>
 
         {/* Secondary Controls */}
-        <div className="flex items-center justify-center gap-12 mb-12">
+        <div className="flex items-center justify-center gap-12 mb-8">
           <Button
             size="lg"
             variant="ghost"
@@ -562,6 +562,65 @@ const FullscreenPlayerTablet = ({
             }`}
           >
             <Repeat className="h-9 w-9" />
+          </Button>
+        </div>
+
+        {/* Volume Control */}
+        <div className="flex items-center gap-4 mb-8 px-8">
+          <Button
+            onClick={onToggleMute}
+            variant="ghost"
+            size="sm"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            <Volume2 className="h-6 w-6" />
+          </Button>
+          <Slider
+            value={[volume]}
+            onValueChange={handleVolumeChange}
+            max={100}
+            step={1}
+            className="flex-1"
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-6 mb-12">
+          <Button
+            onClick={() => onToggleLike(song.id)}
+            variant="ghost"
+            size="lg"
+            className={`text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full ${
+              likedSongs.includes(song.id) ? "text-red-500" : ""
+            }`}
+          >
+            <Heart
+              className={`h-7 w-7 ${
+                likedSongs.includes(song.id) ? "fill-current" : ""
+              }`}
+            />
+          </Button>
+
+          <Button
+            onClick={() => downloadSong(song)}
+            variant="ghost"
+            size="lg"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
+            disabled={downloadProgress[song.id] > 0}
+          >
+            {downloadProgress[song.id] > 0 ? (
+              downloadProgress[song.id] === -1 ? (
+                <X className="h-7 w-7 text-red-500" />
+              ) : downloadProgress[song.id] === 100 ? (
+                <Download className="h-7 w-7 text-green-500" />
+              ) : (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              )
+            ) : isOffline(song.id) ? (
+              <Download className="h-7 w-7 text-green-500" />
+            ) : (
+              <Download className="h-7 w-7" />
+            )}
           </Button>
         </div>
       </div>
