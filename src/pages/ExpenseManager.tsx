@@ -464,6 +464,14 @@ const ExpenseManager = () => {
 
   const netAmount = totalCredited - totalDebited;
 
+  // Calculate dividend amount from ACH-CR transactions
+  const dividendTransactions = transactionsWithAmounts.filter((t) => {
+    const content = `${t.email.subject} ${extractTextFromHtml(t.email.html)}`.toLowerCase();
+    return content.includes('ach-cr-') && t.type === "credited";
+  });
+
+  const totalDividends = dividendTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+
   
   function BillDueDate(dueDateI) {
     // Parse date – adapt format based on your actual string (e.g., "22 Jul 2025")
@@ -729,7 +737,7 @@ const ExpenseManager = () => {
                   </Card>
 
                   {/* Summary Cards with totals moved above bills */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -755,6 +763,21 @@ const ExpenseManager = () => {
                             </p>
                             <p className="text-lg font-bold text-red-500">
                               ₹{totalDebited.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-2">
+                          <CreditCard className="h-5 w-5 text-purple-500" />
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Dividends (ACH-CR)
+                            </p>
+                            <p className="text-lg font-bold text-purple-600">
+                              ₹{totalDividends.toLocaleString()}
                             </p>
                           </div>
                         </div>
