@@ -804,8 +804,21 @@ const FullscreenPlayer = ({
                   variant="ghost"
                   size="sm"
                   className="text-white hover:bg-white/20"
+                  disabled={downloadProgress[song.id] > 0}
                 >
-                  <Download className="h-5 w-5" />
+                  {downloadProgress[song.id] > 0 ? (
+                    downloadProgress[song.id] === -1 ? (
+                      <X className="h-5 w-5 text-red-500" />
+                    ) : downloadProgress[song.id] === 100 ? (
+                      <Download className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )
+                  ) : isOffline(song.id) ? (
+                    <Download className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
                 </Button>
               </div>
             </div>

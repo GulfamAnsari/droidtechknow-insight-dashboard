@@ -282,6 +282,10 @@ const FullscreenPlayer = ({
 
   const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
     useMusicContext();
+  
+  // Filter liked songs from playlist and suggestions
+  const likedData = [...playlist, ...suggestedSongs].filter(s => likedSongs.includes(s.id));
+  const offlineData = offlineSongs;
 
   const downloadSong = async (song: Song) => {
     try {
@@ -704,8 +708,21 @@ const FullscreenPlayer = ({
                   variant="ghost"
                   size="sm"
                   className="text-white hover:bg-white/20"
+                  disabled={downloadProgress[song.id] > 0}
                 >
-                  <Download className="h-5 w-5" />
+                  {downloadProgress[song.id] > 0 ? (
+                    downloadProgress[song.id] === -1 ? (
+                      <X className="h-5 w-5 text-red-500" />
+                    ) : downloadProgress[song.id] === 100 ? (
+                      <Download className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )
+                  ) : isOffline(song.id) ? (
+                    <Download className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -722,12 +739,18 @@ const FullscreenPlayer = ({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="playlist">
-                    Now Playing ({playlist.length})
+                    Playing ({playlist.length})
                   </TabsTrigger>
                   <TabsTrigger value="suggestions">
                     Suggested ({suggestedSongs.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="liked">
+                    Liked
+                  </TabsTrigger>
+                  <TabsTrigger value="offline">
+                    Offline
                   </TabsTrigger>
                 </TabsList>
 
@@ -740,6 +763,18 @@ const FullscreenPlayer = ({
                 <TabsContent value="suggestions" className="mt-4">
                   <ScrollArea>
                     {renderSongList(suggestedSongs, "Suggested Songs")}
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="liked" className="mt-4">
+                  <ScrollArea>
+                    {renderSongList(likedData, "Liked Songs")}
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="offline" className="mt-4">
+                  <ScrollArea>
+                    {renderSongList(offlineData, "Offline Songs")}
                   </ScrollArea>
                 </TabsContent>
               </Tabs>
