@@ -95,6 +95,7 @@ const Music = () => {
     artists: [],
     playlists: []
   });
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPages, setCurrentPages] = useState({
     songs: 0,
@@ -837,12 +838,13 @@ const Music = () => {
           onToggleFullscreen={toggleFullscreen}
           onToggleMute={toggleMute}
           isMuted={isMuted}
+          audioRef={audioRef}
         />
       )}
-
       {/* Fullscreen Player */}
       {isFullscreen && currentSong && (
         <FullscreenPlayer
+          audioRef={audioRef}
           song={currentSong}
           isPlaying={isPlaying}
           onPlayPause={togglePlayPause}

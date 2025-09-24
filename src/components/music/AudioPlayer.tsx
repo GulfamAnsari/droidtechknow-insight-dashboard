@@ -52,6 +52,7 @@ interface AudioPlayerProps {
   onToggleFullscreen: () => void;
   onToggleMute: () => void;
   isMuted: boolean;
+  audioRef: any;
 }
 
 const AudioPlayer = ({
@@ -72,9 +73,9 @@ const AudioPlayer = ({
   onToggleShuffle,
   onToggleFullscreen,
   onToggleMute,
-  isMuted
+  isMuted,
+  audioRef
 }: AudioPlayerProps) => {
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (audioRef.current && song) {
