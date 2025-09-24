@@ -1,31 +1,35 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  ChevronDown,
   Play,
   Pause,
   SkipBack,
   SkipForward,
-  FastForward,
-  Rewind,
-  Volume2,
-  Repeat,
-  Shuffle,
-  X,
-  Download,
-  List,
   Heart,
-  Loader2
+  Download,
+  Volume2,
+  VolumeX,
+  Shuffle,
+  Repeat,
+  List,
+  Rewind,
+  FastForward,
+  CheckCircle,
+  X,
+  Loader2,
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
+import { useSwipeable } from "react-swipeable";
 import { useMusicContext } from "@/contexts/MusicContext";
-import { useToast } from "@/hooks/use-toast";
-import { Progress } from "@radix-ui/react-progress";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 import { Song } from "@/services/musicApi";
 
 interface FullscreenPlayerProps {
-  song: Song;
+  song: Song | null;
   isPlaying: boolean;
   onPlayPause: () => void;
   onNext: () => void;
@@ -37,7 +41,7 @@ interface FullscreenPlayerProps {
   onToggleShuffle: () => void;
   playlist: Song[];
   currentIndex: number;
-  onPlaySong: any;
+  onPlaySong: (song: Song, index?: number) => void;
   currentTime: number;
   duration: number;
   onTimeUpdate: (time: number) => void;
@@ -46,14 +50,14 @@ interface FullscreenPlayerProps {
   onVolumeChange: (volume: number) => void;
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
-  suggestedSongs: Song[];
   onToggleMute: () => void;
   isMuted: boolean;
+  suggestedSongs: Song[];
   setActiveTab: (tab: string) => void;
   activeTab: string;
 }
 
-const FullscreenPlayer = ({
+const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   song,
   isPlaying,
   onPlayPause,
@@ -75,90 +79,103 @@ const FullscreenPlayer = ({
   onVolumeChange,
   onToggleLike,
   likedSongs,
-  suggestedSongs,
   onToggleMute,
   isMuted,
+  suggestedSongs,
   setActiveTab,
-  activeTab
-}: FullscreenPlayerProps) => {
+  activeTab,
+}) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playlistRef = useRef<HTMLDivElement>(null);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const [isSwipeAnimating, setIsSwipeAnimating] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<"up" | "down" | null>(
-    null
-  );
   const [showList, setShowList] = useState(false);
+  const [lastTap, setLastTap] = useState(0);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const { 
+    offlineSongs, 
+    downloadProgress, 
+    likedSongs: contextLikedSongs,
+    setDownloadProgress,
+    addToOffline 
+  } = useMusicContext();
+  const isMobile = useIsMobile();
 
+  // Audio effects
   useEffect(() => {
-    if (audioRef.current && song) {
+    const audio = audioRef.current;
+    if (audio && song) {
       const audioUrl =
         song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
         song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
         song.downloadUrl?.[0]?.url;
 
       if (audioUrl) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.volume = volume / 100;
-        audioRef.current.currentTime = currentTime;
-        if (isPlaying) {
-          audioRef.current.play();
-        }
+        audio.src = audioUrl;
+        audio.load();
       }
     }
   }, [song]);
 
   useEffect(() => {
-    if (audioRef.current) {
+    const audio = audioRef.current;
+    if (audio) {
       if (isPlaying) {
-        audioRef.current.play();
+        audio.play().catch(console.error);
       } else {
-        audioRef.current.pause();
+        audio.pause();
       }
     }
   }, [isPlaying]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume / 100;
     }
   }, [volume]);
-  const { toast } = useToast();
 
-  // Auto-scroll to current song
+  // Auto-scroll to current song in playlist
   useEffect(() => {
-    if (playlistRef.current && playlist.length > 0) {
-      const currentSongElement = playlistRef.current.querySelector(
-        `[data-song-index="${currentIndex}"]`
-      );
-      if (currentSongElement) {
-        currentSongElement.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
+    if (playlistRef.current && currentIndex >= 0) {
+      const songElement = playlistRef.current.children[currentIndex] as HTMLElement;
+      if (songElement) {
+        songElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [currentIndex, playlist, showList]);
+  }, [currentIndex, showList]);
 
+  // Audio event handlers
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      onTimeUpdate(audioRef.current.currentTime);
+    const audio = audioRef.current;
+    if (audio) {
+      onTimeUpdate(audio.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      onDurationUpdate(audioRef.current.duration);
+    const audio = audioRef.current;
+    if (audio) {
+      onDurationUpdate(audio.duration);
+    }
+  };
+
+  const handleAudioEnded = () => {
+    if (isRepeat) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+      }
+    } else {
+      onNext();
     }
   };
 
   const handleSeek = (value: number[]) => {
-    if (audioRef.current && duration > 0) {
-      const newTime = (value[0] / 100) * duration;
-      audioRef.current.currentTime = newTime;
-      onTimeUpdate(newTime);
+    const audio = audioRef.current;
+    if (audio && duration) {
+      const seekTime = (value[0] / 100) * duration;
+      audio.currentTime = seekTime;
+      onTimeUpdate(seekTime);
     }
   };
 
@@ -166,6 +183,28 @@ const FullscreenPlayer = ({
     onVolumeChange(value[0]);
   };
 
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const fastForward = () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = Math.min(audio.currentTime + 10, duration);
+    }
+  };
+
+  const rewind = () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = Math.max(audio.currentTime - 10, 0);
+    }
+  };
+
+  // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent, onImage: boolean = false) => {
     const touch = e.touches[0];
     setTouchStart({ x: touch.clientX, y: touch.clientY });
@@ -189,180 +228,110 @@ const FullscreenPlayer = ({
 
     // Check if it's a vertical swipe on the image (more vertical than horizontal)
     if (onImage && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
-      setIsSwipeAnimating(true);
       if (deltaY < 0) {
         // Swipe up - next song
-        setSwipeDirection("up");
-        setTimeout(() => {
-          onNext();
-          setIsSwipeAnimating(false);
-          setSwipeDirection(null);
-        }, 200);
+        onNext();
       } else {
         // Swipe down - previous song
-        setSwipeDirection("down");
-        setTimeout(() => {
-          onPrevious();
-          setIsSwipeAnimating(false);
-          setSwipeDirection(null);
-        }, 200);
+        onPrevious();
       }
     }
 
     setTouchStart(null);
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleFastForward = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(
-        duration,
-        audioRef.current.currentTime + 30
-      );
-    }
-  };
-
-  const handleRewind = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(
-        0,
-        audioRef.current.currentTime - 30
-      );
-    }
-  };
-
-  const saveToIndexedDB = async (song: Song) => {
-    try {
-      const request = indexedDB.open("OfflineMusicDB", 1);
-
-      request.onupgradeneeded = function (event) {
-        const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains("songs")) {
-          db.createObjectStore("songs", { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = async function (event) {
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        const downloadUrl =
-          song.downloadUrl?.find((url) => url.quality === "320kbps")?.url ||
-          song.downloadUrl?.find((url) => url.quality === "160kbps")?.url ||
-          song.downloadUrl?.[0]?.url;
-        const secureDownloadUrl = downloadUrl.replace(
-          /^http:\/\//i,
-          "https://"
-        );
-        if (downloadUrl) {
-          const response = await fetch(secureDownloadUrl);
-          const audioBlob = await response.blob();
-
-          const songData = {
-            ...song,
-            audioBlob: audioBlob
-          };
-
-          const transaction = db.transaction(["songs"], "readwrite");
-          const store = transaction.objectStore("songs");
-          store.put(songData);
-
-          transaction.oncomplete = () => {
-            console.log("Song saved to IndexedDB");
-          };
-        }
-      };
-    } catch (error) {
-      console.error("Error saving to IndexedDB:", error);
-    }
-  };
-
-  const handleAudioEnded = () => {
-    if (isRepeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play();
+  // Double tap handler for seeking
+  const handleDoubleTap = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    
+    if (now - lastTap < DOUBLE_TAP_DELAY) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const tapX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const isRightSide = tapX > rect.left + rect.width / 2;
+      
+      if (isRightSide) {
+        fastForward();
+      } else {
+        rewind();
       }
-    } else {
-      onNext();
     }
-  };
+    setLastTap(now);
+  }, [lastTap]);
 
-  const handleSongClick = (song) => {
-    onPlaySong(song);
-  };
-  const { downloadProgress, offlineSongs, setDownloadProgress, addToOffline } =
-    useMusicContext();
+  // Swipe handlers for mobile
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: onNext,
+    onSwipedRight: onPrevious,
+    onSwipedUp: () => setShowList(true),
+    onSwipedDown: () => setShowList(false),
+    preventScrollOnSwipe: true,
+    trackMouse: false,
+  });
 
-  // Add keyboard event listeners
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowUp":
-          e.preventDefault();
-          onPrevious();
-          break;
-        case "ArrowDown":
-          e.preventDefault();
-          onNext();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          if (audioRef.current) {
-            audioRef.current.currentTime = Math.max(
-              0,
-              audioRef.current.currentTime - 10
-            );
-          }
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          if (audioRef.current) {
-            audioRef.current.currentTime = Math.min(
-              duration,
-              audioRef.current.currentTime + 10
-            );
-          }
-          break;
-        case " ":
-          e.preventDefault();
-          onPlayPause();
-          break;
-      }
-    };
-
-    // Car steering wheel controls
-    const handleMediaKeys = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      
       switch (e.code) {
-        case "MediaTrackNext":
+        case 'Space':
+          e.preventDefault();
+          onPlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (e.shiftKey) {
+            rewind();
+          } else {
+            onPrevious();
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (e.shiftKey) {
+            fastForward();
+          } else {
+            onNext();
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          onVolumeChange(Math.min(volume + 10, 100));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          onVolumeChange(Math.max(volume - 10, 0));
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          onToggleMute();
+          break;
+        case 'KeyL':
+          e.preventDefault();
+          setShowList(!showList);
+          break;
+        case 'MediaTrackNext':
           e.preventDefault();
           onNext();
           break;
-        case "MediaTrackPrevious":
+        case 'MediaTrackPrevious':
           e.preventDefault();
           onPrevious();
           break;
-        case "MediaPlayPause":
+        case 'MediaPlayPause':
           e.preventDefault();
           onPlayPause();
           break;
       }
     };
 
-    window.addEventListener("keydown", handleKeyPress);
-    window.addEventListener("keydown", handleMediaKeys);
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [volume, showList, onPlayPause, onNext, onPrevious, onVolumeChange, onToggleMute]);
 
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress);
-      window.removeEventListener("keydown", handleMediaKeys);
-    };
-  }, [onNext, onPrevious, onPlayPause, duration]);
-
-  const downloadSong = async (song: Song) => {
+  // Download song function
+  const downloadSong = useCallback(async (song: Song) => {
     try {
       setDownloadProgress(song.id, 10);
 
@@ -418,168 +387,327 @@ const FullscreenPlayer = ({
 
         addToOffline(song);
         setDownloadProgress(song.id, 100);
-        toast({
-          title: "Success",
-          description: song?.name + " is downloaded",
-          variant: "success"
-        });
+        toast.success(`${song.name} downloaded successfully`);
         setTimeout(() => {
           setDownloadProgress(song.id, 0);
         }, 2000);
       };
     } catch (error) {
-      console.error("Download failed:", error);
-      toast({
-        title: "Failed",
-        description: song?.name + " failed to download",
-        variant: "destructive"
-      });
+      console.error('Download failed:', error);
+      toast.error(`Failed to download ${song.name}`);
       setDownloadProgress(song.id, -1);
       setTimeout(() => {
         setDownloadProgress(song.id, 0);
       }, 3000);
     }
-  };
+  }, [setDownloadProgress, addToOffline]);
 
   const isOffline = (songId: string) => {
     return offlineSongs.some((song) => song.id === songId);
   };
 
-  const actionButtons = (listSong) => {
-    return (
-      <div className="flex justify-center gap-4">
-        <Button
-          onClick={() => onToggleLike(listSong.id)}
-          variant="ghost"
-          size="sm"
-          className={`text-white hover:bg-white/20 ${
-            likedSongs.includes(listSong.id) ? "text-red-500" : ""
-          }`}
-        >
-          <Heart
-            className={`h-5 w-5 ${
-              likedSongs.includes(listSong.id) ? "fill-current" : ""
-            }`}
-          />
-        </Button>
-
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            downloadSong(listSong);
-          }}
-          disabled={downloadProgress[listSong.id] > 0}
-        >
-          {downloadProgress[listSong.id] > 0 ? (
-            downloadProgress[listSong.id] === -1 ? (
-              <X className="h-4 w-4 text-red-500" />
-            ) : downloadProgress[listSong.id] === 100 ? (
-              <Download className="h-4 w-4 text-green-500" />
-            ) : (
-              <div className="flex flex-col items-center gap-1 min-w-[40px]">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <Progress
-                  value={downloadProgress[listSong.id]}
-                  className="w-8 h-1"
-                />
-              </div>
-            )
-          ) : isOffline(listSong.id) ? (
-            <Download className="h-4 w-4 text-green-500" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-    );
+  const handleSongClick = (selectedSong: Song) => {
+    const index = playlist.findIndex(s => s.id === selectedSong.id);
+    onPlaySong(selectedSong, index >= 0 ? index : 0);
   };
 
-  const renderSongList = (songs: Song[], title: string) => {
-    return (
-      <div className="w-full max-w-md">
-        <h3 className="text-xl font-bold mb-4 text-center">{title}</h3>
-        <div
-          ref={activeTab === "playlist" ? playlistRef : undefined}
-          className="overflow-y-auto bg-black/20 rounded-lg p-4 space-y-2"
-          style={{ height: "60vh" }}
-        >
-          {songs.map((listSong, index) => (
-            <div
-              key={listSong.id}
-              data-song-index={activeTab === "playlist" ? index : undefined}
-              className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
-                listSong.id === song.id
-                  ? "bg-white/20 border border-white/30"
-                  : "hover:bg-white/10"
-              }`}
-            >
+  const renderSongList = (songs: Song[], title: string) => (
+    <div className="space-y-2">
+      <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>
+      {songs.map((listSong, index) => {
+        const isCurrentSong = listSong.id === song?.id;
+        const isLiked = likedSongs.includes(listSong.id);
+        const isOfflineSong = isOffline(listSong.id);
+        const progress = downloadProgress[listSong.id];
+        
+        return (
+          <div
+            key={listSong.id}
+            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+              isCurrentSong 
+                ? "bg-primary/20 border border-primary/30" 
+                : "bg-card/50 hover:bg-card/80"
+            }`}
+            onClick={() => handleSongClick(listSong)}
+          >
+            <div className="relative">
               <LazyImage
-                src={listSong.image?.[0]?.url}
+                src={listSong.image?.[2]?.url || listSong.image?.[1]?.url || listSong.image?.[0]?.url}
                 alt={listSong.name}
-                className="w-10 h-10 rounded object-cover"
-                onClick={() => handleSongClick(listSong)}
+                className="w-12 h-12 rounded-md object-cover"
               />
-              <div
-                className="flex-1 min-w-0"
-                onClick={() => handleSongClick(listSong)}
-              >
-                <p className="truncate text-sm font-medium">{listSong.name}</p>
-                <p className="truncate text-xs text-white/60">
-                  {listSong.artists?.primary?.map((a) => a.name).join(", ")}
-                </p>
-              </div>
-              {listSong.id === song.id && (
-                <div className="text-primary">
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
+              {isCurrentSong && isPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                 </div>
               )}
-              {actionButtons(listSong)}
             </div>
-          ))}
+            
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-foreground truncate">{listSong.name}</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {listSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLike(listSong.id);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <Heart
+                  className={`h-4 w-4 ${
+                    isLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                  }`}
+                />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadSong(listSong);
+                }}
+                disabled={isOfflineSong || !!progress}
+                className="h-8 w-8 p-0"
+              >
+                {isOfflineSong ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : progress ? (
+                  progress === -1 ? (
+                    <X className="h-4 w-4 text-red-500" />
+                  ) : progress === 100 ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span className="text-xs">{Math.round(progress)}%</span>
+                    </div>
+                  )
+                ) : (
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (!song) return null;
+
+  const isLiked = likedSongs.includes(song.id);
+  const isOfflineSong = isOffline(song.id);
+  const progress = downloadProgress[song.id];
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div 
+        className="fixed inset-0 bg-gradient-to-b from-primary/20 via-background to-background z-50 flex flex-col"
+        {...swipeHandlers}
+      >
+        <audio
+          ref={audioRef}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleAudioEnded}
+        />
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-4">
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <ChevronDown className="h-6 w-6" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setShowList(!showList)}
+          >
+            <List className="h-6 w-6" />
+          </Button>
         </div>
+
+        {!showList ? (
+          /* Main Player View */
+          <div className="flex-1 flex flex-col items-center justify-center px-6 space-y-8">
+            {/* Album Art */}
+            <div 
+              className="relative w-80 h-80 max-w-[90vw] max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl"
+              onTouchStart={(e) => { handleTouchStart(e, true); handleDoubleTap(e); }}
+              onTouchEnd={(e) => handleTouchEnd(e, true)}
+              onClick={handleDoubleTap}
+            >
+              <LazyImage
+                src={song.image?.[2]?.url || song.image?.[1]?.url || song.image?.[0]?.url}
+                alt={song.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Song Info */}
+            <div className="text-center space-y-2">
+              <h1 className="text-2xl font-bold text-foreground">{song.name}</h1>
+              <p className="text-lg text-muted-foreground">
+                {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full space-y-2">
+              <Slider
+                value={[duration ? (currentTime / duration) * 100 : 0]}
+                onValueChange={handleSeek}
+                className="w-full"
+                step={0.1}
+              />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            {/* Main Controls */}
+            <div className="flex items-center justify-center space-x-6">
+              <Button variant="ghost" size="icon" onClick={rewind}>
+                <Rewind className="h-6 w-6" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onPrevious}>
+                <SkipBack className="h-6 w-6" />
+              </Button>
+              <Button
+                variant="default"
+                size="icon"
+                className="h-16 w-16"
+                onClick={onPlayPause}
+              >
+                {isPlaying ? (
+                  <Pause className="h-8 w-8" />
+                ) : (
+                  <Play className="h-8 w-8" fill="currentColor" />
+                )}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onNext}>
+                <SkipForward className="h-6 w-6" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={fastForward}>
+                <FastForward className="h-6 w-6" />
+              </Button>
+            </div>
+
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-between w-full">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleShuffle}
+                className={isShuffle ? "text-primary" : ""}
+              >
+                <Shuffle className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onToggleLike(song.id)}
+                >
+                  <Heart
+                    className={`h-5 w-5 ${
+                      isLiked ? "fill-red-500 text-red-500" : ""
+                    }`}
+                  />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => downloadSong(song)}
+                  disabled={isOfflineSong || !!progress}
+                >
+                  {isOfflineSong ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : progress ? (
+                    <div className="text-xs">{Math.round(progress)}%</div>
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleRepeat}
+                className={isRepeat ? "text-primary" : ""}
+              >
+                <Repeat className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Volume Control */}
+            <div className="flex items-center space-x-3 w-full">
+              <Button variant="ghost" size="icon" onClick={onToggleMute}>
+                {isMuted ? (
+                  <VolumeX className="h-5 w-5" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </Button>
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        ) : (
+          /* Playlist View */
+          <div className="flex-1 p-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="playlist">Queue</TabsTrigger>
+                <TabsTrigger value="suggestions">Suggested</TabsTrigger>
+                <TabsTrigger value="liked">Liked</TabsTrigger>
+                <TabsTrigger value="offline">Offline</TabsTrigger>
+              </TabsList>
+              
+              <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                <TabsContent value="playlist" className="space-y-4">
+                  {renderSongList(playlist, "Current Queue")}
+                </TabsContent>
+                
+                <TabsContent value="suggestions" className="space-y-4">
+                  {renderSongList(suggestedSongs, "Suggested Songs")}
+                </TabsContent>
+                
+                <TabsContent value="liked" className="space-y-4">
+                  {renderSongList(contextLikedSongs, "Liked Songs")}
+                </TabsContent>
+                
+                <TabsContent value="offline" className="space-y-4">
+                  {renderSongList(offlineSongs, "Offline Songs")}
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        )}
       </div>
     );
-  };
+  }
 
-  // State to track double tap
-  const [lastTap, setLastTap] = useState<number | null>(null);
-
-  const handlePosterDoubleTap = (e: React.TouchEvent<HTMLDivElement>) => {
-    const currentTime = Date.now();
-
-    if (lastTap && currentTime - lastTap < 300) {
-      // Detected double tap
-      const touchX = e.changedTouches[0].clientX;
-      const screenWidth = window.innerWidth;
-
-      if (touchX < screenWidth / 2) {
-        // Left side double tap → rewind
-        handleRewind();
-      } else {
-        // Right side double tap → fast forward
-        handleFastForward();
-      }
-    } else {
-      setLastTap(currentTime);
-    }
-  };
-
+  // Desktop/Tablet Layout
   return (
-    <div
-      className={`fixed inset-0 w-screen h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 z-50 flex flex-col text-white transition-transform duration-200 overflow-hidden ${
-        isSwipeAnimating
-          ? swipeDirection === "up"
-            ? "animate-slide-up"
-            : "animate-slide-down"
-          : ""
-      }`}
-    >
+    <div className="fixed inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/20 z-50 flex">
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
@@ -587,244 +715,188 @@ const FullscreenPlayer = ({
         onEnded={handleAudioEnded}
       />
 
-      {/* Header Controls */}
-      <div className="flex items-center justify-between p-4">
-        <div className="text-sm text-white/60">
-          Swipe up/down on image to change songs
-        </div>
-        <div className="flex gap-2">
-          <Button
+      {/* Left Panel - Player Controls */}
+      <div className="flex-1 flex flex-col p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <ChevronDown className="h-6 w-6" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
             onClick={() => setShowList(!showList)}
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20"
           >
-            <List className="h-5 w-5" />
-          </Button>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
+            <List className="h-6 w-6" />
           </Button>
         </div>
-      </div>
 
-      {/* Main Content Container */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        {showList ? (
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full max-w-md"
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col items-center justify-center space-y-8">
+          {/* Album Art */}
+          <div 
+            className="relative w-80 h-80 rounded-2xl overflow-hidden shadow-2xl"
+            onDoubleClick={handleDoubleTap}
           >
-            <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/10">
-              <TabsTrigger
-                value="playlist"
-                className="text-white data-[state=active]:bg-white/20"
-              >
-                Playlist
-              </TabsTrigger>
-              <TabsTrigger
-                value="suggestions"
-                className="text-white data-[state=active]:bg-white/20"
-              >
-                Suggested
-              </TabsTrigger>
-            </TabsList>
+            <LazyImage
+              src={song.image?.[2]?.url || song.image?.[1]?.url || song.image?.[0]?.url}
+              alt={song.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
-            <TabsContent value="playlist">
-              {renderSongList(playlist, "Current Playlist")}
-            </TabsContent>
+          {/* Song Info */}
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">{song.name}</h1>
+            <p className="text-xl text-muted-foreground">
+              {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+            </p>
+          </div>
 
-            <TabsContent value="suggestions">
-              {renderSongList(suggestedSongs, "Suggested Songs")}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div
-            className="flex flex-col items-center w-full max-w-md"
-            onTouchStart={(e) => {  handleTouchStart(e, false); handlePosterDoubleTap(e) }}
-            onTouchEnd={(e) => handleTouchEnd(e, false)}
-          >
-            {/* Album Art */}
-            <div
-              onTouchStart={(e) => handleTouchStart(e, true)}
-              onTouchEnd={(e) => handleTouchEnd(e, true)}
-            >
-              <LazyImage
-                src={
-                  song.image[2]?.url || song.image[1]?.url || song.image[0]?.url
-                }
-                alt={song.name}
-                className="w-80 h-80 md:w-96 md:h-96 lg:w-[400px] lg:h-[400px] rounded-3xl shadow-2xl object-cover cursor-pointer hover:scale-105 transition-transform mb-8 md:mb-10"
-                onClick={onPlayPause}
-              />
-            </div>
-
-            {/* Song Info */}
-            <div className="text-center mb-8 md:mb-10 max-w-full px-4">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 truncate">
-                {song.name}
-              </h1>
-              <p className="text-xl md:text-2xl lg:text-3xl text-foreground/80 truncate">
-                {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                  "Unknown Artist"}
-              </p>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full max-w-lg mb-8 md:mb-10 px-4">
-              <Slider
-                value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-                onValueChange={handleSeek}
-                max={100}
-                step={0.1}
-                className="w-full py-8"
-              />
-              <div className="flex justify-between text-base text-muted-foreground mt-3">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Main Controls */}
-            <div className="flex items-center justify-center gap-4 md:gap-6 mb-6 md:mb-8">
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onPrevious}
-                className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
-              >
-                <SkipBack className="h-7 w-7 md:h-8 md:w-8" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={handleRewind}
-                className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
-              >
-                <Rewind className="h-6 w-6 md:h-7 md:w-7" />
-              </Button>
-              <Button
-                size="lg"
-                onClick={onPlayPause}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-4 md:p-5"
-              >
-                {isPlaying ? (
-                  <Pause className="h-8 w-8 md:h-10 md:w-10" />
-                ) : (
-                  <Play className="h-8 w-8 md:h-10 md:w-10" />
-                )}
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={handleFastForward}
-                className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
-              >
-                <FastForward className="h-6 w-6 md:h-7 md:w-7" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onNext}
-                className="text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full"
-              >
-                <SkipForward className="h-7 w-7 md:h-8 md:w-8" />
-              </Button>
-            </div>
-
-            {/* Secondary Controls */}
-            <div className="flex items-center justify-center gap-8 md:gap-12 mb-8 md:mb-10">
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleShuffle}
-                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full ${
-                  isShuffle ? "text-primary bg-primary/20" : ""
-                }`}
-              >
-                <Shuffle className="h-6 w-6 md:h-7 md:w-7" />
-              </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleRepeat}
-                className={`text-foreground hover:bg-accent hover:text-accent-foreground p-4 rounded-full ${
-                  isRepeat ? "text-primary bg-primary/20" : ""
-                }`}
-              >
-                <Repeat className="h-6 w-6 md:h-7 md:w-7" />
-              </Button>
-            </div>
-
-            {/* Bottom Controls */}
-            <div className="flex flex-col gap-4 w-full max-w-md px-4">
-              {/* Volume Control */}
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={onToggleMute}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20"
-                >
-                  <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
-                </Button>
-                <Slider
-                  value={[volume]}
-                  onValueChange={handleVolumeChange}
-                  max={100}
-                  step={1}
-                  className="flex-1"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-center gap-4">
-                <Button
-                  onClick={() => onToggleLike(song.id)}
-                  variant="ghost"
-                  size="sm"
-                  className={`text-white hover:bg-white/20 ${
-                    likedSongs.includes(song.id) ? "text-red-500" : ""
-                  }`}
-                >
-                  <Heart
-                    className={`h-5 w-5 ${
-                      likedSongs.includes(song.id) ? "fill-current" : ""
-                    }`}
-                  />
-                </Button>
-
-                <Button
-                  onClick={() => downloadSong(song)}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20"
-                  disabled={downloadProgress[song.id] > 0}
-                >
-                  {downloadProgress[song.id] > 0 ? (
-                    downloadProgress[song.id] === -1 ? (
-                      <X className="h-5 w-5 text-red-500" />
-                    ) : downloadProgress[song.id] === 100 ? (
-                      <Download className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )
-                  ) : isOffline(song.id) ? (
-                    <Download className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Download className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
+          {/* Progress Bar */}
+          <div className="w-full max-w-md space-y-4">
+            <Slider
+              value={[duration ? (currentTime / duration) * 100 : 0]}
+              onValueChange={handleSeek}
+              className="w-full"
+              step={0.1}
+            />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
-        )}
+
+          {/* Main Controls */}
+          <div className="flex items-center justify-center space-x-6">
+            <Button variant="ghost" size="icon" onClick={rewind}>
+              <Rewind className="h-6 w-6" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onPrevious}>
+              <SkipBack className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="default"
+              size="icon"
+              className="h-16 w-16"
+              onClick={onPlayPause}
+            >
+              {isPlaying ? (
+                <Pause className="h-8 w-8" />
+              ) : (
+                <Play className="h-8 w-8" fill="currentColor" />
+              )}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onNext}>
+              <SkipForward className="h-6 w-6" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={fastForward}>
+              <FastForward className="h-6 w-6" />
+            </Button>
+          </div>
+
+          {/* Secondary Controls */}
+          <div className="flex items-center justify-between w-full max-w-md">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleShuffle}
+              className={isShuffle ? "text-primary" : ""}
+            >
+              <Shuffle className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleRepeat}
+              className={isRepeat ? "text-primary" : ""}
+            >
+              <Repeat className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Volume and Actions */}
+          <div className="flex items-center justify-between w-full max-w-md space-x-4">
+            <div className="flex items-center space-x-3 flex-1">
+              <Button variant="ghost" size="icon" onClick={onToggleMute}>
+                {isMuted ? (
+                  <VolumeX className="h-5 w-5" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </Button>
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onToggleLike(song.id)}
+              >
+                <Heart
+                  className={`h-5 w-5 ${
+                    isLiked ? "fill-red-500 text-red-500" : ""
+                  }`}
+                />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => downloadSong(song)}
+                disabled={isOfflineSong || !!progress}
+              >
+                {isOfflineSong ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : progress ? (
+                  <div className="text-xs">{Math.round(progress)}%</div>
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Right Panel - Playlist */}
+      {showList && (
+        <div className="w-1/3 bg-card/50 border-l border-border p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="playlist">Queue</TabsTrigger>
+              <TabsTrigger value="suggestions">Suggested</TabsTrigger>
+              <TabsTrigger value="liked">Liked</TabsTrigger>
+              <TabsTrigger value="offline">Offline</TabsTrigger>
+            </TabsList>
+            
+            <div className="mt-4 h-[calc(100vh-140px)] overflow-y-auto" ref={playlistRef}>
+              <TabsContent value="playlist" className="space-y-4">
+                {renderSongList(playlist, "Current Queue")}
+              </TabsContent>
+              
+              <TabsContent value="suggestions" className="space-y-4">
+                {renderSongList(suggestedSongs, "Suggested Songs")}
+              </TabsContent>
+              
+              <TabsContent value="liked" className="space-y-4">
+                {renderSongList(contextLikedSongs, "Liked Songs")}
+              </TabsContent>
+              
+              <TabsContent value="offline" className="space-y-4">
+                {renderSongList(offlineSongs, "Offline Songs")}
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      )}
     </div>
   );
 };
