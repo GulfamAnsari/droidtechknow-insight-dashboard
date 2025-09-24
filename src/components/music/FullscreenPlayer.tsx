@@ -413,7 +413,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
   const renderSongList = (songs: Song[], title: string) => (
     <div className="space-y-2">
-      <h3 className="text-lg font-semibold text-foreground mb-4">{title}</h3>
+      <h3 className="text-lg font-semibold text-white mb-4 drop-shadow-md">{title}</h3>
       {songs.map((listSong, index) => {
         const isCurrentSong = listSong.id === song?.id;
         const isLiked = likedSongs.includes(listSong.id);
@@ -423,10 +423,10 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         return (
           <div
             key={listSong.id}
-            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+            className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 hover-scale ${
               isCurrentSong 
-                ? "bg-primary/20 border border-primary/30" 
-                : "bg-card/50 hover:bg-card/80"
+                ? "bg-white/20 border border-white/30 shadow-lg backdrop-blur-sm" 
+                : "bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10"
             }`}
             onClick={() => handleSongClick(listSong)}
           >
@@ -444,8 +444,8 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             </div>
             
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">{listSong.name}</p>
-              <p className="text-sm text-muted-foreground truncate">
+              <p className="font-medium text-white truncate drop-shadow-sm">{listSong.name}</p>
+              <p className="text-sm text-white/70 truncate drop-shadow-sm">
                 {listSong.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
               </p>
             </div>
@@ -458,11 +458,11 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   e.stopPropagation();
                   onToggleLike(listSong.id);
                 }}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/20 hover-scale"
               >
                 <Heart
                   className={`h-4 w-4 ${
-                    isLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                    isLiked ? "fill-red-400 text-red-400" : ""
                   }`}
                 />
               </Button>
@@ -475,23 +475,23 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   downloadSong(listSong);
                 }}
                 disabled={isOfflineSong || !!progress}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/20 hover-scale disabled:opacity-50"
               >
                 {isOfflineSong ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-green-400" />
                 ) : progress ? (
                   progress === -1 ? (
-                    <X className="h-4 w-4 text-red-500" />
+                    <X className="h-4 w-4 text-red-400" />
                   ) : progress === 100 ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-green-400" />
                   ) : (
                     <div className="flex flex-col items-center">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      <span className="text-xs">{Math.round(progress)}%</span>
+                      <span className="text-xs text-white">{Math.round(progress)}%</span>
                     </div>
                   )
                 ) : (
-                  <Download className="h-4 w-4 text-muted-foreground" />
+                  <Download className="h-4 w-4" />
                 )}
               </Button>
             </div>
@@ -511,9 +511,23 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   if (isMobile) {
     return (
       <div 
-        className="fixed inset-0 bg-gradient-to-b from-primary/20 via-background to-background z-50 flex flex-col"
+        className="fixed inset-0 z-50 flex flex-col overflow-hidden"
         {...swipeHandlers}
       >
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-blue-900/80 to-indigo-900/90 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 via-transparent to-secondary/20" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(120,119,198,0.1),transparent_70%)]" />
+        
+        {/* Floating particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-primary/40 rounded-full animate-ping" style={{ animationDelay: '0s', animationDuration: '3s' }} />
+          <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-secondary/60 rounded-full animate-ping" style={{ animationDelay: '1s', animationDuration: '4s' }} />
+          <div className="absolute top-1/2 left-3/4 w-3 h-3 bg-accent/30 rounded-full animate-ping" style={{ animationDelay: '2s', animationDuration: '5s' }} />
+        </div>
+        
+        {/* Content overlay */}
+        <div className="relative z-10 flex flex-col h-full">
         <audio
           ref={audioRef}
           onTimeUpdate={handleTimeUpdate}
@@ -523,13 +537,14 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
         {/* Header */}
         <div className="flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-white/90 hover:text-white hover:bg-white/10">
             <ChevronDown className="h-6 w-6" />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setShowList(!showList)}
+            className="text-white/90 hover:text-white hover:bg-white/10"
           >
             <List className="h-6 w-6" />
           </Button>
@@ -554,8 +569,8 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
             {/* Song Info */}
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold text-foreground">{song.name}</h1>
-              <p className="text-lg text-muted-foreground">
+              <h1 className="text-2xl font-bold text-white drop-shadow-lg">{song.name}</h1>
+              <p className="text-lg text-white/80 drop-shadow-md">
                 {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
               </p>
             </div>
@@ -568,7 +583,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 className="w-full"
                 step={0.1}
               />
-              <div className="flex justify-between text-sm text-muted-foreground">
+              <div className="flex justify-between text-sm text-white/70">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
@@ -576,16 +591,16 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
             {/* Main Controls */}
             <div className="flex items-center justify-center space-x-6">
-              <Button variant="ghost" size="icon" onClick={rewind}>
+              <Button variant="ghost" size="icon" onClick={rewind} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
                 <Rewind className="h-6 w-6" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={onPrevious}>
+              <Button variant="ghost" size="icon" onClick={onPrevious} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
                 <SkipBack className="h-6 w-6" />
               </Button>
               <Button
                 variant="default"
                 size="icon"
-                className="h-16 w-16"
+                className="h-16 w-16 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/30 hover-scale shadow-2xl"
                 onClick={onPlayPause}
               >
                 {isPlaying ? (
@@ -594,10 +609,10 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   <Play className="h-8 w-8" fill="currentColor" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" onClick={onNext}>
+              <Button variant="ghost" size="icon" onClick={onNext} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
                 <SkipForward className="h-6 w-6" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={fastForward}>
+              <Button variant="ghost" size="icon" onClick={fastForward} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
                 <FastForward className="h-6 w-6" />
               </Button>
             </div>
@@ -608,7 +623,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onToggleShuffle}
-                className={isShuffle ? "text-primary" : ""}
+                className={`text-white/90 hover:text-white hover:bg-white/10 hover-scale ${isShuffle ? "text-white bg-white/20" : ""}`}
               >
                 <Shuffle className="h-5 w-5" />
               </Button>
@@ -618,10 +633,11 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={() => onToggleLike(song.id)}
+                  className="text-white/90 hover:text-white hover:bg-white/10 hover-scale"
                 >
                   <Heart
                     className={`h-5 w-5 ${
-                      isLiked ? "fill-red-500 text-red-500" : ""
+                      isLiked ? "fill-red-400 text-red-400" : ""
                     }`}
                   />
                 </Button>
@@ -631,11 +647,12 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   size="icon"
                   onClick={() => downloadSong(song)}
                   disabled={isOfflineSong || !!progress}
+                  className="text-white/90 hover:text-white hover:bg-white/10 hover-scale disabled:opacity-50"
                 >
                   {isOfflineSong ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-green-400" />
                   ) : progress ? (
-                    <div className="text-xs">{Math.round(progress)}%</div>
+                    <div className="text-xs text-white">{Math.round(progress)}%</div>
                   ) : (
                     <Download className="h-5 w-5" />
                   )}
@@ -646,7 +663,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onToggleRepeat}
-                className={isRepeat ? "text-primary" : ""}
+                className={`text-white/90 hover:text-white hover:bg-white/10 hover-scale ${isRepeat ? "text-white bg-white/20" : ""}`}
               >
                 <Repeat className="h-5 w-5" />
               </Button>
@@ -654,7 +671,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
             {/* Volume Control */}
             <div className="flex items-center space-x-3 w-full">
-              <Button variant="ghost" size="icon" onClick={onToggleMute}>
+              <Button variant="ghost" size="icon" onClick={onToggleMute} className="text-white/90 hover:text-white hover:bg-white/10">
                 {isMuted ? (
                   <VolumeX className="h-5 w-5" />
                 ) : (
@@ -672,13 +689,13 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           </div>
         ) : (
           /* Playlist View */
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 bg-black/20 backdrop-blur-sm m-4 rounded-2xl border border-white/10">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="playlist">Queue</TabsTrigger>
-                <TabsTrigger value="suggestions">Suggested</TabsTrigger>
-                <TabsTrigger value="liked">Liked</TabsTrigger>
-                <TabsTrigger value="offline">Offline</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
+                <TabsTrigger value="playlist" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Queue</TabsTrigger>
+                <TabsTrigger value="suggestions" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Suggested</TabsTrigger>
+                <TabsTrigger value="liked" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Liked</TabsTrigger>
+                <TabsTrigger value="offline" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Offline</TabsTrigger>
               </TabsList>
               
               <div className="mt-4 max-h-[60vh] overflow-y-auto">
@@ -701,13 +718,29 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             </Tabs>
           </div>
         )}
+        </div>
       </div>
     );
   }
 
   // Desktop/Tablet Layout
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/20 z-50 flex">
+    <div className="fixed inset-0 z-50 flex overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/95 via-purple-900/90 to-blue-900/95" />
+      <div className="absolute inset-0 bg-gradient-to-tl from-primary/20 via-transparent to-secondary/15" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.15),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(59,130,246,0.1),transparent_50%)]" />
+      
+      {/* Animated elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 right-20 w-4 h-4 bg-primary/30 rounded-full animate-ping" style={{ animationDelay: '0s', animationDuration: '4s' }} />
+        <div className="absolute bottom-32 left-32 w-2 h-2 bg-secondary/40 rounded-full animate-ping" style={{ animationDelay: '2s', animationDuration: '6s' }} />
+        <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-accent/20 rounded-full animate-ping" style={{ animationDelay: '1s', animationDuration: '5s' }} />
+      </div>
+      
+      {/* Content overlay */}
+      <div className="relative z-10 flex w-full">
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
@@ -719,13 +752,14 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       <div className="flex-1 flex flex-col p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-white/90 hover:text-white hover:bg-white/10">
             <ChevronDown className="h-6 w-6" />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setShowList(!showList)}
+            className="text-white/90 hover:text-white hover:bg-white/10"
           >
             <List className="h-6 w-6" />
           </Button>
@@ -735,7 +769,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         <div className="flex-1 flex flex-col items-center justify-center space-y-8">
           {/* Album Art */}
           <div 
-            className="relative w-80 h-80 rounded-2xl overflow-hidden shadow-2xl"
+            className="relative w-80 h-80 rounded-2xl overflow-hidden shadow-2xl hover-scale ring-2 ring-white/20"
             onDoubleClick={handleDoubleTap}
           >
             <LazyImage
@@ -743,12 +777,13 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               alt={song.name}
               className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
 
           {/* Song Info */}
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">{song.name}</h1>
-            <p className="text-xl text-muted-foreground">
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">{song.name}</h1>
+            <p className="text-xl text-white/80 drop-shadow-md">
               {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
             </p>
           </div>
@@ -761,7 +796,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               className="w-full"
               step={0.1}
             />
-            <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-sm text-white/70">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -769,16 +804,16 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
           {/* Main Controls */}
           <div className="flex items-center justify-center space-x-6">
-            <Button variant="ghost" size="icon" onClick={rewind}>
+            <Button variant="ghost" size="icon" onClick={rewind} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
               <Rewind className="h-6 w-6" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onPrevious}>
+            <Button variant="ghost" size="icon" onClick={onPrevious} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
               <SkipBack className="h-6 w-6" />
             </Button>
             <Button
               variant="default"
               size="icon"
-              className="h-16 w-16"
+              className="h-16 w-16 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/30 hover-scale shadow-2xl"
               onClick={onPlayPause}
             >
               {isPlaying ? (
@@ -787,10 +822,10 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 <Play className="h-8 w-8" fill="currentColor" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" onClick={onNext}>
+            <Button variant="ghost" size="icon" onClick={onNext} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
               <SkipForward className="h-6 w-6" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={fastForward}>
+            <Button variant="ghost" size="icon" onClick={fastForward} className="text-white/90 hover:text-white hover:bg-white/10 hover-scale">
               <FastForward className="h-6 w-6" />
             </Button>
           </div>
@@ -801,7 +836,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               variant="ghost"
               size="icon"
               onClick={onToggleShuffle}
-              className={isShuffle ? "text-primary" : ""}
+              className={`text-white/90 hover:text-white hover:bg-white/10 hover-scale ${isShuffle ? "text-white bg-white/20" : ""}`}
             >
               <Shuffle className="h-5 w-5" />
             </Button>
@@ -809,7 +844,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               variant="ghost"
               size="icon"
               onClick={onToggleRepeat}
-              className={isRepeat ? "text-primary" : ""}
+              className={`text-white/90 hover:text-white hover:bg-white/10 hover-scale ${isRepeat ? "text-white bg-white/20" : ""}`}
             >
               <Repeat className="h-5 w-5" />
             </Button>
@@ -818,7 +853,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           {/* Volume and Actions */}
           <div className="flex items-center justify-between w-full max-w-md space-x-4">
             <div className="flex items-center space-x-3 flex-1">
-              <Button variant="ghost" size="icon" onClick={onToggleMute}>
+              <Button variant="ghost" size="icon" onClick={onToggleMute} className="text-white/90 hover:text-white hover:bg-white/10">
                 {isMuted ? (
                   <VolumeX className="h-5 w-5" />
                 ) : (
@@ -839,10 +874,11 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => onToggleLike(song.id)}
+                className="text-white/90 hover:text-white hover:bg-white/10 hover-scale"
               >
                 <Heart
                   className={`h-5 w-5 ${
-                    isLiked ? "fill-red-500 text-red-500" : ""
+                    isLiked ? "fill-red-400 text-red-400" : ""
                   }`}
                 />
               </Button>
@@ -852,11 +888,12 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 size="icon"
                 onClick={() => downloadSong(song)}
                 disabled={isOfflineSong || !!progress}
+                className="text-white/90 hover:text-white hover:bg-white/10 hover-scale disabled:opacity-50"
               >
                 {isOfflineSong ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-green-400" />
                 ) : progress ? (
-                  <div className="text-xs">{Math.round(progress)}%</div>
+                  <div className="text-xs text-white">{Math.round(progress)}%</div>
                 ) : (
                   <Download className="h-5 w-5" />
                 )}
@@ -868,13 +905,13 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
       {/* Right Panel - Playlist */}
       {showList && (
-        <div className="w-1/3 bg-card/50 border-l border-border p-6">
+        <div className="w-1/3 bg-black/30 backdrop-blur-md border-l border-white/10 p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="playlist">Queue</TabsTrigger>
-              <TabsTrigger value="suggestions">Suggested</TabsTrigger>
-              <TabsTrigger value="liked">Liked</TabsTrigger>
-              <TabsTrigger value="offline">Offline</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
+              <TabsTrigger value="playlist" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Queue</TabsTrigger>
+              <TabsTrigger value="suggestions" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Suggested</TabsTrigger>
+              <TabsTrigger value="liked" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Liked</TabsTrigger>
+              <TabsTrigger value="offline" className="text-white data-[state=active]:bg-white/20 data-[state=active]:text-white">Offline</TabsTrigger>
             </TabsList>
             
             <div className="mt-4 h-[calc(100vh-140px)] overflow-y-auto" ref={playlistRef}>
@@ -897,6 +934,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           </Tabs>
         </div>
       )}
+      </div>
     </div>
   );
 };
