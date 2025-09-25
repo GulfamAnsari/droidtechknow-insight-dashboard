@@ -115,10 +115,16 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       if (audioUrl) {
         audio.src = audioUrl;
         audio.load();
+        if (isPlaying) {
+          audio
+            .play()
+            .catch((err) => console.error("Error playing new song:", err));
+        }
       }
     }
-  }, [song?.id]);
-   // Sync current time from context but avoid setting if close to current
+  }, [song, isPlaying]);
+
+  // Sync current time from context but avoid setting if close to current
   useEffect(() => {
     if (
       audioRef.current &&
@@ -127,7 +133,6 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       audioRef.current.currentTime = currentTime;
     }
   }, [currentTime]);
-
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -220,7 +225,6 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     }
   };
 
-
   // Double tap handler for seeking
   const handleDoubleTap = useCallback(
     (e: React.TouchEvent | React.MouseEvent) => {
@@ -242,7 +246,6 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     },
     [lastTap]
   );
-
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -498,68 +501,74 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     </div>
   );
 
-  
   if (!song) return null;
 
   const isLiked = likedSongs.includes(song.id);
   const isOfflineSong = isOffline(song.id);
   const progress = downloadProgress[song.id];
 
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
+    null
+  );
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(
+    null
+  );
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+  };
 
-const handleTouchStart = (e: React.TouchEvent) => {
-  const touch = e.touches[0];
-  touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
-};
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
 
-const handleTouchEnd = (e: React.TouchEvent) => {
-  if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
 
-  const touch = e.changedTouches[0];
-  const dx = touch.clientX - touchStartRef.current.x;
-  const dy = touch.clientY - touchStartRef.current.y;
-  const dt = Date.now() - touchStartRef.current.time;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
 
-  const absDx = Math.abs(dx);
-  const absDy = Math.abs(dy);
-  
-  // Swipe threshold
-  const threshold = 50; // px
-  const timeThreshold = 500; // ms
+    // Swipe threshold
+    const threshold = 50; // px
+    const timeThreshold = 500; // ms
 
-  // Double tap detection
-  const now = Date.now();
-  lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
+    // Double tap detection
+    const now = Date.now();
+    lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
 
-  // Swipe detection
-  if (absDx > absDy && absDx > threshold) {
-    if (dx > 0) onNext(); // swipe right
-    else onPrevious(); // swipe left
-  } else if (absDy > absDx && absDy > threshold) {
-    if (dy < 0) setShowList(true); // swipe up
-    else setShowList(false); // swipe down
-  } else if (absDx < 10 && absDy < 10 && dt < 300) {
-    // Tap on album art
-    onPlayPause();
-  }
+    // Swipe detection
+    if (absDx > absDy && absDx > threshold) {
+      if (dx > 0) onNext(); // swipe right
+      else onPrevious(); // swipe left
+    } else if (absDy > absDx && absDy > threshold) {
+      if (dy < 0) setShowList(true); // swipe up
+      else setShowList(false); // swipe down
+    } else if (absDx < 10 && absDy < 10 && dt < 300) {
+      // Tap on album art
+      onPlayPause();
+    }
 
-  touchStartRef.current = null;
-};
+    touchStartRef.current = null;
+  };
 
   // Audio event listeners only (using shared audioRef)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.addEventListener('ended', handleAudioEnded);
+      audio.addEventListener("timeupdate", handleTimeUpdate);
+      audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.addEventListener("ended", handleAudioEnded);
 
       return () => {
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.removeEventListener('ended', handleAudioEnded);
+        audio.removeEventListener("timeupdate", handleTimeUpdate);
+        audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        audio.removeEventListener("ended", handleAudioEnded);
       };
     }
   }, [audioRef.current]);
@@ -605,8 +614,11 @@ const handleTouchEnd = (e: React.TouchEvent) => {
   // Album art
   function renderAlbumArt() {
     return (
-      <div onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd} className="relative w-72 h-72 max-w-[90vw] max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative w-72 h-72 max-w-[90vw] max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl"
+      >
         <LazyImage
           src={
             song.image?.[2]?.url || song.image?.[1]?.url || song.image?.[0]?.url
@@ -622,8 +634,11 @@ const handleTouchEnd = (e: React.TouchEvent) => {
   // Song info
   function renderSongInfo() {
     return (
-      <div onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd} className="text-center space-y-2">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="text-center space-y-2"
+      >
         <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
           {song.name}
         </h1>
@@ -791,14 +806,14 @@ const handleTouchEnd = (e: React.TouchEvent) => {
       </div>
     );
   }
-  
 
   const renderPlaylistView = () => {
     return (
+      <>
       <div
         className="flex-1 flex flex-col bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl"
         onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+        onTouchEnd={handleTouchEnd}
         style={{
           height: `calc(100% - 102px)`,
           padding: "32px",
@@ -810,6 +825,8 @@ const handleTouchEnd = (e: React.TouchEvent) => {
           value={activeTab}
           onValueChange={setActiveTab}
           className="w-full flex flex-col h-full"
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
           {/* Tab List */}
           <TabsList className="grid w-full grid-cols-4 bg-white/10 backdrop-blur-sm">
@@ -855,7 +872,18 @@ const handleTouchEnd = (e: React.TouchEvent) => {
             </TabsContent>
           </div>
         </Tabs>
+        {/* Extra Close Button at Bottom Left */}
       </div>
+       <Button
+          variant="default"
+          size="icon"
+          onClick={() => setShowList(!showList)}
+          className="absolute top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 shadow-md"
+          style={{ right: "0px" }}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+        </>
     );
   };
 
