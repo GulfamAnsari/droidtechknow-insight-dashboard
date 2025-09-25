@@ -117,7 +117,17 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         audio.load();
       }
     }
-  }, [song]);
+  }, [song?.id]);
+   // Sync current time from context but avoid setting if close to current
+  useEffect(() => {
+    if (
+      audioRef.current &&
+      Math.abs(audioRef.current.currentTime - currentTime) > 2
+    ) {
+      audioRef.current.currentTime = currentTime;
+    }
+  }, [currentTime]);
+
 
   useEffect(() => {
     const audio = audioRef.current;

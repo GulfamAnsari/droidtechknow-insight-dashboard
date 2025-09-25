@@ -248,12 +248,6 @@ const AudioPlayer = ({
       className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40"
       style={{ zIndex: 99 }}
     >
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleAudioEnded}
-      />
 
       {/* Progress bar */}
       <div className="px-4 p-4">

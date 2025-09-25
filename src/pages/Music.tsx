@@ -44,7 +44,8 @@ const Music = () => {
   const [showSuggested, setShowSuggested] = useState(false);
   const [activeTab, setActiveTab] = useState("playlist");
   const [showFavoriteArtists, setShowFavoriteArtists] = useState(false);
-  const [showRecommendationSettings, setShowRecommendationSettings] = useState(false);
+  const [showRecommendationSettings, setShowRecommendationSettings] =
+    useState(false);
 
   const {
     currentSong,
@@ -110,21 +111,21 @@ const Music = () => {
   // Store search results in localStorage for recommendations
   const storeSearchResults = (songs: Song[]) => {
     try {
-      const existing = localStorage.getItem('musicSearchResults');
+      const existing = localStorage.getItem("musicSearchResults");
       const existingSongs = existing ? JSON.parse(existing) : [];
-      
+
       // Combine and remove duplicates
       const combined = [...existingSongs, ...songs];
-      const unique = combined.filter((song, index, self) => 
-        index === self.findIndex(s => s.id === song.id)
+      const unique = combined.filter(
+        (song, index, self) => index === self.findIndex((s) => s.id === song.id)
       );
-      
+
       // Keep only the latest 50 songs to prevent localStorage from getting too large
       const latest = unique.slice(-50);
-      
-      localStorage.setItem('musicSearchResults', JSON.stringify(latest));
+
+      localStorage.setItem("musicSearchResults", JSON.stringify(latest));
     } catch (error) {
-      console.error('Error storing search results:', error);
+      console.error("Error storing search results:", error);
     }
   };
 
@@ -139,12 +140,12 @@ const Music = () => {
     try {
       const results = await musicApi.search(searchQuery, 1, 20);
       setSearchResults(results);
-      
+
       // Store search results for recommendations
       if (results.songs.length > 0) {
         storeSearchResults([results.songs[0]]);
       }
-      
+
       // Append new search results to existing playlist instead of replacing
       const updatedPlaylist = [...playlist, ...results.songs];
       setPlaylist(updatedPlaylist);
@@ -184,7 +185,7 @@ const Music = () => {
       if (type === "songs") {
         // Store new search results for recommendations
         storeSearchResults(newResults);
-        
+
         const updatedSongs = [...playlist, ...newResults];
         setPlaylist(updatedSongs);
       }
@@ -296,7 +297,7 @@ const Music = () => {
     // Add to playlist
     const updatedPlaylist = [...playlist, song];
     setPlaylist(updatedPlaylist);
-    
+
     // Play the selected song
     playSong(song);
   };
@@ -452,7 +453,9 @@ const Music = () => {
           className={isLiked(playlistSong.id) ? "text-red-500" : ""}
         >
           <Heart
-            className={`h-4 w-4 ${isLiked(playlistSong.id) ? "fill-current" : ""}`}
+            className={`h-4 w-4 ${
+              isLiked(playlistSong.id) ? "fill-current" : ""
+            }`}
           />
         </Button>
 
@@ -493,24 +496,27 @@ const Music = () => {
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only handle shortcuts if not typing in an input
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
       switch (event.code) {
-        case 'Space':
+        case "Space":
           event.preventDefault();
           if (currentSong) {
             setIsPlaying(!isPlaying);
           }
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           event.preventDefault();
           if (currentSong) {
             playNext();
           }
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           event.preventDefault();
           if (currentSong) {
             playPrevious();
@@ -519,9 +525,9 @@ const Music = () => {
       }
     };
 
-    document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener("keydown", handleKeyPress);
     return () => {
-      document.removeEventListener('keydown', handleKeyPress);
+      document.removeEventListener("keydown", handleKeyPress);
     };
   }, [currentSong, isPlaying, setIsPlaying, playNext, playPrevious]);
 
@@ -804,11 +810,11 @@ const Music = () => {
       </div>
 
       {/* Modals */}
-      <FavoriteArtistsModal 
+      <FavoriteArtistsModal
         open={showFavoriteArtists}
         onOpenChange={setShowFavoriteArtists}
       />
-      
+
       <RecommendationSettingsModal
         open={showRecommendationSettings}
         onOpenChange={setShowRecommendationSettings}
@@ -817,7 +823,29 @@ const Music = () => {
       {/* Songs Modal */}
       <SongsModal />
 
-      {/* Audio Player */}
+      {/* Always mounted audio element */}
+      <audio
+        ref={audioRef}
+        src={currentSong?.downloadUrl?.[0]?.url} // or leave src empty, AudioPlayer sets it in effect
+        onTimeUpdate={() =>
+          handleTimeUpdate(audioRef.current?.currentTime || 0)
+        }
+        onLoadedMetadata={() =>
+          handleDurationUpdate(audioRef.current?.duration || 0)
+        }
+        onEnded={
+          isRepeat
+            ? () => {
+                if (audioRef.current) {
+                  audioRef.current.currentTime = 0;
+                  audioRef.current.play();
+                }
+              }
+            : playNext
+        }
+      />
+
+      {/* Mini Player */}
       {currentSong && !isFullscreen && (
         <AudioPlayer
           song={currentSong}
@@ -844,7 +872,6 @@ const Music = () => {
       {/* Fullscreen Player */}
       {isFullscreen && currentSong && (
         <FullscreenPlayer
-          audioRef={audioRef}
           song={currentSong}
           isPlaying={isPlaying}
           onPlayPause={togglePlayPause}
@@ -874,6 +901,7 @@ const Music = () => {
           suggestedSongs={suggestedSongs}
           setActiveTab={setActiveTab}
           activeTab={activeTab}
+          audioRef={audioRef}
         />
       )}
     </div>
