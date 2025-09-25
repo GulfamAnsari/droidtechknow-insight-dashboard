@@ -492,13 +492,14 @@ const Music = () => {
     );
   };
 
-  // Add keyboard shortcuts effect
+  // Keyboard shortcuts for mini player (only when not in fullscreen)
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // Only handle shortcuts if not typing in an input
+      // Only handle shortcuts if not typing in an input and not in fullscreen mode
       if (
         event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
+        event.target instanceof HTMLTextAreaElement ||
+        isFullscreen
       ) {
         return;
       }
@@ -512,14 +513,68 @@ const Music = () => {
           break;
         case "ArrowRight":
           event.preventDefault();
-          if (currentSong) {
+          if (event.shiftKey && audioRef.current) {
+            // Seek forward 10 seconds
+            audioRef.current.currentTime = Math.min(
+              audioRef.current.currentTime + 10,
+              duration
+            );
+          } else if (currentSong) {
             playNext();
           }
           break;
         case "ArrowLeft":
           event.preventDefault();
+          if (event.shiftKey && audioRef.current) {
+            // Seek backward 10 seconds
+            audioRef.current.currentTime = Math.max(
+              audioRef.current.currentTime - 10,
+              0
+            );
+          } else if (currentSong) {
+            playPrevious();
+          }
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          setVolume(Math.min(volume + 10, 100));
+          break;
+        case "ArrowDown":
+          event.preventDefault();
+          setVolume(Math.max(volume - 10, 0));
+          break;
+        case "KeyM":
+          event.preventDefault();
+          setIsMuted(!isMuted);
+          break;
+        case "KeyF":
+          event.preventDefault();
+          if (currentSong) {
+            setIsFullscreen(true);
+          }
+          break;
+        case "Escape":
+          event.preventDefault();
+          if (isSearchMode) {
+            setIsSearchMode(false);
+          }
+          break;
+        case "MediaTrackNext":
+          event.preventDefault();
+          if (currentSong) {
+            playNext();
+          }
+          break;
+        case "MediaTrackPrevious":
+          event.preventDefault();
           if (currentSong) {
             playPrevious();
+          }
+          break;
+        case "MediaPlayPause":
+          event.preventDefault();
+          if (currentSong) {
+            setIsPlaying(!isPlaying);
           }
           break;
       }
@@ -529,7 +584,22 @@ const Music = () => {
     return () => {
       document.removeEventListener("keydown", handleKeyPress);
     };
-  }, [currentSong, isPlaying, setIsPlaying, playNext, playPrevious]);
+  }, [
+    currentSong, 
+    isPlaying, 
+    isFullscreen, 
+    isSearchMode,
+    volume,
+    isMuted,
+    duration,
+    setIsPlaying, 
+    playNext, 
+    playPrevious,
+    setVolume,
+    setIsMuted,
+    setIsFullscreen,
+    setIsSearchMode
+  ]);
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">

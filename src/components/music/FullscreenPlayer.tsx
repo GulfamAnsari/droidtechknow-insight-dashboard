@@ -247,10 +247,11 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     [lastTap]
   );
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts for fullscreen mode
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      // Only handle shortcuts if typing in inputs or textareas
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       switch (e.code) {
         case "Space":
@@ -289,6 +290,11 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           e.preventDefault();
           setShowList(!showList);
           break;
+        case "KeyF":
+        case "Escape":
+          e.preventDefault();
+          onClose();
+          break;
         case "MediaTrackNext":
           e.preventDefault();
           onNext();
@@ -304,8 +310,9 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       }
     };
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
+    // Use document for fullscreen to ensure global capture
+    document.addEventListener("keydown", handleKeyPress);
+    return () => document.removeEventListener("keydown", handleKeyPress);
   }, [
     volume,
     showList,
@@ -313,7 +320,8 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     onNext,
     onPrevious,
     onVolumeChange,
-    onToggleMute
+    onToggleMute,
+    onClose
   ]);
 
   // Download song function
