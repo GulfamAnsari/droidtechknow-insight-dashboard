@@ -538,17 +538,21 @@ const handleTouchEnd = (e: React.TouchEvent) => {
   touchStartRef.current = null;
 };
 
-  // Audio element with event listeners
-  function renderAudio() {
-    return (
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleAudioEnded}
-      />
-    );
-  }
+  // Audio event listeners only (using shared audioRef)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener('ended', handleAudioEnded);
+
+      return () => {
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('ended', handleAudioEnded);
+      };
+    }
+  }, [audioRef.current]);
 
   // Header
   function renderHeader() {
@@ -857,7 +861,6 @@ const handleTouchEnd = (e: React.TouchEvent) => {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col w-full h-full">
-        {renderAudio()}
         {renderHeader()}
         {!showList ? renderMainView() : renderPlaylistView()}
       </div>
