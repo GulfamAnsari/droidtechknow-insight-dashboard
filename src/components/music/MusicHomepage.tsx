@@ -2,35 +2,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Play,
-  Heart,
-  MoreHorizontal,
-  Download,
-  Loader2,
-  X,
-  Star,
-  Music,
-  HardDrive
-} from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X, Star, Music, HardDrive } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@radix-ui/react-dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { weightedPages } from "@/services/constants";
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
-  onNavigateToContent: (
-    type: "album" | "artist" | "playlist",
-    item: any
-  ) => void;
+  onNavigateToContent: (type: "album" | "artist" | "playlist", item: any) => void;
   currentSong: Song | null;
   onToggleLike: (songId: string) => void;
   likedSongs: string[];
@@ -38,21 +20,8 @@ interface MusicHomepageProps {
   setPlaylist: (songs: Song[]) => void;
 }
 
-const MusicHomepage = ({
-  onPlaySong,
-  onNavigateToContent,
-  likedSongs,
-  setPlaylist
-}: MusicHomepageProps) => {
-  const {
-    likedSongs: likedSongObjects,
-    offlineSongs,
-    downloadProgress,
-    setDownloadProgress,
-    addToOffline,
-    toggleLike,
-    loadLikedSongs
-  } = useMusicContext();
+const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylist }: MusicHomepageProps) => {
+  const { likedSongs: likedSongObjects, offlineSongs, downloadProgress, setDownloadProgress, addToOffline, toggleLike, loadLikedSongs } = useMusicContext();
 
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
@@ -60,289 +29,37 @@ const MusicHomepage = ({
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
   const [artistPage, setArtistPage] = useState(1);
   const [activeTab, setActiveTab] = useState<string>("recommended");
+  const [hasMoreSongs, setHasMoreSongs] = useState(true); // <-- new flag
 
-  // prevent concurrent fetches
   const isFetchingRelated = useRef(false);
   const isFetchingArtists = useRef(false);
-
-  // sentinel refs via callback ref so intersection observer attaches reliably
+  const artistPageCache = useRef<Set<string>>(new Set());
   const [songSentinel, setSongSentinel] = useState<HTMLDivElement | null>(null);
   const [artistSentinel, setArtistSentinel] = useState<HTMLDivElement | null>(null);
 
-  // ---------- Helpers (safe localStorage parsing) ----------
   const getCachedSearchResults = (): Song[] => {
-    try {
-      const cached = localStorage.getItem("musicSearchResults");
-      return cached ? JSON.parse(cached) : [];
-    } catch (error) {
-      console.error("Error loading cached search results:", error);
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem("musicSearchResults") || "[]"); }
+    catch { return []; }
   };
 
   const getArtistsSongsFromSaved = (): Song[] => {
     try {
       const artists = JSON.parse(localStorage.getItem("favoriteArtists") || "[]");
-      const songs: Song[] = [];
-      if (Array.isArray(artists) && artists.length) {
-        for (let i = 0; i < artists.length; i++) {
-          const artistId = artists[i]?.id ?? artists[i];
-          // make a minimal pseudo-song object that includes a root id (so getRandomSongs works)
-          songs.push({
-            id: `fav-artist-${artistId}-${i}`,
-            name: `Artist ${artistId}`,
-            artists: { primary: [{ id: artistId, name: artists[i]?.name || "Artist" }] },
-            // keep optional fields safe
-            duration: 0,
-            language: "hindi",
-            image: []
-          } as unknown as Song);
-        }
-      }
-      return songs;
-    } catch (error) {
-      console.error("Error reading favoriteArtists:", error);
-      return [];
-    }
+      return artists.map((a: any, i: number) => ({
+        id: `fav-artist-${a.id}-${i}`,
+        name: `Artist ${a.id}`,
+        artists: { primary: [{ id: a.id, name: a.name || "Artist" }] },
+        duration: 0,
+        language: "hindi",
+        image: []
+      } as unknown as Song));
+    } catch { return []; }
   };
 
   useEffect(() => {
     loadHomepageData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep playlist in sync with active tab
-  useEffect(() => {
-    if (activeTab === "recommended") {
-      setPlaylist(relatedSongs);
-    } else if (activeTab === "likes") {
-      setPlaylist(likedSongObjects || []);
-    } else if (activeTab === "offline") {
-      setPlaylist(offlineSongs || []);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, relatedSongs, likedSongObjects, offlineSongs]);
-
-  const loadHomepageData = async () => {
-    try {
-      setLoading(true);
-      const artists = await musicApi.getPopularArtists();
-      setPopularArtists(artists || []);
-      await loadRelatedSongs(); // initial fill
-    } catch (err) {
-      console.error("Error loading homepage:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const artistPageCache = useRef<Set<string>>(new Set());
-
-  // ---------- Core: loadRelatedSongs (with safeguards) ----------
-  const loadRelatedSongs = useCallback(async () => {
-    if (isFetchingRelated.current) return;
-    isFetchingRelated.current = true;
-
-    try {
-      const savedOptions = JSON.parse(localStorage.getItem("recommendationOptions") || "{}");
-
-      let basePool: Song[] = [];
-
-      // liked songs
-      if (savedOptions?.liked) {
-        if (Array.isArray(likedSongObjects) && likedSongObjects.length > 0) {
-          basePool = basePool.concat(likedSongObjects);
-        } else {
-          try {
-            const res: any = await loadLikedSongs();
-            const loaded = res?.songs || [];
-            basePool = basePool.concat(loaded);
-          } catch (e) {
-            console.warn("Could not load liked songs:", e);
-          }
-        }
-      }
-
-      // cached searches
-      if (savedOptions?.searched) {
-        basePool = basePool.concat(getCachedSearchResults());
-      }
-
-      // favorite artists -> pseudo songs (used to pick artist ids)
-      if (savedOptions?.favorites) {
-        basePool = basePool.concat(getArtistsSongsFromSaved());
-      }
-
-      // fallback: if basePool empty, use popular artists as seeds
-      if (basePool.length === 0 && popularArtists.length > 0) {
-        const fallback = popularArtists.slice(0, 5).map((a: any, i: number) => ({
-          id: `seed-artist-${a.id}-${i}`,
-          name: `seed-${a.name}`,
-          artists: { primary: [{ id: a.id, name: a.name }] },
-          duration: 0,
-          image: [],
-          language: "hindi"
-        })) as unknown as Song[];
-        basePool = basePool.concat(fallback);
-      }
-
-      if (basePool.length === 0) {
-        // nothing to do
-        return;
-      }
-
-      const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
-      const newUsedIds: string[] = [...usedSongIds, ...randomSongs.map((s) => s.id)];
-      const newRelatedSongs: Song[] = [];
-
-      const likedIdsSet = new Set(
-        (Array.isArray(likedSongObjects) ? likedSongObjects : []).map((s) => s.id)
-      );
-
-      const promises = randomSongs.map(async (seedSong) => {
-        const primary = seedSong.artists?.primary?.[0];
-        if (!primary?.id) return [];
-
-        const artistId = primary.id;
-
-        for (let attempt = 0; attempt < 10; attempt++) {
-          const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
-          const cacheKey = `${artistId}:${page}`;
-
-          // skip if we've already gotten useful songs for this artist:page
-          if (artistPageCache.current.has(cacheKey)) continue;
-
-          let searchResults: Song[] = [];
-          try {
-            searchResults = await musicApi.getArtistSongs(artistId, page);
-          } catch (err) {
-            console.warn("Artist songs fetch failed:", artistId, page, err);
-            continue;
-          }
-
-          const filtered = searchResults.filter(
-            (resultSong) =>
-              resultSong?.id &&
-              !newUsedIds.includes(resultSong.id) &&
-              !likedIdsSet.has(resultSong.id) &&
-              !newRelatedSongs.some((s) => s.id === resultSong.id)
-          );
-
-          if (filtered.length > 0) {
-            artistPageCache.current.add(cacheKey); // cache only on success
-            return filtered;
-          }
-        }
-        return [];
-      });
-
-      const results = await Promise.all(promises);
-      const flatResults = results.flat();
-
-      // dedupe and language filter
-      const trulyUniqueSongs = flatResults.filter(
-        (song, idx, self) => song?.id && self.findIndex((s) => s.id === song.id) === idx
-      );
-
-      // only keep specific languages (as your original did)
-      const allowedLang = new Set(["hindi", "english"]);
-      const finalNewSongs = trulyUniqueSongs.filter((s) =>
-        allowedLang.has((s.language || "").toLowerCase())
-      );
-
-      if (finalNewSongs.length > 0) {
-        setRelatedSongs((prev) => {
-          const merged = [...prev, ...finalNewSongs];
-          // keep unique by id and limit size to avoid memory bloat
-          const seen = new Set<string>();
-          const limited: Song[] = [];
-          for (let i = 0; i < merged.length; i++) {
-            const song = merged[i];
-            if (!song?.id) continue;
-            if (!seen.has(song.id)) {
-              seen.add(song.id);
-              limited.push(song);
-            }
-            if (limited.length >= 200) break; // keep last up to 200
-          }
-          return limited;
-        });
-
-        setUsedSongIds(newUsedIds.concat(finalNewSongs.map((s) => s.id)));
-      }
-    } catch (err) {
-      console.error("Error in loadRelatedSongs:", err);
-    } finally {
-      isFetchingRelated.current = false;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usedSongIds, likedSongObjects, popularArtists]);
-
-  // ---------- getRandomSongs ----------
-  const getRandomSongs = (songs: Song[], count: number, usedIds: string[]) => {
-    if (!Array.isArray(songs) || songs.length === 0) return [];
-    const available = songs.filter((s) => s?.id && !usedIds.includes(s.id));
-    const pool = available.length > 0 ? available : songs;
-    const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, Math.min(count, shuffled.length));
-  };
-
-  // ---------- Artists infinite load ----------
-  const loadMoreArtists = useCallback(async () => {
-    if (isFetchingArtists.current) return;
-    isFetchingArtists.current = true;
-    try {
-      const artists = await musicApi.getPopularArtists(artistPage + 1);
-      setArtistPage((p) => p + 1);
-      setPopularArtists((prev) => [...prev, ...(artists || [])]);
-    } catch (err) {
-      console.error("Error loading more artists:", err);
-    } finally {
-      isFetchingArtists.current = false;
-    }
-  }, [artistPage]);
-
-  // ---------- Intersection Observers (sentinels) ----------
-  useEffect(() => {
-    if (!songSentinel) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && activeTab === "recommended") {
-          loadRelatedSongs();
-        }
-      },
-      { root: null, rootMargin: "300px", threshold: 0.1 }
-    );
-    obs.observe(songSentinel);
-    return () => obs.disconnect();
-  }, [songSentinel, activeTab, loadRelatedSongs]);
-
-  useEffect(() => {
-    if (!artistSentinel) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && activeTab === "artists") {
-          loadMoreArtists();
-        }
-      },
-      { root: null, rootMargin: "300px", threshold: 0.1 }
-    );
-    obs.observe(artistSentinel);
-    return () => obs.disconnect();
-  }, [artistSentinel, activeTab, loadMoreArtists]);
-
-  // ---------- Play / Like handlers ----------
-  const handlePlaySong = (song: Song) => {
-    // set playlist as per active tab
-    if (activeTab === "recommended") setPlaylist([...relatedSongs]);
-    if (activeTab === "likes") setPlaylist([...likedSongObjects]);
-    if (activeTab === "offline") setPlaylist([...offlineSongs]);
-    onPlaySong(song);
-  };
-
-  const handleToggleLike = (song: Song) => {
-    toggleLike(song);
-  };
 
   // ---------- Download with progress (XHR) ----------
   const downloadSong = (song: Song) => {
@@ -433,23 +150,153 @@ const MusicHomepage = ({
     }
   };
 
-  const isOffline = (songId: string) => {
-    return offlineSongs?.some((s) => s.id === songId);
+  
+  useEffect(() => {
+    if (activeTab === "recommended") setPlaylist(relatedSongs);
+    else if (activeTab === "likes") setPlaylist(likedSongObjects || []);
+    else if (activeTab === "offline") setPlaylist(offlineSongs || []);
+  }, [activeTab, relatedSongs, likedSongObjects, offlineSongs]);
+
+  const loadHomepageData = async () => {
+    try {
+      setLoading(true);
+      const artists = await musicApi.getPopularArtists();
+      setPopularArtists(artists || []);
+      await loadRelatedSongs(); // initial fetch
+    } catch (err) {
+      console.error("Error loading homepage:", err);
+    } finally { setLoading(false); }
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  const loadRelatedSongs = useCallback(async () => {
+    if (isFetchingRelated.current || !hasMoreSongs) return;
+    isFetchingRelated.current = true;
+
+    try {
+      const savedOptions = JSON.parse(localStorage.getItem("recommendationOptions") || "{}");
+      let basePool: Song[] = [];
+
+      if (savedOptions?.liked) {
+        if (likedSongObjects?.length) basePool = basePool.concat(likedSongObjects);
+        else {
+          const res: any = await loadLikedSongs();
+          basePool = basePool.concat(res?.songs || []);
+        }
+      }
+      if (savedOptions?.searched) basePool = basePool.concat(getCachedSearchResults());
+      if (savedOptions?.favorites) basePool = basePool.concat(getArtistsSongsFromSaved());
+      if (!basePool.length && popularArtists.length) {
+        basePool = popularArtists.slice(0, 5).map((a, i) => ({
+          id: `seed-artist-${a.id}-${i}`,
+          name: `seed-${a.name}`,
+          artists: { primary: [{ id: a.id, name: a.name }] },
+          duration: 0,
+          image: [],
+          language: "hindi"
+        })) as unknown as Song[];
+      }
+
+      if (!basePool.length) return;
+
+      const randomSongs = getRandomSongs(basePool, 3, usedSongIds);
+      if (!randomSongs.length) { setHasMoreSongs(false); return; } // <-- stop infinite
+
+      const newUsedIds: string[] = [...usedSongIds, ...randomSongs.map((s) => s.id)];
+      const newRelatedSongs: Song[] = [];
+      const likedIdsSet = new Set((likedSongObjects || []).map((s) => s.id));
+
+      const promises = randomSongs.map(async (seedSong) => {
+        const primary = seedSong.artists?.primary?.[0]; if (!primary?.id) return [];
+        const artistId = primary.id;
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const page = weightedPages[Math.floor(Math.random() * weightedPages.length)];
+          const cacheKey = `${artistId}:${page}`;
+          if (artistPageCache.current.has(cacheKey)) continue;
+
+          let searchResults: Song[] = [];
+          try { searchResults = await musicApi.getArtistSongs(artistId, page); }
+          catch { continue; }
+
+          const filtered = searchResults.filter(s =>
+            s?.id && !newUsedIds.includes(s.id) && !likedIdsSet.has(s.id) && !newRelatedSongs.some(x => x.id === s.id)
+          );
+
+          if (filtered.length > 0) { artistPageCache.current.add(cacheKey); return filtered; }
+        }
+        return [];
+      });
+
+      const results = await Promise.all(promises);
+      const flatResults = results.flat();
+      const trulyUniqueSongs = flatResults.filter((s, i, arr) => s?.id && arr.findIndex(x => x.id === s.id) === i);
+      const allowedLang = new Set(["hindi", "english"]);
+      const finalNewSongs = trulyUniqueSongs.filter(s => allowedLang.has((s.language || "").toLowerCase()));
+
+      if (!finalNewSongs.length) { setHasMoreSongs(false); return; }
+
+      setRelatedSongs(prev => {
+        const merged = [...prev, ...finalNewSongs];
+        const seen = new Set<string>();
+        return merged.filter(s => s?.id && !seen.has(s.id) && seen.add(s.id));
+      });
+
+      setUsedSongIds(newUsedIds.concat(finalNewSongs.map(s => s.id)));
+    } catch (err) { console.error(err); }
+    finally { isFetchingRelated.current = false; }
+  }, [usedSongIds, likedSongObjects, popularArtists, hasMoreSongs]);
+
+  const getRandomSongs = (songs: Song[], count: number, usedIds: string[]) => {
+    const available = songs.filter(s => s?.id && !usedIds.includes(s.id));
+    const pool = available.length ? available : songs;
+    return [...pool].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, pool.length));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  const loadMoreArtists = useCallback(async () => {
+    if (isFetchingArtists.current) return;
+    isFetchingArtists.current = true;
+    try {
+      const artists = await musicApi.getPopularArtists(artistPage + 1);
+      if (!artists?.length) return;
+      setArtistPage(p => p + 1);
+      setPopularArtists(prev => [...prev, ...artists]);
+    } catch (err) { console.error(err); }
+    finally { isFetchingArtists.current = false; }
+  }, [artistPage]);
+
+  useEffect(() => {
+    if (!songSentinel) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && activeTab === "recommended" && hasMoreSongs) loadRelatedSongs();
+    }, { root: null, rootMargin: "300px", threshold: 0.1 });
+    obs.observe(songSentinel);
+    return () => obs.disconnect();
+  }, [songSentinel, activeTab, loadRelatedSongs, hasMoreSongs]);
+
+  useEffect(() => {
+    if (!artistSentinel) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && activeTab === "artists") loadMoreArtists();
+    }, { root: null, rootMargin: "300px", threshold: 0.1 });
+    obs.observe(artistSentinel);
+    return () => obs.disconnect();
+  }, [artistSentinel, activeTab, loadMoreArtists]);
+
+  const handlePlaySong = (song: Song) => {
+    if (activeTab === "recommended") setPlaylist([...relatedSongs]);
+    else if (activeTab === "likes") setPlaylist([...likedSongObjects]);
+    else if (activeTab === "offline") setPlaylist([...offlineSongs]);
+    onPlaySong(song);
+  };
+
+  const handleToggleLike = (song: Song) => toggleLike(song);
+
+  const isOffline = (songId: string) => offlineSongs?.some(s => s.id === songId);
+
+  const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
+
+  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="animate-spin h-8 w-8" /></div>;
+
 
   return (
     <div className="space-y-4">
