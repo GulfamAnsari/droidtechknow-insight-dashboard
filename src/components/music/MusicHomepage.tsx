@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Play,
   Heart,
@@ -350,182 +351,385 @@ const MusicHomepage = ({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Related Songs Based on Liked Songs and Search History */}
-      <section>
-        <h2 className="text-2xl font-bold mb-4">Recommended for You</h2>
-        {relatedSongs?.length == 0 ? (
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
-            <CardContent>
-              <h3>Try searching to get started</h3>
-              <p>
-                Start watching videos to help us build a feed of videos that
-                you'll love.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          ""
-        )}
+    <div className="space-y-4">
+      <Tabs defaultValue="recommended" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="recommended">Recommended</TabsTrigger>
+          <TabsTrigger value="likes">Likes</TabsTrigger>
+          <TabsTrigger value="offline">Offline</TabsTrigger>
+          <TabsTrigger value="artists">Popular Artists</TabsTrigger>
+        </TabsList>
 
-        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
-          {relatedSongs.map((song) => (
-            <Card
-              key={song.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow group"
-            >
-              <CardContent className="p-2">
-                <div className="relative mb-2">
-                  <LazyImage
-                    src={song.image?.[1]?.url || song.image?.[0]?.url}
-                    alt={song.name}
-                    className="w-full aspect-square rounded-lg object-cover"
-                    onClick={() => handlePlaySong(song)}
-                  />
-                  <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play
-                      className="h-8 w-8 text-white"
-                      onClick={() => handlePlaySong(song)}
-                    />
-                  </div>
-
-                  {/* Action Buttons */}
-
-                  <div className="absolute top-2 right-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 p-0 bg-black/50 hover:bg-black/70 text-white"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent
-                        align="end"
-                        className="p-1 bg-black/90 text-white flex flex-row gap-1"
-                      >
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleLike(song);
-                          }}
-                          className={`h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center ${
-                            likedSongs.includes(song.id) ? "text-red-500" : ""
-                          }`}
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${
-                              likedSongs.includes(song.id) ? "fill-current" : ""
-                            }`}
+        {/* Recommended Tab */}
+        <TabsContent value="recommended" className="space-y-4">
+          <div className="mt-6">
+            {relatedSongs?.length == 0 ? (
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-lg font-medium mb-2">Try searching to get started</h3>
+                  <p className="text-muted-foreground">
+                    Start searching for music to help us build a feed of songs that
+                    you'll love.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
+                  {relatedSongs.map((song) => (
+                    <Card
+                      key={song.id}
+                      className="cursor-pointer hover:shadow-lg transition-shadow group"
+                    >
+                      <CardContent className="p-2">
+                        <div className="relative mb-2">
+                          <LazyImage
+                            src={song.image?.[1]?.url || song.image?.[0]?.url}
+                            alt={song.name}
+                            className="w-full aspect-square rounded-lg object-cover"
+                            onClick={() => handlePlaySong(song)}
                           />
-                        </DropdownMenuItem>
+                          <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Play
+                              className="h-8 w-8 text-white"
+                              onClick={() => handlePlaySong(song)}
+                            />
+                          </div>
 
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadSong(song);
-                          }}
-                          disabled={downloadProgress[song.id] > 0}
-                          className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center"
-                        >
-                          {downloadProgress[song.id] > 0 ? (
-                            downloadProgress[song.id] === -1 ? (
-                              <X className="h-4 w-4 text-red-500" />
-                            ) : downloadProgress[song.id] === 100 ? (
-                              <Download className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            )
-                          ) : isOffline(song.id) ? (
-                            <Download className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Download className="h-4 w-4" />
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                <div onClick={() => handlePlaySong(song)}>
-                  <h3 className="font-medium text-sm truncate">{song.name}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                      "Unknown Artist"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDuration(song.duration)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                          <div className="absolute top-2 right-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 p-0 bg-black/50 hover:bg-black/70 text-white"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
 
-        {/* Load More Button */}
-        <div className="flex justify-center mt-6">
-          <Button
-            onClick={handleLoadMore}
-            variant="outline"
-            disabled={loadingMore}
-            className="gap-2"
-          >
-            {loadingMore ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-            ) : (
-              <MoreHorizontal className="h-4 w-4" />
+                              <DropdownMenuContent
+                                align="end"
+                                className="p-1 bg-black/90 text-white flex flex-row gap-1"
+                              >
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleLike(song);
+                                  }}
+                                  className={`h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center ${
+                                    likedSongs.includes(song.id) ? "text-red-500" : ""
+                                  }`}
+                                >
+                                  <Heart
+                                    className={`h-4 w-4 ${
+                                      likedSongs.includes(song.id) ? "fill-current" : ""
+                                    }`}
+                                  />
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadSong(song);
+                                  }}
+                                  disabled={downloadProgress[song.id] > 0}
+                                  className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center"
+                                >
+                                  {downloadProgress[song.id] > 0 ? (
+                                    downloadProgress[song.id] === -1 ? (
+                                      <X className="h-4 w-4 text-red-500" />
+                                    ) : downloadProgress[song.id] === 100 ? (
+                                      <Download className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    )
+                                  ) : isOffline(song.id) ? (
+                                    <Download className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        <div onClick={() => handlePlaySong(song)}>
+                          <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                              "Unknown Artist"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatDuration(song.duration)}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="flex justify-center mt-6">
+                  <Button
+                    onClick={handleLoadMore}
+                    variant="outline"
+                    disabled={loadingMore}
+                    className="gap-2"
+                  >
+                    {loadingMore ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
+                    Load More Songs
+                  </Button>
+                </div>
+              </>
             )}
-            Load More Songs
-          </Button>
-        </div>
-      </section>
+          </div>
+        </TabsContent>
 
-      {/* Popular Artists */}
-      <section>
-        <h2 className="text-2xl font-bold mb-4">Popular Artists</h2>
-        <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-3">
-          {popularArtists.map((artist) => (
-            <Card
-              key={artist.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow group"
-              onClick={() => onNavigateToContent("artist", artist)}
-            >
-              <CardContent className="p-2">
-                <div className="relative mb-2">
-                  <LazyImage
-                    src={artist.image?.[1]?.url || artist.image?.[0]?.url}
-                    alt={artist.name}
-                    className="w-full aspect-square rounded-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                <h3 className="font-medium text-xs truncate text-center">
-                  {artist.name}
-                </h3>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-         <div className="flex justify-center mt-6 mb-6">
-          <Button
-            onClick={handleArtistLoadMore}
-            variant="outline"
-            disabled={loadingMore}
-            className="gap-2"
-          >
-             {loadingArtistMore ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+        {/* Likes Tab */}
+        <TabsContent value="likes" className="space-y-4">
+          <div className="mt-6">
+            {likedSongObjects?.length === 0 ? (
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-lg font-medium mb-2">No liked songs yet</h3>
+                  <p className="text-muted-foreground">
+                    Start liking songs to see them here.
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
-              <MoreHorizontal className="h-4 w-4" />
+              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
+                {likedSongObjects.map((song) => (
+                  <Card
+                    key={song.id}
+                    className="cursor-pointer hover:shadow-lg transition-shadow group"
+                  >
+                    <CardContent className="p-2">
+                      <div className="relative mb-2">
+                        <LazyImage
+                          src={song.image?.[1]?.url || song.image?.[0]?.url}
+                          alt={song.name}
+                          className="w-full aspect-square rounded-lg object-cover"
+                          onClick={() => handlePlaySong(song)}
+                        />
+                        <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play
+                            className="h-8 w-8 text-white"
+                            onClick={() => handlePlaySong(song)}
+                          />
+                        </div>
+
+                        <div className="absolute top-2 right-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 p-0 bg-black/50 hover:bg-black/70 text-white"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent
+                              align="end"
+                              className="p-1 bg-black/90 text-white flex flex-row gap-1"
+                            >
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleLike(song);
+                                }}
+                                className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center text-red-500"
+                              >
+                                <Heart className="h-4 w-4 fill-current" />
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadSong(song);
+                                }}
+                                disabled={downloadProgress[song.id] > 0}
+                                className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center"
+                              >
+                                {downloadProgress[song.id] > 0 ? (
+                                  downloadProgress[song.id] === -1 ? (
+                                    <X className="h-4 w-4 text-red-500" />
+                                  ) : downloadProgress[song.id] === 100 ? (
+                                    <Download className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  )
+                                ) : isOffline(song.id) ? (
+                                  <Download className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Download className="h-4 w-4" />
+                                )}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      <div onClick={() => handlePlaySong(song)}>
+                        <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                            "Unknown Artist"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDuration(song.duration)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
-            Load More Artists
-          </Button>
-        </div>
-      </section>
+          </div>
+        </TabsContent>
+
+        {/* Offline Tab */}
+        <TabsContent value="offline" className="space-y-4">
+          <div className="mt-6">
+            {offlineSongs?.length === 0 ? (
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-lg font-medium mb-2">No offline songs</h3>
+                  <p className="text-muted-foreground">
+                    Download songs to listen offline.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2">
+                {offlineSongs.map((song) => (
+                  <Card
+                    key={song.id}
+                    className="cursor-pointer hover:shadow-lg transition-shadow group"
+                  >
+                    <CardContent className="p-2">
+                      <div className="relative mb-2">
+                        <LazyImage
+                          src={song.image?.[1]?.url || song.image?.[0]?.url}
+                          alt={song.name}
+                          className="w-full aspect-square rounded-lg object-cover"
+                          onClick={() => handlePlaySong(song)}
+                        />
+                        <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play
+                            className="h-8 w-8 text-white"
+                            onClick={() => handlePlaySong(song)}
+                          />
+                        </div>
+
+                        <div className="absolute top-2 right-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 p-0 bg-black/50 hover:bg-black/70 text-white"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent
+                              align="end"
+                              className="p-1 bg-black/90 text-white flex flex-row gap-1"
+                            >
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleLike(song);
+                                }}
+                                className={`h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center ${
+                                  likedSongs.includes(song.id) ? "text-red-500" : ""
+                                }`}
+                              >
+                                <Heart
+                                  className={`h-4 w-4 ${
+                                    likedSongs.includes(song.id) ? "fill-current" : ""
+                                  }`}
+                                />
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center">
+                                <Download className="h-4 w-4 text-green-500" />
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      <div onClick={() => handlePlaySong(song)}>
+                        <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {song.artists?.primary?.map((a) => a.name).join(", ") ||
+                            "Unknown Artist"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDuration(song.duration)}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Popular Artists Tab */}
+        <TabsContent value="artists" className="space-y-4">
+          <div className="mt-6">
+            <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-3">
+              {popularArtists.map((artist) => (
+                <Card
+                  key={artist.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow group"
+                  onClick={() => onNavigateToContent("artist", artist)}
+                >
+                  <CardContent className="p-2">
+                    <div className="relative mb-2">
+                      <LazyImage
+                        src={artist.image?.[1]?.url || artist.image?.[0]?.url}
+                        alt={artist.name}
+                        className="w-full aspect-square rounded-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Play className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="font-medium text-xs truncate text-center">
+                      {artist.name}
+                    </h3>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="flex justify-center mt-6 mb-6">
+              <Button
+                onClick={handleArtistLoadMore}
+                variant="outline"
+                disabled={loadingArtistMore}
+                className="gap-2"
+              >
+                {loadingArtistMore ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                ) : (
+                  <MoreHorizontal className="h-4 w-4" />
+                )}
+                Load More Artists
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
