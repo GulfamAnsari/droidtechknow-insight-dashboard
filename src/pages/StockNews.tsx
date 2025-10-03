@@ -23,7 +23,19 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+      {item.image && (
+        <div className="aspect-video w-full overflow-hidden bg-muted">
+          <img 
+            src={item.image} 
+            alt={item.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg leading-tight">{item.title}</CardTitle>
@@ -132,8 +144,8 @@ export default function StockNews() {
   });
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="p-6 border-b">
         <div className="flex items-center gap-3 mb-2">
           <TrendingUp className="h-8 w-8 text-primary" />
           <h1 className="text-4xl font-bold">Indian Stock Market News</h1>
@@ -143,8 +155,8 @@ export default function StockNews() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full justify-start overflow-x-auto">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-6">
+        <TabsList className="w-full justify-start overflow-x-auto my-4">
           <TabsTrigger value="all">All News</TabsTrigger>
           <TabsTrigger value="livemint">LiveMint</TabsTrigger>
           <TabsTrigger value="businessStandard">Business Standard</TabsTrigger>
@@ -152,23 +164,23 @@ export default function StockNews() {
           <TabsTrigger value="paisa">5Paisa</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="mt-6">
+        <TabsContent value="all" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={allNews} isLoading={loadingAll} />
         </TabsContent>
 
-        <TabsContent value="livemint" className="mt-6">
+        <TabsContent value="livemint" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={livemintNews} isLoading={loadingLivemint} />
         </TabsContent>
 
-        <TabsContent value="businessStandard" className="mt-6">
+        <TabsContent value="businessStandard" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={bsNews} isLoading={loadingBS} />
         </TabsContent>
 
-        <TabsContent value="investing" className="mt-6">
+        <TabsContent value="investing" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={investingNews} isLoading={loadingInvesting} />
         </TabsContent>
 
-        <TabsContent value="paisa" className="mt-6">
+        <TabsContent value="paisa" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={paisaNews} isLoading={loadingPaisa} />
         </TabsContent>
       </Tabs>

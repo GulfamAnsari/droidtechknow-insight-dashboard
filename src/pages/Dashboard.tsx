@@ -19,7 +19,8 @@ import {
   Music,
   AppleIcon,
   Video,
-  CreditCard
+  CreditCard,
+  TrendingUp
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -173,6 +174,20 @@ const Dashboard = () => {
           ]}
           link="/screen-recorder"
           linkText="Start Recording"
+        />
+
+        <DashboardCard
+          icon={TrendingUp}
+          title="Stock Market News"
+          description="Latest Indian market updates"
+          features={[
+            "Live market news feeds",
+            "Multiple news sources",
+            "Real-time updates",
+            "Image previews"
+          ]}
+          link="/stock-news"
+          linkText="Read Market News"
         />
 
         <DashboardCard
