@@ -36,7 +36,7 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
           />
         </div>
       )}
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg leading-tight">{item.title}</CardTitle>
           <a 
@@ -49,7 +49,7 @@ const NewsCard = ({ item }: { item: NewsItem }) => {
           </a>
         </div>
         <CardDescription className="flex items-center gap-2 text-xs">
-          <span className="font-medium">{item.source}</span>
+          <span className="font-medium" style={{ background: "rgb(86 0 0)", borderRadius: "4px", padding: "2px 8px"}}>{item.source}</span>
           <span>•</span>
           <span>{formatDate(item.pubDate)}</span>
         </CardDescription>
@@ -93,7 +93,7 @@ const NewsGrid = ({ news, isLoading }: { news: NewsItem[]; isLoading: boolean })
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
       {news.map((item, index) => (
         <NewsCard key={`${item.link}-${index}`} item={item} />
       ))}
@@ -119,14 +119,6 @@ export default function StockNews() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: bsNews = [], isLoading: loadingBS } = useQuery({
-    queryKey: ['stock-news', 'businessStandard'],
-    queryFn: () => fetchFeedBySource('businessStandard'),
-    enabled: activeTab === 'businessStandard',
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 2 * 60 * 1000,
-  });
-
   const { data: investingNews = [], isLoading: loadingInvesting } = useQuery({
     queryKey: ['stock-news', 'investing'],
     queryFn: () => fetchFeedBySource('investing'),
@@ -144,22 +136,12 @@ export default function StockNews() {
   });
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <div className="p-6 border-b">
-        <div className="flex items-center gap-3 mb-2">
-          <TrendingUp className="h-8 w-8 text-primary" />
-          <h1 className="text-4xl font-bold">Indian Stock Market News</h1>
-        </div>
-        <p className="text-muted-foreground">
-          Latest market updates from leading financial news sources
-        </p>
-      </div>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ height: "95vh"}}>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-6">
         <TabsList className="w-full justify-start overflow-x-auto my-4">
           <TabsTrigger value="all">All News</TabsTrigger>
           <TabsTrigger value="livemint">LiveMint</TabsTrigger>
-          <TabsTrigger value="businessStandard">Business Standard</TabsTrigger>
           <TabsTrigger value="investing">Investing.com</TabsTrigger>
           <TabsTrigger value="paisa">5Paisa</TabsTrigger>
         </TabsList>
@@ -170,10 +152,6 @@ export default function StockNews() {
 
         <TabsContent value="livemint" className="flex-1 overflow-auto pb-6">
           <NewsGrid news={livemintNews} isLoading={loadingLivemint} />
-        </TabsContent>
-
-        <TabsContent value="businessStandard" className="flex-1 overflow-auto pb-6">
-          <NewsGrid news={bsNews} isLoading={loadingBS} />
         </TabsContent>
 
         <TabsContent value="investing" className="flex-1 overflow-auto pb-6">
