@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import FoodTracker from "./pages/FoodTracker";
 import ScreenRecorder from "./pages/ScreenRecorder";
+import VideoEditorPage from "./pages/VideoEditorPage";
 import ExpenseManager from "./pages/ExpenseManager";
 import StockNews from "./pages/StockNews";
 
@@ -81,6 +82,7 @@ const App = () => {
                     <Route path="music" element={<Music />} />
                     <Route path="music/songs" element={<SongsList />} />
                     <Route path="screen-recorder" element={<ScreenRecorder />} />
+                    <Route path="video-editor" element={<VideoEditorPage />} />
                     <Route path="stock-news" element={<StockNews />} />
                   </Route>
                 </Route>
