@@ -26,6 +26,7 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
   const [trimEnd, setTrimEnd] = useState(100);
   const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 100, height: 100 });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,22 +36,29 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
     if (videoBlob) {
       const url = URL.createObjectURL(videoBlob);
       setVideoUrl(url);
+      setIsMetadataLoaded(false);
+      setDuration(0);
       return () => URL.revokeObjectURL(url);
     }
   }, [videoBlob]);
 
   useEffect(() => {
-    if (videoRef.current && duration > 0) {
+    if (videoRef.current && isMetadataLoaded && duration > 0 && isFinite(duration)) {
       const startTime = (trimStart / 100) * duration;
-      videoRef.current.currentTime = startTime;
+      if (isFinite(startTime)) {
+        videoRef.current.currentTime = startTime;
+      }
     }
-  }, [trimStart, duration]);
+  }, [trimStart, duration, isMetadataLoaded]);
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       const videoDuration = videoRef.current.duration;
-      setDuration(videoDuration);
-      setTrimEnd(100);
+      if (isFinite(videoDuration) && videoDuration > 0) {
+        setDuration(videoDuration);
+        setTrimEnd(100);
+        setIsMetadataLoaded(true);
+      }
     }
   };
 
@@ -61,7 +69,23 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
   };
 
   const processVideo = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !isMetadataLoaded) {
+      toast({
+        title: "Video not ready",
+        description: "Please wait for the video to load",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isFinite(duration) || duration <= 0) {
+      toast({
+        title: "Invalid video",
+        description: "Video duration is invalid",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsProcessing(true);
     toast({
@@ -85,10 +109,14 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
       canvas.width = cropW;
       canvas.height = cropH;
 
-      // Calculate time range
+      // Calculate time range with validation
       const startTime = (trimStart / 100) * duration;
       const endTime = (trimEnd / 100) * duration;
       const trimmedDuration = endTime - startTime;
+
+      if (!isFinite(startTime) || !isFinite(endTime) || !isFinite(trimmedDuration)) {
+        throw new Error('Invalid time values');
+      }
 
       // Create MediaRecorder for processing
       const stream = canvas.captureStream(30);
@@ -113,7 +141,9 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
       };
 
       // Start recording and play through the trimmed section
-      video.currentTime = startTime;
+      if (isFinite(startTime)) {
+        video.currentTime = startTime;
+      }
       mediaRecorder.start();
 
       const captureFrame = () => {
@@ -177,26 +207,30 @@ export const VideoEditor = ({ open, onClose, videoBlob, onSave }: VideoEditorPro
               <Scissors className="h-4 w-4" />
               Trim Timeline
             </Label>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Start: {formatTime((trimStart / 100) * duration)}</span>
-                <span>End: {formatTime((trimEnd / 100) * duration)}</span>
+            {isMetadataLoaded && duration > 0 ? (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Start: {formatTime((trimStart / 100) * duration)}</span>
+                  <span>End: {formatTime((trimEnd / 100) * duration)}</span>
+                </div>
+                <Slider
+                  value={[trimStart, trimEnd]}
+                  onValueChange={([start, end]) => {
+                    setTrimStart(start);
+                    setTrimEnd(end);
+                  }}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Duration: {formatTime(((trimEnd - trimStart) / 100) * duration)}
+                </p>
               </div>
-              <Slider
-                value={[trimStart, trimEnd]}
-                onValueChange={([start, end]) => {
-                  setTrimStart(start);
-                  setTrimEnd(end);
-                }}
-                min={0}
-                max={100}
-                step={1}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                Duration: {formatTime(((trimEnd - trimStart) / 100) * duration)}
-              </p>
-            </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading video...</p>
+            )}
           </div>
 
           {/* Crop Controls */}
