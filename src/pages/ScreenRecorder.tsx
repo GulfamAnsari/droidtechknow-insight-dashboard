@@ -12,9 +12,11 @@ import {
   Pause,
   Monitor,
   Mic,
-  MicOff
+  MicOff,
+  Edit
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { VideoEditor } from "@/components/video/VideoEditor";
 
 interface Recording {
   id: string;
@@ -32,6 +34,7 @@ const ScreenRecorder = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [includeAudio, setIncludeAudio] = useState(true);
   const [currentRecording, setCurrentRecording] = useState<Recording | null>(null);
+  const [editingRecording, setEditingRecording] = useState<Recording | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -201,6 +204,24 @@ const ScreenRecorder = () => {
     });
   };
 
+  const handleSaveEditedVideo = (editedBlob: Blob, newDuration: number) => {
+    if (!editingRecording) return;
+
+    const editedRecording: Recording = {
+      ...editingRecording,
+      id: Date.now().toString(),
+      name: `${editingRecording.name} (Edited)`,
+      blob: editedBlob,
+      duration: newDuration,
+      timestamp: new Date(),
+      size: formatFileSize(editedBlob.size)
+    };
+
+    setRecordings(prev => [editedRecording, ...prev]);
+    setCurrentRecording(editedRecording);
+    setEditingRecording(null);
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
@@ -306,6 +327,15 @@ const ScreenRecorder = () => {
                 </div>
                 <div className="flex gap-2">
                   <Button
+                    onClick={() => setEditingRecording(currentRecording)}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button
                     onClick={() => downloadRecording(currentRecording)}
                     size="sm"
                     className="gap-2"
@@ -349,6 +379,15 @@ const ScreenRecorder = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button
+                      onClick={() => setEditingRecording(recording)}
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
                       onClick={() => downloadRecording(recording)}
                       size="sm"
                       variant="outline"
@@ -372,6 +411,16 @@ const ScreenRecorder = () => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Video Editor Dialog */}
+      {editingRecording && (
+        <VideoEditor
+          open={!!editingRecording}
+          onClose={() => setEditingRecording(null)}
+          videoBlob={editingRecording.blob}
+          onSave={handleSaveEditedVideo}
+        />
       )}
     </div>
   );
