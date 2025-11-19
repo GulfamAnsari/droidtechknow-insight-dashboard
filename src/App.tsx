@@ -26,6 +26,7 @@ import ScreenRecorder from "./pages/ScreenRecorder";
 import VideoEditorPage from "./pages/VideoEditorPage";
 import ExpenseManager from "./pages/ExpenseManager";
 import StockNews from "./pages/StockNews";
+import PatternDetector from "./pages/PatternDetector";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +85,7 @@ const App = () => {
                     <Route path="screen-recorder" element={<ScreenRecorder />} />
                     <Route path="video-editor" element={<VideoEditorPage />} />
                     <Route path="stock-news" element={<StockNews />} />
+                    <Route path="pattern-detector" element={<PatternDetector />} />
                   </Route>
                 </Route>
                 
