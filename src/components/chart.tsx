@@ -1,5 +1,5 @@
 // Chart.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -58,7 +58,6 @@ export default function Chart({
             close: quotes.close[i],
             volume: quotes.volume[i],
           };
-          // Remove any candle with null/undefined value
           return Object.values(candle).every((v) => v != null) ? candle : null;
         })
         .filter(Boolean) as Candle[];
@@ -81,7 +80,8 @@ export default function Chart({
     return () => intervalRef.current && clearInterval(intervalRef.current);
   }, [liveUpdate]);
 
-  const formatTime = (ts: number) => new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
+  const formatTime = (ts: number) =>
+    new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
 
   const Candlestick = (props: any) => {
     const { xAxisMap, yAxisMap, width } = props;
@@ -93,9 +93,9 @@ export default function Chart({
 
     return (
       <g>
-        {data.map((d, i) => {
+        {data.map((d) => {
           if (d.open == null || d.close == null || d.high == null || d.low == null) return null;
-          const x = xScale(i);
+          const x = xScale(d.t); // <-- use timestamp instead of index
           const openY = yScale(d.open);
           const closeY = yScale(d.close);
           const highY = yScale(d.high);
@@ -129,42 +129,24 @@ export default function Chart({
           {["candlestick", "line", "area", "bar"].map((type) => (
             <button
               key={type}
-              className={`px-3 py-1 rounded ${chartType === type ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+              className={`px-3 py-1 rounded ${
+                chartType === type ? "bg-blue-500 text-white" : "bg-gray-200"
+              }`}
               onClick={() => setChartType(type as ChartType)}
             >
               {type.toUpperCase()}
             </button>
           ))}
           <label className="flex items-center gap-2 ml-2">
-            <input type="checkbox" checked={liveUpdate} onChange={(e) => setLiveUpdate(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={liveUpdate}
+              onChange={(e) => setLiveUpdate(e.target.checked)}
+            />
             Live update (500ms)
           </label>
         </div>
       </div>
-
-      {hoverInfo && (
-        <div
-          style={{
-            position: "fixed",
-            left: hoverInfo.x + 15,
-            top: hoverInfo.y + 15,
-            pointerEvents: "none",
-            background: "rgba(255,255,255,0.9)",
-            border: "1px solid #ccc",
-            padding: 8,
-            borderRadius: 4,
-            fontSize: 12,
-            zIndex: 1000,
-          }}
-        >
-          <div>Time: {formatTime(hoverInfo.candle.t)}</div>
-          <div>O: {hoverInfo.candle.open.toFixed(2)}</div>
-          <div>H: {hoverInfo.candle.high.toFixed(2)}</div>
-          <div>L: {hoverInfo.candle.low.toFixed(2)}</div>
-          <div>C: {hoverInfo.candle.close.toFixed(2)}</div>
-          <div>V: {hoverInfo.candle.volume.toLocaleString()}</div>
-        </div>
-      )}
 
       <ResponsiveContainer width="100%" height={500}>
         <ComposedChart
@@ -173,8 +155,8 @@ export default function Chart({
             if (state.isTooltipActive && state.activePayload) {
               setHoverInfo({
                 candle: state.activePayload[0].payload,
-                x: state.chartX,
-                y: state.chartY,
+                x: state.chartX + state.chart?.container?.getBoundingClientRect()?.left || 0,
+                y: state.chartY + state.chart?.container?.getBoundingClientRect()?.top || 0,
               });
             }
           }}
@@ -193,6 +175,30 @@ export default function Chart({
           <Brush dataKey="t" height={30} stroke="#8884d8" />
         </ComposedChart>
       </ResponsiveContainer>
+
+      {hoverInfo && (
+        <div
+          style={{
+            position: "fixed",
+            left: hoverInfo.x + 15,
+            top: hoverInfo.y + 15,
+            pointerEvents: "none",
+            background: "rgba(255,255,255,0.95)",
+            border: "1px solid #ccc",
+            padding: 8,
+            borderRadius: 4,
+            fontSize: 12,
+            zIndex: 1000,
+          }}
+        >
+          <div>Time: {formatTime(hoverInfo.candle.t)}</div>
+          <div>O: {hoverInfo.candle.open.toFixed(2)}</div>
+          <div>H: {hoverInfo.candle.high.toFixed(2)}</div>
+          <div>L: {hoverInfo.candle.low.toFixed(2)}</div>
+          <div>C: {hoverInfo.candle.close.toFixed(2)}</div>
+          <div>V: {hoverInfo.candle.volume.toLocaleString()}</div>
+        </div>
+      )}
     </div>
   );
 }
