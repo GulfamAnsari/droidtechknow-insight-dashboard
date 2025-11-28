@@ -27,6 +27,7 @@ import VideoEditorPage from "./pages/VideoEditorPage";
 import ExpenseManager from "./pages/ExpenseManager";
 import StockNews from "./pages/StockNews";
 import PatternDetector from "./pages/PatternDetector";
+import StockAlerts from "./pages/StockAlerts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,7 @@ const App = () => {
                     <Route path="video-editor" element={<VideoEditorPage />} />
                     <Route path="stock-news" element={<StockNews />} />
                     <Route path="pattern-detector" element={<PatternDetector />} />
+                    <Route path="stock-alerts" element={<StockAlerts />} />
                   </Route>
                 </Route>
                 

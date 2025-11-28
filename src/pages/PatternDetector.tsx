@@ -303,31 +303,6 @@ const PatternDetector: React.FC = () => {
 
                   <div>
                     <h3 className="font-medium text-foreground mb-1">
-                      Pattern Category
-                    </h3>
-                    <p className="text-muted-foreground">{result?.category}</p>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-foreground mb-1">
-                      Strength Score
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {(result.score * 100).toFixed(1)}%
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-foreground mb-1">
-                      Matched Candle
-                    </h3>
-                    <p className="text-muted-foreground">
-                      Index: {result.matchedIndices?.join(", ")}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-foreground mb-1">
                       Trading Signal
                     </h3>
                     <p
@@ -343,12 +318,27 @@ const PatternDetector: React.FC = () => {
                     </p>
                   </div>
 
-                  <div>
-                    <h3 className="font-medium text-foreground mb-1">
-                      Recommended Action
-                    </h3>
-                    <p className="text-muted-foreground">{result?.action}</p>
-                  </div>
+                  {result.score !== undefined && (
+                    <div>
+                      <h3 className="font-medium text-foreground mb-1">
+                        Strength Score
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {(result.score * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                  )}
+
+                  {result.matchedIndices && result.matchedIndices.length > 0 && (
+                    <div>
+                      <h3 className="font-medium text-foreground mb-1">
+                        Matched Candles
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Index: {result.matchedIndices.join(", ")}
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <h3 className="font-medium text-foreground mb-1">
@@ -357,13 +347,6 @@ const PatternDetector: React.FC = () => {
                     <p className="text-muted-foreground">
                       {result.description}
                     </p>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-foreground mb-1">
-                      Reliability Notes
-                    </h3>
-                    <p className="text-muted-foreground">{result?.notes}</p>
                   </div>
                 </div>
               </Card>
