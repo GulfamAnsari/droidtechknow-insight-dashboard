@@ -68,6 +68,9 @@ export default function StockAlertsPct() {
         const json = await res.json();
         setLocalSymbols(json);
       } catch (err) {
+        const res = await fetch("/stocks.json");
+        const json = await res.json();
+        setLocalSymbols(json);
         console.warn("Could not load local symbols:", err);
         setLocalSymbols([]);
       }
