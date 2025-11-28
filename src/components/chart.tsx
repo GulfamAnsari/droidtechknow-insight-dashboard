@@ -1,5 +1,5 @@
 // src/components/Chart.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -11,7 +11,6 @@ import {
   Tooltip,
   CartesianGrid,
   Brush,
-  ReferenceLine,
 } from "recharts";
 
 type Candle = {
@@ -39,52 +38,75 @@ export default function Chart({
   const [data, setData] = useState<Candle[]>([]);
   const [chartType, setChartType] = useState<ChartType>("candlestick");
   const [hoverCandle, setHoverCandle] = useState<Candle | null>(null);
+  const [liveUpdate, setLiveUpdate] = useState(false);
+  const intervalRef = useRef<NodeJS.Timer | null>(null);
   const [meta, setMeta] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`
-        );
-        const json = await res.json();
-        const chartResult = json.chart.result[0];
-        if (!chartResult) return;
+  const fetchData = async () => {
+    try {
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`
+      );
+      const json = await res.json();
+      const chartResult = json.chart.result?.[0];
+      if (!chartResult) return;
 
-        const timestamps: number[] = chartResult.timestamp || [];
-        const quotes = chartResult.indicators.quote[0];
-        const formatted: Candle[] = timestamps.map((t, i) => ({
-          t: t * 1000,
-          open: quotes.open[i],
-          high: quotes.high[i],
-          low: quotes.low[i],
-          close: quotes.close[i],
-          volume: quotes.volume[i],
-        }));
-        setData(formatted);
-        setMeta(chartResult.meta);
-      } catch (err) {
-        console.error(err);
-      }
-    };
+      const timestamps: number[] = chartResult.timestamp || [];
+      const quotes = chartResult.indicators.quote[0];
+      const formatted: Candle[] = timestamps.map((t, i) => ({
+        t: t * 1000,
+        open: quotes.open[i],
+        high: quotes.high[i],
+        low: quotes.low[i],
+        close: quotes.close[i],
+        volume: quotes.volume[i],
+      }));
+      setData(formatted);
+      setMeta(chartResult.meta);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [symbol, range, interval]);
+
+  // Live update every 500ms
+  useEffect(() => {
+    if (liveUpdate) {
+      intervalRef.current = setInterval(fetchData, 500);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [liveUpdate]);
 
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
 
-  // Candlestick as small bars for visualization
   const renderCandles = () => {
     return data.map((d, i) => {
       const isGreen = d.close >= d.open;
       const color = isGreen ? "#22c55e" : "#ef4444";
+      const w = 8;
       return (
         <React.Fragment key={i}>
+          {/* High-Low line */}
+          <Bar
+            dataKey={() => d.high}
+            fill={color}
+            isAnimationActive={false}
+            barSize={1}
+          />
+          {/* Candle body */}
           <Bar
             dataKey={() => d.close}
             fill={color}
             isAnimationActive={false}
-            barSize={8}
+            barSize={w}
           />
         </React.Fragment>
       );
@@ -107,11 +129,19 @@ export default function Chart({
               {type.toUpperCase()}
             </button>
           ))}
+          <label className="flex items-center gap-2 ml-2">
+            <input
+              type="checkbox"
+              checked={liveUpdate}
+              onChange={(e) => setLiveUpdate(e.target.checked)}
+            />
+            Live update (500ms)
+          </label>
         </div>
       </div>
 
       {hoverCandle && (
-        <div className="border p-2 rounded bg-gray-50 w-full max-w-[400px]">
+        <div className="border p-2 rounded bg-gray-50 w-full max-w-[400px] absolute z-50 pointer-events-none">
           <div>Time: {formatTime(hoverCandle.t)}</div>
           <div>Open: {hoverCandle.open.toFixed(2)}</div>
           <div>High: {hoverCandle.high.toFixed(2)}</div>
@@ -126,7 +156,7 @@ export default function Chart({
         </div>
       )}
 
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={500}>
         <ComposedChart
           data={data}
           onMouseMove={(state: any) => {
@@ -141,15 +171,22 @@ export default function Chart({
             tickFormatter={(t) => formatTime(t)}
             domain={["dataMin", "dataMax"]}
           />
-          <YAxis domain={["auto", "auto"]} />
+          <YAxis yAxisId="price" domain={["auto", "auto"]} />
+          <YAxis
+            yAxisId="volume"
+            orientation="right"
+            domain={["auto", "auto"]}
+            hide
+          />
           <Tooltip
+            wrapperStyle={{ position: "relative" }}
             labelFormatter={(t) => formatTime(t)}
             formatter={(v: any, name: string) => [v, name]}
           />
 
-          {chartType === "line" && <Line dataKey="close" stroke="#3b82f6" dot={false} />}
-          {chartType === "area" && <Area dataKey="close" stroke="#3b82f6" fill="#93c5fd" />}
-          {chartType === "bar" && <Bar dataKey="close" fill="#3b82f6" />}
+          {chartType === "line" && <Line yAxisId="price" dataKey="close" stroke="#3b82f6" dot={false} />}
+          {chartType === "area" && <Area yAxisId="price" dataKey="close" stroke="#3b82f6" fill="#93c5fd" />}
+          {chartType === "bar" && <Bar yAxisId="price" dataKey="close" fill="#3b82f6" />}
           {chartType === "candlestick" && renderCandles()}
 
           <Brush dataKey="t" height={30} stroke="#8884d8" />
