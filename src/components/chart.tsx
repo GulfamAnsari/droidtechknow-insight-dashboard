@@ -226,7 +226,7 @@ export default function AdvancedLiveStockChart({
   const fetchChart = useCallback(async (selRange = range) => {
     setLoading(true);
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=1m`;
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=5m`;
       const res = await fetch(url);
       const json = await res.json();
       const r = json?.chart?.result?.[0];
