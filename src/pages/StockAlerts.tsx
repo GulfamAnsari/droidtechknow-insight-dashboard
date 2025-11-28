@@ -217,7 +217,7 @@ useEffect(() => {
   const checkAll = async () => {
     const snapshot = [...alerts]; // take a snapshot to avoid stale closure
     for (const a of snapshot) {
-      const current = await fetchCurrentPrice(a.symbol) + 12;
+      const current = await fetchCurrentPrice(a.symbol);
       if (cancelled || current === null) continue;
       console.log(alerts)
       setAlerts((prev) =>
