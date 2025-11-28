@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -17,13 +17,12 @@ export default function Chart({ symbol, range = "1d" }) {
   const [data, setData] = useState<any[]>([]);
   const [selectedRange, setSelectedRange] = useState(range);
 
-  const fetchChart = async () => {
-    setLoading(true);
+  const intervalRef = useRef<any>(null);
 
+  const fetchChart = async () => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=${selectedRange}`;
     const res = await fetch(url);
     const json = await res.json();
-
     const result = json?.chart?.result?.[0];
     if (!result) return;
 
@@ -45,8 +44,12 @@ export default function Chart({ symbol, range = "1d" }) {
     setLoading(false);
   };
 
+  // Fetch data every 500ms
   useEffect(() => {
     fetchChart();
+    intervalRef.current = setInterval(fetchChart, 500);
+
+    return () => clearInterval(intervalRef.current);
   }, [symbol, selectedRange]);
 
   if (loading) return <div>Loading chart...</div>;
@@ -56,10 +59,8 @@ export default function Chart({ symbol, range = "1d" }) {
   // ---- CUSTOM CANDLESTICK RENDERER ----
   const renderCandles = (props: any) => {
     const { xAxisMap, yAxisMap, offset, data } = props;
-
     const xScale = xAxisMap[0].scale;
     const yScale = yAxisMap.price.scale;
-
     const candleWidth = 6;
 
     return (
@@ -70,7 +71,6 @@ export default function Chart({ symbol, range = "1d" }) {
           const closeY = yScale(d.close);
           const highY = yScale(d.high);
           const lowY = yScale(d.low);
-
           const isGreen = d.close >= d.open;
 
           return (
@@ -100,8 +100,26 @@ export default function Chart({ symbol, range = "1d" }) {
     );
   };
 
+  // Custom tooltip for better hover info
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const d = payload[0].payload;
+      return (
+        <div className="bg-gray-800 text-white p-2 rounded shadow-md text-sm">
+          <div><b>Time:</b> {d.time}</div>
+          <div><b>Open:</b> {d.open}</div>
+          <div><b>High:</b> {d.high}</div>
+          <div><b>Low:</b> {d.low}</div>
+          <div><b>Close:</b> {d.close}</div>
+          <div><b>Volume:</b> {d.volume}</div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="w-full">
+    <div className="w-full text-black">
       {/* META INFO */}
       <div className="p-4 mb-3 border rounded-xl bg-gray-100 text-sm grid grid-cols-2 gap-2">
         <div><b>{meta.longName}</b> ({meta.symbol})</div>
@@ -137,12 +155,11 @@ export default function Chart({ symbol, range = "1d" }) {
             margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-
             <XAxis dataKey="time" interval={20} />
             <YAxis yAxisId="price" domain={["auto", "auto"]} />
             <YAxis yAxisId="vol" orientation="right" hide domain={[0, "auto"]} />
 
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
 
             {/* Volume bars */}
             <Bar
