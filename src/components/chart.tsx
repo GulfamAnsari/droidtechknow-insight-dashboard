@@ -1,16 +1,17 @@
 // src/components/Chart.tsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
-  Bar,
-  Line,
-  Area,
   XAxis,
   YAxis,
-  Tooltip,
   CartesianGrid,
+  Tooltip,
   Brush,
+  Customized,
+  Area,
+  Line,
+  Bar,
 } from "recharts";
 
 type Candle = {
@@ -72,13 +73,11 @@ export default function Chart({
     fetchData();
   }, [symbol, range, interval]);
 
-  // Live update every 500ms
   useEffect(() => {
     if (liveUpdate) {
       intervalRef.current = setInterval(fetchData, 500);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
+    } else if (intervalRef.current) clearInterval(intervalRef.current);
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -87,34 +86,49 @@ export default function Chart({
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
 
-  const renderCandles = () => {
-    return data.map((d, i) => {
-      const isGreen = d.close >= d.open;
-      const color = isGreen ? "#22c55e" : "#ef4444";
-      const w = 8;
-      return (
-        <React.Fragment key={i}>
-          {/* High-Low line */}
-          <Bar
-            dataKey={() => d.high}
-            fill={color}
-            isAnimationActive={false}
-            barSize={1}
-          />
-          {/* Candle body */}
-          <Bar
-            dataKey={() => d.close}
-            fill={color}
-            isAnimationActive={false}
-            barSize={w}
-          />
-        </React.Fragment>
-      );
-    });
+  // Custom candlestick renderer
+  const Candlestick = (props: any) => {
+    const { xAxisMap, yAxisMap, width, height } = props;
+    if (!xAxisMap || !yAxisMap || data.length === 0) return null;
+    const xScale = xAxisMap[0].scale;
+    const yScale = yAxisMap.price.scale;
+    const candleWidth = Math.max(3, Math.min(12, (width / data.length) * 0.6));
+
+    return (
+      <g>
+        {data.map((d, i) => {
+          if (d.open == null || d.close == null || d.high == null || d.low == null)
+            return null;
+          const x = xScale(i);
+          const openY = yScale(d.open);
+          const closeY = yScale(d.close);
+          const highY = yScale(d.high);
+          const lowY = yScale(d.low);
+          const isGreen = d.close >= d.open;
+          const color = isGreen ? "#22c55e" : "#ef4444";
+
+          return (
+            <g key={d.t}>
+              {/* High-Low line */}
+              <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth={1} />
+              {/* Candle body */}
+              <rect
+                x={x - candleWidth / 2}
+                y={Math.min(openY, closeY)}
+                width={candleWidth}
+                height={Math.max(1, Math.abs(closeY - openY))}
+                fill={color}
+                stroke={color}
+              />
+            </g>
+          );
+        })}
+      </g>
+    );
   };
 
   return (
-    <div className="p-4 w-full max-w-[1200px] mx-auto space-y-4">
+    <div className="p-4 w-full max-w-[1200px] mx-auto space-y-4 relative">
       <div className="flex justify-between items-center flex-wrap gap-2">
         <h2 className="text-xl font-bold">{symbol} Chart</h2>
         <div className="flex gap-2 flex-wrap">
@@ -168,26 +182,22 @@ export default function Chart({
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="t"
-            tickFormatter={(t) => formatTime(t)}
+            tickFormatter={formatTime}
             domain={["dataMin", "dataMax"]}
           />
           <YAxis yAxisId="price" domain={["auto", "auto"]} />
-          <YAxis
-            yAxisId="volume"
-            orientation="right"
-            domain={["auto", "auto"]}
-            hide
-          />
+          <YAxis yAxisId="volume" orientation="right" hide />
+
           <Tooltip
             wrapperStyle={{ position: "relative" }}
-            labelFormatter={(t) => formatTime(t)}
+            labelFormatter={formatTime}
             formatter={(v: any, name: string) => [v, name]}
           />
 
           {chartType === "line" && <Line yAxisId="price" dataKey="close" stroke="#3b82f6" dot={false} />}
           {chartType === "area" && <Area yAxisId="price" dataKey="close" stroke="#3b82f6" fill="#93c5fd" />}
           {chartType === "bar" && <Bar yAxisId="price" dataKey="close" fill="#3b82f6" />}
-          {chartType === "candlestick" && renderCandles()}
+          {chartType === "candlestick" && <Customized component={Candlestick} />}
 
           <Brush dataKey="t" height={30} stroke="#8884d8" />
         </ComposedChart>
