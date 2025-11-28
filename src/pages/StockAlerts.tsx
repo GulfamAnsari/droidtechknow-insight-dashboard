@@ -137,7 +137,7 @@ export default function StockAlertsPct() {
     const pctStr = (thresholdPct ?? newThresholdPct).toString().trim();
     if (!sym || !pctStr) return;
     const pct = parseFloat(pctStr);
-    if (isNaN(pct) || pct <= 0) return;
+    if (isNaN(pct)) return;
     const initialPrice = await fetchCurrentPrice(sym);
     if (initialPrice === null) return;
     const alert: StockAlert = {
