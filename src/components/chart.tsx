@@ -1,4 +1,5 @@
-// AdvancedLiveStockChart.tsx
+
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
@@ -9,24 +10,21 @@ import {
   CartesianGrid,
   Bar,
   Line,
+  Area,
   ReferenceLine,
   ReferenceDot,
   Customized,
-  Area,
 } from "recharts";
 import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { toast } from "sonner";
 
-dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 type Candle = {
   t: number; // epoch seconds
-  time: string; // formatted
+  time: string; // formatted label
   open: number;
   high: number;
   low: number;
@@ -36,389 +34,375 @@ type Candle = {
 
 type Props = {
   symbol: string;
-  initialRange?: string; // "1d", "5d", ...
+  initialRange?: string; // e.g. "1d"
   pollIntervalMs?: number;
-  // optional buy/sell markers (timestamp epoch seconds or index) example: [{t: 1764322320, type: "buy"}]
-  markers?: { t: number; type: "buy" | "sell"; label?: string }[];
-  // alerts
-  alerts?: { id: string; price: number; label?: string }[];
+  autoLive?: boolean;
 };
 
-function safeNum(v: any) {
-  return typeof v === "number" && !Number.isNaN(v) ? v : null;
-}
+const UP_COLOR = "#22c55e"; // green
+const DOWN_COLOR = "#ef4444"; // red
+const VOLUME_COLOR = "#64748b";
 
-
-
-
-/* ---------- Custom Candlestick renderer using Customized ---------- */
-function CandlesCustomized(props: any) {
-  const { xAxisMap, yAxisMap, data, width } = props;
-
-  const xAxis = xAxisMap[0];
-  const yAxis = yAxisMap.price;
-
-  if (!xAxis || !yAxis) return null;
-
-  const xScale = xAxis.scale;
-  const yScale = yAxis.scale;
-
-  const candleWidth = Math.max(4, Math.min(12, (width / data.length) * 0.6));
-
-  return (
-    <g>
-      {data.map((d, i) => {
-        if (!d) return null;
-
-        const x = xScale(i);
-        const openY = yScale(d.open);
-        const closeY = yScale(d.close);
-        const highY = yScale(d.high);
-        const lowY = yScale(d.low);
-
-        const isGreen = d.close >= d.open;
-        const color = isGreen ? "#22c55e" : "#ef4444";
-
-        return (
-          <g key={d.t}>
-            {/* wick */}
-            <line
-              x1={x}
-              x2={x}
-              y1={highY}
-              y2={lowY}
-              stroke={color}
-              strokeWidth={1}
-            />
-
-            {/* body */}
-            <rect
-              x={x - candleWidth / 2}
-              y={Math.min(openY, closeY)}
-              width={candleWidth}
-              height={Math.max(1, Math.abs(closeY - openY))}
-              fill={color}
-              stroke={color}
-            />
-          </g>
-        );
-      })}
-    </g>
-  );
-}
-
-
-/* ---------- Crosshair & Hover renderer ---------- */
-function CrosshairCustomized({ x, y, activeIndex, data, yAxisMap, xAxisMap }: any) {
-  if (!data || activeIndex == null) return null;
-  try {
-    const xScale = xAxisMap[0].scale;
-    const yScale = yAxisMap.price.scale;
-    const px = xScale(activeIndex);
-    const d: Candle = data[activeIndex];
-    const py = yScale(d.close);
-    return (
-      <g>
-        <line x1={px} x2={px} y1={0} y2={yScale.range ? yScale.range()[0] : 0} stroke="#888" strokeDasharray="4 4" />
-        <line x1={0} x2={xScale.range ? xScale.range()[1] : 0} y1={py} y2={py} stroke="#888" strokeDasharray="4 4" />
-      </g>
-    );
-  } catch {
-    return null;
-  }
-}
-
-/* ---------- Main Component ---------- */
 export default function AdvancedLiveStockChart({
   symbol,
   initialRange = "1d",
   pollIntervalMs = 5000,
-  markers = [],
-  alerts = []
+  autoLive = true,
 }: Props) {
-  const [meta, setMeta] = useState<any>(null);
+  const [range, setRange] = useState<string>(initialRange);
   const [data, setData] = useState<Candle[]>([]);
-  const [range, setRange] = useState(initialRange);
-  const [loading, setLoading] = useState(true);
-  const [isLive, setIsLive] = useState(true);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [meta, setMeta] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isLive, setIsLive] = useState<boolean>(autoLive);
   const pollRef = useRef<number | null>(null);
 
-  const [showMACD, setShowMACD] = useState(true);
+  // Chart type selection
+  type ChartType = "candlestick" | "hollow" | "heikin" | "line" | "area" | "bar" | "baseline";
+  const [chartType, setChartType] = useState<ChartType>("candlestick");
 
-  // crosshair
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // fetch full chart for selected range
+  const fetchChart = useCallback(
+    async (selRange = range) => {
+      setLoading(true);
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=1m`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const r = json?.chart?.result?.[0];
+        if (!r) {
+          setLoading(false);
+          return;
+        }
+        const ts: number[] = r.timestamp || [];
+        const q = r.indicators?.quote?.[0] || {};
+        const open = q.open || [];
+        const high = q.high || [];
+        const low = q.low || [];
+        const close = q.close || [];
+        const volume = q.volume || [];
 
-  // alerts triggered map
-  const triggeredRef = useRef<Record<string, boolean>>({});
+        const mapped: Candle[] = ts
+          .map((t, i) => ({
+            t,
+            time: dayjs.unix(t).tz("Asia/Kolkata").format("HH:mm"),
+            open: typeof open[i] === "number" ? open[i] : NaN,
+            high: typeof high[i] === "number" ? high[i] : NaN,
+            low: typeof low[i] === "number" ? low[i] : NaN,
+            close: typeof close[i] === "number" ? close[i] : NaN,
+            volume: typeof volume[i] === "number" ? volume[i] : 0,
+          }))
+          .filter((c) => !Number.isNaN(c.close) && !Number.isNaN(c.open));
 
-  // fetch chart from Yahoo
-  const fetchChart = useCallback(async (selRange = range) => {
-    setLoading(true);
-    try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=5m`;
-      const res = await fetch(url);
-      const json = await res.json();
-      const r = json?.chart?.result?.[0];
-      if (!r) {
+        setMeta(r.meta || {});
+        setData(mapped);
+      } catch (err) {
+        console.warn("fetchChart error", err);
+      } finally {
         setLoading(false);
-        return;
       }
-      const ts: number[] = r.timestamp || [];
-      const q = r.indicators?.quote?.[0] || {};
-      const quoteOpen = q.open || [];
-      const quoteHigh = q.high || [];
-      const quoteLow = q.low || [];
-      const quoteClose = q.close || [];
-      const quoteVol = q.volume || [];
-      const mapped: Candle[] = ts.map((t, i) => ({
-        t,
-        time: dayjs.unix(t).tz("Asia/Kolkata").format("HH:mm"),
-        open: safeNum(quoteOpen[i]) ?? 0,
-        high: safeNum(quoteHigh[i]) ?? 0,
-        low: safeNum(quoteLow[i]) ?? 0,
-        close: safeNum(quoteClose[i]) ?? 0,
-        volume: safeNum(quoteVol[i]) ?? 0,
-      })).filter(d=>d.t && !Number.isNaN(d.close));
-      setMeta(r.meta || {});
-      setData(mapped);
-    } catch (err) {
-      console.warn("fetchChart err", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [symbol, range]);
+    },
+    [symbol, range]
+  );
 
   useEffect(() => {
-    // initial fetch
     fetchChart(range);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, range]);
+  }, [fetchChart, range]);
 
-  // live polling: fetch and merge latest points
+  // live polling to update/merge latest candles
   useEffect(() => {
-    if (!isLive) return;
+    if (!isLive) {
+      if (pollRef.current) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+
+    // clear old
     if (pollRef.current) window.clearInterval(pollRef.current);
+
     pollRef.current = window.setInterval(async () => {
       try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=5m`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1m`;
         const res = await fetch(url);
         const json = await res.json();
         const r = json?.chart?.result?.[0];
         if (!r) return;
         const ts: number[] = r.timestamp || [];
         const q = r.indicators?.quote?.[0] || {};
-        const newMapped: Candle[] = ts.map((t, i) => ({
-          t,
-          time: dayjs.unix(t).tz("Asia/Kolkata").format("HH:mm"),
-          open: safeNum(q.open?.[i]) ?? 0,
-          high: safeNum(q.high?.[i]) ?? 0,
-          low: safeNum(q.low?.[i]) ?? 0,
-          close: safeNum(q.close?.[i]) ?? 0,
-          volume: safeNum(q.volume?.[i]) ?? 0,
-        })).filter(d=>d.t && !Number.isNaN(d.close));
-        // merge: replace tail of data with newMapped (they are in ascending time)
+        const newMapped: Candle[] = ts
+          .map((t, i) => ({
+            t,
+            time: dayjs.unix(t).tz("Asia/Kolkata").format("HH:mm"),
+            open: typeof q.open?.[i] === "number" ? q.open[i] : NaN,
+            high: typeof q.high?.[i] === "number" ? q.high[i] : NaN,
+            low: typeof q.low?.[i] === "number" ? q.low[i] : NaN,
+            close: typeof q.close?.[i] === "number" ? q.close[i] : NaN,
+            volume: typeof q.volume?.[i] === "number" ? q.volume[i] : 0,
+          }))
+          .filter((c) => !Number.isNaN(c.close) && !Number.isNaN(c.open));
+
+        setMeta(r.meta || {});
         setData((prev) => {
           if (prev.length === 0) return newMapped;
-          const mergedMap = new Map<number, Candle>();
-          prev.forEach((p) => mergedMap.set(p.t, p));
-          newMapped.forEach((n) => mergedMap.set(n.t, n));
-          const merged = Array.from(mergedMap.values()).sort((a,b)=>a.t-b.t);
-          // keep last N (Yahoo may give full range; cap to avoid huge arrays)
-          return merged.slice(-1000);
+          // Merge by timestamp (keep unique by t)
+          const map = new Map<number, Candle>();
+          prev.forEach((p) => map.set(p.t, p));
+          newMapped.forEach((n) => map.set(n.t, n));
+          const merged = Array.from(map.values()).sort((a, b) => a.t - b.t);
+          // cap length to avoid huge arrays
+          return merged.slice(-1500);
         });
-        // update meta if changed
-        if (r.meta) setMeta(r.meta);
-      } catch (err) {
-        console.warn("poll err", err);
+      } catch (e) {
+        console.warn("poll err", e);
       }
     }, pollIntervalMs);
-    return () => { if (pollRef.current) window.clearInterval(pollRef.current); pollRef.current = null; };
+
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
   }, [isLive, symbol, range, pollIntervalMs]);
 
-  // compute indicators
-  const closes = useMemo(() => data.map((d) => d.close), [data]);
-
-  // alert detection
-  useEffect(() => {
-    if (!alerts || alerts.length === 0 || data.length === 0) return;
-    const last = data[data.length - 1];
-    alerts.forEach((al) => {
-      if (triggeredRef.current[al.id]) return;
-      // check cross
-      if (last.close >= al.price && (!triggeredRef.current[al.id])) {
-        triggeredRef.current[al.id] = true;
-        toast.success(`Price crossed above alert ${al.label ?? al.id}: ₹${al.price}`);
-      } else if (last.close <= al.price && (!triggeredRef.current[al.id])) {
-        triggeredRef.current[al.id] = true;
-        toast.error(`Price crossed below alert ${al.label ?? al.id}: ₹${al.price}`);
-      }
-    });
-  }, [alerts, data]);
-
-  // theme colors
-  const colors = useMemo(() => {
-    if (theme === "dark") {
-      return {
-        bg: "#0f172a",
-        text: "#e6eef8",
-        grid: "#1f2937",
-        up: "#16a34a",
-        down: "#ef4444",
-        sma: "#facc15",
-        ema: "#60a5fa",
-        macd: "#a78bfa",
-        vol: "#64748b",
+  // derived datasets: heikin-ashi
+  const heikinData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const out: Candle[] = [];
+    let prevHA: { open: number; close: number } | null = null;
+    for (let i = 0; i < data.length; i++) {
+      const d = data[i];
+      const haClose = (d.open + d.high + d.low + d.close) / 4;
+      const haOpen = prevHA ? (prevHA.open + prevHA.close) / 2 : (d.open + d.close) / 2;
+      const haHigh = Math.max(d.high, haOpen, haClose);
+      const haLow = Math.min(d.low, haOpen, haClose);
+      const hd: Candle = {
+        t: d.t,
+        time: d.time,
+        open: haOpen,
+        high: haHigh,
+        low: haLow,
+        close: haClose,
+        volume: d.volume,
       };
+      out.push(hd);
+      prevHA = { open: haOpen, close: haClose };
     }
-    return {
-      bg: "#ffffff",
-      text: "#0f172a",
-      grid: "#e6edf3",
-      up: "#16a34a",
-      down: "#ef4444",
-      sma: "#b45309",
-      ema: "#1e40af",
-      macd: "#7c3aed",
-      vol: "#94a3b8",
-    };
-  }, [theme]);
+    return out;
+  }, [data]);
 
-  // handle mouse for crosshair
-  const handleMouseMove = (e: any) => {
-    if (!e || !e.activeTooltipIndex && e.activeTooltipIndex !== 0) {
-      setActiveIndex(null);
-    } else {
-      setActiveIndex(e.activeTooltipIndex);
+  // choose data to render based on chartType
+  const chartData = useMemo(() => {
+    switch (chartType) {
+      case "heikin":
+        return heikinData;
+      default:
+        return data;
     }
+  }, [chartType, data, heikinData]);
+
+  // tick interval for X axis (to avoid overcrowding)
+  const tickInterval = Math.max(1, Math.floor(Math.max(1, (chartData.length || 1) / 8)));
+
+  // custom Candles renderer (inside component so it closes over chartType)
+  function CandlesCustomized(props: any) {
+    // props contains xAxisMap, yAxisMap, width, height, data (but not necessarily the same data object)
+    try {
+      const { xAxisMap, yAxisMap, width } = props as any;
+      const xAxis = xAxisMap && xAxisMap[0];
+      const yAxis = yAxisMap && (yAxisMap["price"] || yAxisMap[0]);
+      if (!xAxis || !yAxis) return null;
+      const xScale = xAxis.scale;
+      const yScale = yAxis.scale;
+      const rows = chartData.length || 1;
+      const candleWidth = Math.max(3, Math.min(14, (width / Math.max(1, rows)) * 0.6));
+
+      return (
+        <g>
+          {chartData.map((d: Candle, i: number) => {
+            // position x using scale on index
+            const x = xScale(i);
+            const openY = yScale(d.open);
+            const closeY = yScale(d.close);
+            const highY = yScale(d.high);
+            const lowY = yScale(d.low);
+            const isUp = d.close >= d.open;
+            const color = isUp ? UP_COLOR : DOWN_COLOR;
+
+            // handle hollow candle: hollow if up (stroke green, fill transparent)
+            const isHollow = chartType === "hollow";
+            // handle baseline: we'll still render candles but also a baseline reference elsewhere
+            // heikin uses chartData already transformed
+
+            // For hollow: fill "transparent" (or background) for up; fill red for down
+            const fillColor = isHollow ? (isUp ? "transparent" : color) : color;
+            const strokeColor = isHollow ? color : color;
+
+            // minimal height to be visible
+            const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+
+            return (
+              <g key={String(d.t)}>
+                {/* wick */}
+                <line
+                  x1={x}
+                  x2={x}
+                  y1={highY}
+                  y2={lowY}
+                  stroke={strokeColor}
+                  strokeWidth={1}
+                />
+                {/* body */}
+                <rect
+                  x={x - candleWidth / 2}
+                  y={Math.min(openY, closeY)}
+                  width={candleWidth}
+                  height={bodyHeight}
+                  fill={fillColor}
+                  stroke={strokeColor}
+                />
+              </g>
+            );
+          })}
+        </g>
+      );
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // helper to render baseline style (line with shaded area below / above)
+  function BaselineArea() {
+    // baseline is first close value
+    if (!chartData || chartData.length === 0) return null;
+    const base = chartData[0].close;
+    return <ReferenceLine y={base} stroke="#7c3aed" strokeDasharray="4 4" label={{ value: `Baseline ${base}`, position: "right" }} />;
+  }
+
+  // tooltip formatter
+  const tooltipFormatter = (value: any, name: any, props: any) => {
+    if (name === "volume") return [value?.toLocaleString?.() ?? value, "Volume"];
+    return [value, name];
   };
 
-  // small helper to format numbers
-  const fmt = (n?: number | null) => (n == null ? "—" : (Math.round((n! + Number.EPSILON) * 100) / 100).toLocaleString());
-
-  // choose xAxis tick interval to avoid crowding
-  const tickInterval = Math.max(1, Math.floor(Math.max(1, data.length / 8)));
+  // UI: chart type options
+  const CHART_TYPES: { key: ChartType; label: string }[] = [
+    { key: "candlestick", label: "Candlestick" },
+    { key: "hollow", label: "Hollow Candle" },
+    { key: "heikin", label: "Heikin-Ashi" },
+    { key: "line", label: "Line" },
+    { key: "area", label: "Area" },
+    { key: "bar", label: "Bar" },
+    { key: "baseline", label: "Baseline" },
+  ];
 
   return (
-    <div style={{ color: colors.text }}>
-      <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+    <div style={{ fontFamily: "Inter, system-ui, sans-serif", width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>{meta?.longName ?? symbol} <span style={{ color: "#9ca3af", fontSize: 12 }}>({meta?.symbol ?? symbol})</span></h2>
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>{meta?.fullExchangeName} • {meta?.currency}</div>
+          <h2 style={{ margin: 0 }}>{meta?.longName ?? symbol} <small style={{ color: "#6b7280", marginLeft: 6 }}>{meta?.symbol ?? symbol}</small></h2>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>{meta?.fullExchangeName ?? ""} • {meta?.currency ?? ""}</div>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <label style={{ fontSize: 13 }}>
             <input type="checkbox" checked={isLive} onChange={(e) => setIsLive(e.target.checked)} /> Live
           </label>
-          <label style={{ fontSize: 13 }}>
-            <input type="checkbox" checked={theme === "dark"} onChange={(e) => setTheme(e.target.checked ? "dark" : "light")} /> Dark
-          </label>
           <button onClick={() => fetchChart(range)} style={{ padding: "6px 10px" }}>Refresh</button>
         </div>
       </div>
 
-      {/* meta + small stats */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-        gap: 8,
-        marginBottom: 12,
-        background: theme === "dark" ? "#071031" : "#f8fafc",
-        padding: 8,
-        borderRadius: 8
-      }}>
-        <div>Current: <b>₹{fmt(meta?.regularMarketPrice)}</b></div>
-        <div>Prev Close: <b>₹{fmt(meta?.previousClose)}</b></div>
-        <div>Day Range: <b>₹{fmt(meta?.regularMarketDayLow)} - ₹{fmt(meta?.regularMarketDayHigh)}</b></div>
-        <div>52w: <b>₹{fmt(meta?.fiftyTwoWeekLow)} - ₹{fmt(meta?.fiftyTwoWeekHigh)}</b></div>
+      {/* meta row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 10, marginBottom: 12 }}>
+        <div style={{ background: "#f8fafc", padding: 8, borderRadius: 6 }}>Current: <b>₹{meta?.regularMarketPrice ?? "—"}</b></div>
+        <div style={{ background: "#f8fafc", padding: 8, borderRadius: 6 }}>Prev Close: <b>₹{meta?.previousClose ?? "—"}</b></div>
+        <div style={{ background: "#f8fafc", padding: 8, borderRadius: 6 }}>Day: <b>₹{meta?.regularMarketDayLow ?? "—"} - ₹{meta?.regularMarketDayHigh ?? "—"}</b></div>
+        <div style={{ background: "#f8fafc", padding: 8, borderRadius: 6 }}>52w: <b>₹{meta?.fiftyTwoWeekLow ?? "—"} - ₹{meta?.fiftyTwoWeekHigh ?? "—"}</b></div>
       </div>
 
-      {/* controls */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+      {/* controls: ranges + chart type */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
         { (meta?.validRanges ?? ["1d","5d","1mo","3mo","6mo","1y","5y","10y","max"]).map((r: string) => (
-          <button key={r} onClick={() => setRange(r)} style={{
-            padding: "6px 10px",
-            borderRadius: 999,
-            border: range === r ? `1px solid ${colors.sma}` : `1px solid ${colors.grid}`,
-            background: range === r ? colors.sma : "transparent",
-            color: range === r ? "#000" : colors.text,
-            cursor: "pointer"
-          }}>{r}</button>
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: r === range ? "1px solid #7c3aed" : "1px solid #e6eef9",
+              background: r === range ? "#7c3aed" : "transparent",
+              color: r === range ? "#fff" : "#0f172a",
+              cursor: "pointer"
+            }}
+          >
+            {r}
+          </button>
         )) }
+
         <div style={{ width: 12 }} />
+
+        {/* chart type select */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {CHART_TYPES.map((ct) => (
+            <button
+              key={ct.key}
+              onClick={() => setChartType(ct.key)}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: chartType === ct.key ? "1px solid #7c3aed" : "1px solid #e6eef9",
+                background: chartType === ct.key ? "#7c3aed" : "transparent",
+                color: chartType === ct.key ? "#fff" : "#0f172a",
+                cursor: "pointer",
+                fontSize: 13
+              }}
+            >
+              {ct.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* top chart: candles + indicators + volume */}
-      <div >
-        <ResponsiveContainer width="100%" >
-          <ComposedChart
-            data={data}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setActiveIndex(null)}
-            margin={{ top: 10, right: 60, left: 10, bottom: 0 }}
-          >
-            <CartesianGrid stroke={colors.grid} />
-            <XAxis dataKey="time" xAxisId={0} />
+      {/* chart area */}
+      <div style={{ height: 480, borderRadius: 10, background: "#ffffff", padding: 8 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={chartData} margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
+            <CartesianGrid stroke="#eef2ff" />
+            {/* IMPORTANT: give axes ids so Customized can access scales */}
+            <XAxis dataKey="time" xAxisId={0} tick={{ fontSize: 11 }} interval={tickInterval} />
+            <YAxis yAxisId="price" tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
+            <YAxis yAxisId="vol" orientation="right" hide />
 
-<YAxis yAxisId="price" domain={["auto", "auto"]} />
-
-<YAxis yAxisId="vol" orientation="right" hide />
-
-            <Tooltip contentStyle={{ background: theme === "dark" ? "#0b1220" : "#fff", borderRadius: 6, borderColor: colors.grid }} />
+            <Tooltip formatter={tooltipFormatter} />
 
             {/* Volume bars */}
-            <Bar dataKey="volume" yAxisId="vol" barSize={8} fill={colors.vol} opacity={0.25} />
+            <Bar dataKey="volume" yAxisId="vol" barSize={12} fill={VOLUME_COLOR} opacity={0.25} />
 
-         
-            {/* price alert lines */}
-            { alerts?.map((al) => (
-              <ReferenceLine key={al.id} y={al.price} stroke="#f97316" strokeDasharray="3 3" label={{position:"right", value:al.label ?? `Alert ${al.price}`, fill: colors.text}} />
-            )) }
+            {/* Depending on chartType, render */}
+            {chartType === "line" && <Line dataKey="close" stroke="#0ea5e9" dot={false} />}
+            {chartType === "area" && <Area dataKey="close" stroke="#0ea5e9" fill="#bae6fd" dot={false} />}
+            {chartType === "bar" && <Bar dataKey="close" barSize={10} fill="#60a5fa" />}
 
-            {/* buy/sell markers */}
-            { markers?.map((m, idx) => {
-              const idxFound = data.findIndex(d=>d.t === m.t);
-              if (idxFound === -1) return null;
-              const d = data[idxFound];
-              return (
-                <ReferenceDot key={idx} x={d.time} y={d.close} r={5} fill={m.type==="buy" ? "#06b981" : "#ef4444"} stroke="#fff" />
-              );
-            })}
+            {/* Baseline draws both baseline line and also default candlesticks/line */}
+            {chartType === "baseline" && <Line dataKey="close" stroke="#7c3aed" dot={false} />}
+            {chartType === "baseline" && <BaselineArea />}
 
-            {/* custom candles */}
-            <Customized
-  component={<CandlesCustomized />}
-  xAxisId={0}
-  yAxisId="price"
-/>
-
-            {/* crosshair overlay (we use customized via activeIndex) */}
-            <Customized component={<CrosshairCustomized data={data} activeIndex={activeIndex} />} />
+            {/* Candlestick / hollow / heikin use custom renderer */}
+            {(chartType === "candlestick" || chartType === "hollow" || chartType === "heikin") && (
+              <>
+                {/* the Customized component must be given axis ids so its props contain scales */}
+                <Customized component={<CandlesCustomized />} xAxisId={0} yAxisId={"price"} />
+              </>
+            )}
           </ComposedChart>
         </ResponsiveContainer>
-
-        {/* small OHLC readout + last price change */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, color: colors.text }}>
-          <div>
-            { activeIndex != null && data[activeIndex] ? (
-              <>
-                <b>{data[activeIndex].time}</b> &nbsp;
-                O: ₹{fmt(data[activeIndex].open)} H: ₹{fmt(data[activeIndex].high)} L: ₹{fmt(data[activeIndex].low)} C: ₹{fmt(data[activeIndex].close)}
-              </>
-            ) : (
-              <>Last: <b>₹{fmt(data[data.length-1]?.close)}</b> • Vol: {data[data.length-1]?.volume?.toLocaleString()}</>
-            ) }
-          </div>
-
-          <div style={{ fontSize: 13 }}>
-            <button onClick={()=>{ setData([]); fetchChart(range); }} style={{ marginRight: 6 }}>Reload</button>
-            <button onClick={()=>{ triggeredRef.current = {}; toast("Cleared alert triggers"); }}>Reset Alerts</button>
-          </div>
-        </div>
-
-
       </div>
     </div>
   );
+}
+
+/* ---------- Helper subcomponent used above ---------- */
+/* BaselineArea uses chartData via closure; but to keep simple we create a small component */
+function BaselineArea() {
+  // placeholder - Recharts ReferenceLine will be placed in main render (not used as separate component)
+  return null;
 }
