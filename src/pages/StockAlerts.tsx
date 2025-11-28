@@ -1,19 +1,41 @@
 // src/components/StockAlertsPct.tsx
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Plus, Trash2, TrendingUp, TrendingDown, Search, ListPlus, Star, BarChart } from "lucide-react";
+import {
+  Bell,
+  Plus,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  Search,
+  ListPlus,
+  Star,
+  BarChart,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Modal from "@/components/modal";
 
+/* ----------------------------- Types --------------------------------- */
 interface StockAlert {
   id: string;
   symbol: string;
@@ -31,6 +53,7 @@ interface SearchResult {
   exchange?: string;
 }
 
+/* -------------------------- Constants -------------------------------- */
 const NIFTY_50_STOCKS = [
   "ADANIENT.NS","ADANIPORTS.NS","APOLLOHOSP.NS","ASIANPAINT.NS","AXISBANK.NS",
   "BAJAJ-AUTO.NS","BAJFINANCE.NS","BAJAJFINSV.NS","BPCL.NS","BHARTIARTL.NS",
@@ -44,23 +67,32 @@ const NIFTY_50_STOCKS = [
   "TITAN.NS","ULTRACEMCO.NS","UPL.NS","WIPRO.NS",
 ];
 
-const fallbackBeepDataUri = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+const fallbackBeepDataUri =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
 
+/* -------------------------- Component -------------------------------- */
 export default function StockAlertsPct() {
+  /* -------------------------- State ---------------------------------- */
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"alerts" | "favorites">("alerts");
+  const [recent, setRecent] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"alerts" | "recent">("alerts");
+
   const [newSymbol, setNewSymbol] = useState("");
   const [newThresholdPct, setNewThresholdPct] = useState("");
   const [isMonitoring, setIsMonitoring] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [openSearch, setOpenSearch] = useState(false);
-  const [localSymbols, setLocalSymbols] = useState([]);
+  const [localSymbols, setLocalSymbols] = useState<any[]>([]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playingAlertsRef = useRef<Record<string, boolean>>({});
 
+  const [graphModalSymbol, setGraphModalSymbol] = useState<string | null>(null);
+
+  /* --------------------- Load local stocks.json ---------------------- */
   useEffect(() => {
     const loadLocal = async () => {
       try {
@@ -75,12 +107,74 @@ export default function StockAlertsPct() {
     loadLocal();
   }, []);
 
+  /* --------------------- Load from localStorage ---------------------- */
+  useEffect(() => {
+    try {
+      const savedAlerts = localStorage.getItem("pct_alerts_v1");
+      const savedRecent = localStorage.getItem("pct_recent_v1");
+      if (savedAlerts) {
+        const parsed = JSON.parse(savedAlerts);
+        // convert lastChecked strings back to Date
+        const fixed = parsed.map((a: any) => ({ ...a, lastChecked: a.lastChecked ? new Date(a.lastChecked) : undefined }));
+        setAlerts(fixed);
+      }
+      if (savedRecent) setRecent(JSON.parse(savedRecent));
+    } catch (e) {
+      console.warn("Error reading localStorage", e);
+    }
+  }, []);
+
+  /* --------------------- Save to localStorage ------------------------ */
+  useEffect(() => {
+    try {
+      localStorage.setItem("pct_alerts_v1", JSON.stringify(alerts));
+    } catch (e) {
+      console.warn("Error saving alerts to localStorage", e);
+    }
+  }, [alerts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("pct_recent_v1", JSON.stringify(recent));
+    } catch (e) {
+      console.warn("Error saving recent to localStorage", e);
+    }
+  }, [recent]);
+
+  /* ----------------------- Audio setup -------------------------------- */
   useEffect(() => {
     const audio = new Audio("/alert-beep.mp3");
-    audio.onerror = () => { audio.src = fallbackBeepDataUri; };
+    audio.onerror = () => {
+      audio.src = fallbackBeepDataUri;
+    };
     audioRef.current = audio;
   }, []);
 
+  const maybeStopAudio = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!Object.values(playingAlertsRef.current).some(Boolean)) {
+      audio.loop = false;
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  };
+
+  const playAlertSoundLoop = (alertId: string) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    playingAlertsRef.current[alertId] = true;
+    audio.loop = true;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+    // automatically stop this alert sound after short while
+    setTimeout(() => {
+      playingAlertsRef.current[alertId] = false;
+      maybeStopAudio();
+    }, 8000);
+  };
+
+  /* ------------------------ Price Fetch -------------------------------- */
   const fetchCurrentPrice = async (symbol: string): Promise<number | null> => {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m`;
@@ -88,9 +182,13 @@ export default function StockAlertsPct() {
       const json = await res.json();
       const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
       return typeof price === "number" ? price : null;
-    } catch { return null; }
+    } catch (err) {
+      // console.warn("fetchCurrentPrice failed", err);
+      return null;
+    }
   };
 
+  /* -------------------------- Search Logic ---------------------------- */
   useEffect(() => {
     if (!searchQuery || searchQuery.length < 2) {
       setSearchResults([]);
@@ -100,17 +198,30 @@ export default function StockAlertsPct() {
     const doSearch = async () => {
       setIsSearching(true);
       const q = searchQuery.trim().toUpperCase();
+
+      // local first
       const local = localSymbols || [];
-      const localMatches = local
-        .filter((s) => s?.name?.includes(q) || s?.name?.startsWith(q) || s?.symbol?.replace(".NS", "").startsWith(q))
-        .slice(0, 20)
-        .map((s) => ({ symbol: s?.symbol, name: s?.name, exchange: "NSE" }));
+      try {
+        const localMatches = (local || [])
+          .filter((s: any) => {
+            if (!s) return false;
+            const name = (s.name || "").toString().toUpperCase();
+            const sym = (s.symbol || "").toString().toUpperCase();
+            return name.includes(q) || name.startsWith(q) || sym.replace(".NS", "").startsWith(q);
+          })
+          .slice(0, 20)
+          .map((s: any) => ({ symbol: s.symbol, name: s.name, exchange: "NSE" }));
 
-      if (localMatches.length > 0) {
-        if (!cancelled) setSearchResults(localMatches);
-        return;
-      }
+        if (localMatches.length > 0) {
+          if (!cancelled) {
+            setSearchResults(localMatches);
+            setIsSearching(false);
+          }
+          return;
+        }
+      } catch {}
 
+      // fallback to yahoo search
       try {
         const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0`;
         const res = await fetch(url);
@@ -121,27 +232,41 @@ export default function StockAlertsPct() {
           .map((qobj: any) => ({
             symbol: qobj.symbol,
             name: qobj.shortname || qobj.longname,
-            exchange: qobj.exchDisp || "NSE"
+            exchange: qobj.exchDisp || "NSE",
           }))
           .slice(0, 10);
         if (!cancelled) setSearchResults(results);
-      } catch {}
-      if (!cancelled) setIsSearching(false);
+      } catch (err) {
+        // fail silently
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
     };
+
     const t = setTimeout(doSearch, 200);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [searchQuery, localSymbols]);
 
+  /* ------------------------ Add single alert -------------------------- */
   const addAlert = async (symbol?: string, thresholdPct?: string) => {
     const sym = (symbol || newSymbol || "").toUpperCase().trim();
     const pctStr = (thresholdPct ?? newThresholdPct).toString().trim();
     if (!sym || !pctStr) return;
     const pct = parseFloat(pctStr);
     if (isNaN(pct)) return;
+
+    // fetch price
     const initialPrice = await fetchCurrentPrice(sym);
-    if (initialPrice === null) return;
+    if (initialPrice === null) {
+      toast.error("Unable to fetch price for " + sym);
+      return;
+    }
+
     const alert: StockAlert = {
-      id: Math.random().toString(36).slice(2),
+      id: (typeof crypto !== "undefined" && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2),
       symbol: sym,
       thresholdPercent: pct,
       initialPrice,
@@ -150,16 +275,35 @@ export default function StockAlertsPct() {
       triggeredDown: false,
       lastChecked: new Date(),
     };
+
     setAlerts((prev) => [...prev, alert]);
-    setNewSymbol(""); setNewThresholdPct("");
+    setNewSymbol("");
+    setNewThresholdPct("");
+
+    // update recent list: most recent first, unique, cap at 20
+    setRecent((prev) => {
+      const filtered = prev.filter((s) => s !== sym);
+      const next = [sym, ...filtered].slice(0, 20);
+      return next;
+    });
+
     toast.success(`Added ${sym} ±${pct}%`);
   };
 
+  /* --------------------- Add NIFTY50 alerts (bulk) -------------------- */
   const addNifty50Alerts = async () => {
     const pctStr = newThresholdPct.trim();
-    if (!pctStr) return;
+    if (!pctStr) {
+      toast.error("Enter threshold % first");
+      return;
+    }
     const pct = parseFloat(pctStr);
-    if (isNaN(pct) || pct <= 0) return;
+    if (isNaN(pct) || pct <= 0) {
+      toast.error("Enter a valid positive %");
+      return;
+    }
+
+    toast("Adding NIFTY50 alerts (this may take a while)...");
     for (const sym of NIFTY_50_STOCKS) {
       const initialPrice = await fetchCurrentPrice(sym);
       setAlerts((prev) => [
@@ -172,13 +316,15 @@ export default function StockAlertsPct() {
           currentPrice: initialPrice ?? undefined,
           triggeredUp: false,
           triggeredDown: false,
+          lastChecked: initialPrice ? new Date() : undefined,
         },
       ]);
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, 120)); // be nice to API
     }
     toast.success("NIFTY50 alerts added.");
   };
 
+  /* ---------------------- Remove / Reset ------------------------------ */
   const removeAlert = (id: string) => setAlerts((p) => p.filter((a) => a.id !== id));
   const resetAlert = (id: string) => {
     setAlerts((p) => p.map((a) => (a.id === id ? { ...a, triggeredUp: false, triggeredDown: false } : a)));
@@ -186,83 +332,70 @@ export default function StockAlertsPct() {
     maybeStopAudio();
   };
 
-  const playAlertSoundLoop = (alertId: string) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    playingAlertsRef.current[alertId] = true;
-    audio.loop = true;
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-    setTimeout(() => {
-      playingAlertsRef.current[alertId] = false;
-      maybeStopAudio();
-    }, 8000);
-  };
+  /* ---------------------- Monitoring loop ----------------------------- */
+  useEffect(() => {
+    if (!isMonitoring || alerts.length === 0) return;
 
-  const maybeStopAudio = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (!Object.values(playingAlertsRef.current).some(Boolean)) {
-      audio.loop = false; audio.pause(); audio.currentTime = 0;
-    }
-  };
+    let cancelled = false;
 
-useEffect(() => {
-  if (!isMonitoring || alerts.length === 0) return;
-  let cancelled = false;
+    const checkAll = async () => {
+      // snapshot to avoid mid-iteration changes
+      const snapshot = [...alerts];
+      for (const a of snapshot) {
+        if (cancelled) break;
+        const current = await fetchCurrentPrice(a.symbol);
+        if (cancelled || current === null) continue;
 
-  const checkAll = async () => {
-    const snapshot = [...alerts]; // take a snapshot to avoid stale closure
-    for (const a of snapshot) {
-      const current = await fetchCurrentPrice(a.symbol);
-      if (cancelled || current === null) continue;
-      console.log(alerts)
-      setAlerts((prev) =>
-        prev.map((x) =>
-          x.id === a.id
-            ? { ...x, currentPrice: current, lastChecked: new Date() }
-            : x
-        )
-      );
-
-      const initial = a.initialPrice === 0 ? current : a.initialPrice;
-      const pctChange = ((current - initial) / initial) * 100;
-      if (pctChange >= a.thresholdPercent && !a.triggeredUp) {
+        // update current price & lastChecked
         setAlerts((prev) =>
-          prev.map((x) => (x.id === a.id ? { ...x, triggeredUp: true } : x))
+          prev.map((x) => (x.id === a.id ? { ...x, currentPrice: current, lastChecked: new Date() } : x))
         );
-        playAlertSoundLoop(a.id);
-        toast.success(`${a.symbol} ↑ ${pctChange.toFixed(2)}%`);
+
+        const initial = a.initialPrice === 0 ? current : a.initialPrice;
+        const pctChange = ((current - initial) / initial) * 100;
+
+        if (pctChange >= a.thresholdPercent && !a.triggeredUp) {
+          setAlerts((prev) => prev.map((x) => (x.id === a.id ? { ...x, triggeredUp: true } : x)));
+          playAlertSoundLoop(a.id);
+          toast.success(`${a.symbol} ↑ ${pctChange.toFixed(2)}%`);
+        }
+
+        if (pctChange <= -a.thresholdPercent && !a.triggeredDown) {
+          setAlerts((prev) => prev.map((x) => (x.id === a.id ? { ...x, triggeredDown: true } : x)));
+          playAlertSoundLoop(a.id);
+          toast.error(`${a.symbol} ↓ ${pctChange.toFixed(2)}%`);
+        }
       }
+    };
 
-      if (pctChange <= -a.thresholdPercent && !a.triggeredDown) {
-        setAlerts((prev) =>
-          prev.map((x) => (x.id === a.id ? { ...x, triggeredDown: true } : x))
-        );
-        playAlertSoundLoop(a.id);
-        toast.error(`${a.symbol} ↓ ${pctChange.toFixed(2)}%`);
-      }
-    }
+    checkAll();
+    const interval = setInterval(checkAll, 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMonitoring, alerts]); // re-run when alerts change so we always check current list
+
+  /* ---------------------- Recent helpers ------------------------------ */
+  const addToRecent = (sym: string) => {
+    setRecent((p) => {
+      const next = [sym, ...p.filter((s) => s !== sym)].slice(0, 20);
+      return next;
+    });
   };
 
-  checkAll();
-  const interval = setInterval(checkAll, 10000);
+  const removeRecent = (sym: string) => setRecent((p) => p.filter((s) => s !== sym));
 
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
-}, [isMonitoring]); // ✅ only depend on isMonitoring
-
-
-  const toggleFavorite = (symbol: string) => {
-    setFavorites((prev) => prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]);
+  /* ---------------------- Graph modal / live graph -------------------- */
+  const showGraphModal = (symbol: string) => {
+    // original behavior: open yahoo live chart in new tab
+    window.open(`https://in.finance.yahoo.com/quote/${encodeURIComponent(symbol)}`, "_blank");
+    // If you want an internal modal with sparkline, set graphModalSymbol and render Modal below
+    // setGraphModalSymbol(symbol);
   };
 
-  const showLiveGraph = (symbol: string) => {
-    window.open(`https://finance.yahoo.com/quote/${symbol}`, "_blank");
-  };
-
+  /* ---------------------- UI ----------------------------------------- */
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -272,30 +405,43 @@ useEffect(() => {
             Threshold as percentage only (±%). Local symbol lookup used first.
           </p>
         </div>
-        <Button variant={isMonitoring ? "destructive" : "default"} onClick={() => setIsMonitoring((s) => !s)}>
-          <Bell className="mr-2 h-4 w-4" />
-          {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
-        </Button>
+
+        <div className="flex items-center gap-3">
+          <Button variant={isMonitoring ? "destructive" : "default"} onClick={() => setIsMonitoring((s) => !s)}>
+            <Bell className="mr-2 h-4 w-4" />
+            {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
+          </Button>
+          <Button variant="outline" onClick={() => {
+            localStorage.removeItem("pct_alerts_v1");
+            localStorage.removeItem("pct_recent_v1");
+            setAlerts([]);
+            setRecent([]);
+            toast.success("Cleared local cached alerts & recent");
+          }}>
+            Clear Local
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2">
         <Button variant={activeTab === "alerts" ? "default" : "outline"} onClick={() => setActiveTab("alerts")}>Alerts ({alerts.length})</Button>
-        <Button variant={activeTab === "favorites" ? "default" : "outline"} onClick={() => setActiveTab("favorites")}>Favorites ({favorites.length})</Button>
+        <Button variant={activeTab === "recent" ? "default" : "outline"} onClick={() => setActiveTab("recent")}>Recent ({recent.length})</Button>
       </div>
 
-      {/* Alert tab */}
+      {/* ALERTS TAB */}
       {activeTab === "alerts" && (
         <>
-          {/* Add alert card */}
+          {/* Add Alert compact card */}
           <Card>
             <CardHeader>
               <CardTitle>Add Alert</CardTitle>
               <CardDescription>Search NSE symbols (local first) and set % threshold</CardDescription>
             </CardHeader>
+
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-2">
                   <Label>Stock Symbol</Label>
                   <Popover open={openSearch} onOpenChange={setOpenSearch}>
                     <PopoverTrigger asChild>
@@ -347,82 +493,97 @@ useEffect(() => {
             </CardContent>
           </Card>
 
-          {/* Active alerts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Alerts</CardTitle>
-              <CardDescription>{isMonitoring ? "Monitoring - polling every 10s" : "Monitoring stopped"}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[520px]">
-                <div className="space-y-4">
-                  {alerts.length === 0 && <div className="text-center py-8 text-muted-foreground">No alerts yet.</div>}
-                  {alerts.map((a) => (
-                    <Card key={a.id} className={a.triggeredUp || a.triggeredDown ? "border-red-500" : ""}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4">
-                              <h3 className="text-2xl font-bold">{a.symbol}</h3>
-                              <Badge>±{a.thresholdPercent}%</Badge>
-                              {a.triggeredUp && <Badge variant="default" className="ml-2"><TrendingUp className="mr-1 h-3 w-3" />UP</Badge>}
-                              {a.triggeredDown && <Badge variant="destructive" className="ml-2"><TrendingDown className="mr-1 h-3 w-3" />DOWN</Badge>}
-                              <Button variant="outline" size="sm" onClick={() => toggleFavorite(a.symbol)}>
-                                <Star className={`h-4 w-4 ${favorites.includes(a.symbol) ? "text-yellow-500" : ""}`} />
-                              </Button>
-                            </div>
+          {/* Active alerts (grid 3 per row on desktop) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {alerts.length === 0 && <div className="text-center py-8 text-muted-foreground col-span-3">No alerts yet.</div>}
 
-                            <div className="mt-2">
-                              <div>Initial: {a.initialPrice ? `₹${a.initialPrice.toFixed(2)}` : "—"}</div>
-                              <div>
-                                Current: {a.currentPrice ? `₹${a.currentPrice.toFixed(2)}` : "waiting..."}
-                                {a.currentPrice && a.initialPrice ? (
-                                  <span className="ml-3">({(((a.currentPrice - a.initialPrice) / a.initialPrice) * 100).toFixed(2)}%)</span>
-                                ) : null}
-                              </div>
-                              {a.lastChecked && <div className="text-xs text-muted-foreground">Last checked: {a.lastChecked.toLocaleTimeString()}</div>}
-                            </div>
-                          </div>
+            {alerts.map((a) => (
+              <Card key={a.id} className={`${a.triggeredUp || a.triggeredDown ? "border-red-500" : ""}`}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-2xl font-bold">{a.symbol}</h3>
+                        <Badge>±{a.thresholdPercent}%</Badge>
+                        {a.triggeredUp && <Badge variant="default" className="ml-2"><TrendingUp className="mr-1 h-3 w-3" />UP</Badge>}
+                        {a.triggeredDown && <Badge variant="destructive" className="ml-2"><TrendingDown className="mr-1 h-3 w-3" />DOWN</Badge>}
+                        {/* star to quickly add to recent */}
+                        <Button variant="outline" size="sm" onClick={() => addToRecent(a.symbol)}>
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                          <div className="flex flex-col gap-2">
-                            <Button variant="outline" size="sm" onClick={() => showGraphModal(a.symbol)}><BarChart className="h-4 w-4" /></Button>
-                            <Button variant="outline" size="sm" onClick={() => resetAlert(a.id)}>Reset</Button>
-                            <Button variant="destructive" size="sm" onClick={() => removeAlert(a.id)}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
+                      <div className="mt-2 text-sm">
+                        <div>Initial: {a.initialPrice ? `₹${a.initialPrice.toFixed(2)}` : "—"}</div>
+                        <div>
+                          Current: {a.currentPrice ? `₹${a.currentPrice.toFixed(2)}` : "waiting..."}
+                          {a.currentPrice && a.initialPrice ? (
+                            <span className="ml-3">({(((a.currentPrice - a.initialPrice) / a.initialPrice) * 100).toFixed(2)}%)</span>
+                          ) : null}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                        {a.lastChecked && <div className="text-xs text-muted-foreground">Last checked: {a.lastChecked.toLocaleTimeString()}</div>}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button variant="outline" size="sm" onClick={() => showGraphModal(a.symbol)}><BarChart className="h-4 w-4" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => resetAlert(a.id)}>Reset</Button>
+                      <Button variant="destructive" size="sm" onClick={() => removeAlert(a.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </>
       )}
 
-      {/* Favorites tab */}
-      {activeTab === "favorites" && (
+      {/* RECENT TAB */}
+      {activeTab === "recent" && (
         <Card>
           <CardHeader>
-            <CardTitle>Favorites</CardTitle>
+            <CardTitle>Recent</CardTitle>
+            <CardDescription>Recently used symbols (saved to localStorage)</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[520px]">
               <div className="space-y-4">
-                {favorites.map((sym) => (
-                  <div key={sym} className="flex justify-between items-center p-2 border rounded">
-                    <span>{sym}</span>
-                    <Button variant="destructive" size="sm" onClick={() => toggleFavorite(sym)}>Remove</Button>
-                  </div>
-                ))}
-                {favorites.length === 0 && <div className="text-center text-muted-foreground py-8">No favorites yet.</div>}
+                {recent.length === 0 && <div className="text-center text-muted-foreground py-8">No recent symbols yet.</div>}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {recent.map((sym) => (
+                    <div key={sym} className="flex items-center justify-between p-3 border rounded">
+                      <div className="flex items-center gap-3">
+                        <div className="font-medium">{sym}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => { setNewSymbol(sym); setActiveTab("alerts"); }}>
+                          Use
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => removeRecent(sym)}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </ScrollArea>
           </CardContent>
         </Card>
       )}
 
-      
+      {/* Optional modal (if you want to implement internal charts) */}
+      {graphModalSymbol && (
+        <Modal onClose={() => setGraphModalSymbol(null)}>
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-2">{graphModalSymbol}</h3>
+            <p>Live chart or details could be rendered here, or open external site instead.</p>
+            <div className="mt-3">
+              <Button onClick={() => window.open(`https://in.finance.yahoo.com/quote/${encodeURIComponent(graphModalSymbol)}`, "_blank")}>Open on Yahoo</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
