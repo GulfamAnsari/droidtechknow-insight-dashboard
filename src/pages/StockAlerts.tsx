@@ -210,33 +210,53 @@ export default function StockAlertsPct() {
     }
   };
 
-  useEffect(() => {
-    if (!isMonitoring || alerts.length === 0) return;
-    let cancelled = false;
-    const checkAll = async () => {
-      const snapshot = [...alerts];
-      for (const a of snapshot) {
-        const current = await fetchCurrentPrice(a.symbol);
-        if (cancelled || current === null) continue;
-        setAlerts((prev) => prev.map((x) => (x.id === a.id ? { ...x, currentPrice: current, lastChecked: new Date() } : x)));
-        const initial = a.initialPrice === 0 ? current : a.initialPrice;
-        const pctChange = ((current - initial) / initial) * 100;
-        if (pctChange >= a.thresholdPercent && !a.triggeredUp) {
-          setAlerts((prev) => prev.map((x) => (x.id === a.id ? { ...x, triggeredUp: true } : x)));
-          playAlertSoundLoop(a.id);
-          toast.success(`${a.symbol} ↑ ${pctChange.toFixed(2)}%`);
-        }
-        if (pctChange <= -a.thresholdPercent && !a.triggeredDown) {
-          setAlerts((prev) => prev.map((x) => (x.id === a.id ? { ...x, triggeredDown: true } : x)));
-          playAlertSoundLoop(a.id);
-          toast.error(`${a.symbol} ↓ ${pctChange.toFixed(2)}%`);
-        }
+useEffect(() => {
+  if (!isMonitoring || alerts.length === 0) return;
+  let cancelled = false;
+
+  const checkAll = async () => {
+    const snapshot = [...alerts]; // take a snapshot to avoid stale closure
+    for (const a of snapshot) {
+      const current = await fetchCurrentPrice(a.symbol) + 12;
+      if (cancelled || current === null) continue;
+      console.log(alerts)
+      setAlerts((prev) =>
+        prev.map((x) =>
+          x.id === a.id
+            ? { ...x, currentPrice: current, lastChecked: new Date() }
+            : x
+        )
+      );
+
+      const initial = a.initialPrice === 0 ? current : a.initialPrice;
+      const pctChange = ((current - initial) / initial) * 100;
+      if (pctChange >= a.thresholdPercent && !a.triggeredUp) {
+        setAlerts((prev) =>
+          prev.map((x) => (x.id === a.id ? { ...x, triggeredUp: true } : x))
+        );
+        playAlertSoundLoop(a.id);
+        toast.success(`${a.symbol} ↑ ${pctChange.toFixed(2)}%`);
       }
-    };
-    checkAll();
-    const interval = setInterval(checkAll, 10000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [isMonitoring, alerts]);
+
+      if (pctChange <= -a.thresholdPercent && !a.triggeredDown) {
+        setAlerts((prev) =>
+          prev.map((x) => (x.id === a.id ? { ...x, triggeredDown: true } : x))
+        );
+        playAlertSoundLoop(a.id);
+        toast.error(`${a.symbol} ↓ ${pctChange.toFixed(2)}%`);
+      }
+    }
+  };
+
+  checkAll();
+  const interval = setInterval(checkAll, 10000);
+
+  return () => {
+    cancelled = true;
+    clearInterval(interval);
+  };
+}, [isMonitoring]); // ✅ only depend on isMonitoring
+
 
   const toggleFavorite = (symbol: string) => {
     setFavorites((prev) => prev.includes(symbol) ? prev.filter((s) => s !== symbol) : [...prev, symbol]);
