@@ -64,13 +64,10 @@ export default function StockAlertsPct() {
   useEffect(() => {
     const loadLocal = async () => {
       try {
-        const res = await fetch("/public/stocks.json");
-        const json = await res.json();
-        setLocalSymbols(json);
-      } catch (err) {
         const res = await fetch("/stocks.json");
         const json = await res.json();
         setLocalSymbols(json);
+      } catch (err) {
         console.warn("Could not load local symbols:", err);
         setLocalSymbols([]);
       }
