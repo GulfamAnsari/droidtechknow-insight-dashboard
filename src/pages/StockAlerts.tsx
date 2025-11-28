@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Modal from "@/components/modal";
-import LiveStockChart from "@/components/chart";
+import AdvancedLiveStockChart from "@/components/chart";
 
 /* ----------------------------- Types --------------------------------- */
 interface StockAlert {
@@ -573,7 +573,7 @@ export default function StockAlertsPct() {
   
       { graphModalSymbol && (
         <Modal onClose={() => setGraphModalSymbol(null)}>
-          <LiveStockChart symbol={graphModalSymbol} />
+          <AdvancedLiveStockChart symbol={graphModalSymbol} />
         </Modal>
       ) }
     </div>
