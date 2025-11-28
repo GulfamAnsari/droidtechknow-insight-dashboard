@@ -1,4 +1,4 @@
-// src/components/Chart.tsx
+// Chart.tsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   ResponsiveContainer,
@@ -9,8 +9,8 @@ import {
   Tooltip,
   Brush,
   Customized,
-  Area,
   Line,
+  Area,
   Bar,
 } from "recharts";
 
@@ -25,23 +25,16 @@ type Candle = {
 
 type ChartType = "candlestick" | "line" | "area" | "bar";
 
-interface ChartProps {
-  symbol: string;
-  range?: string;
-  interval?: string;
-}
-
 export default function Chart({
-  symbol,
+  symbol = "TCS.NS",
   range = "1d",
   interval = "5m",
-}: ChartProps) {
+}) {
   const [data, setData] = useState<Candle[]>([]);
   const [chartType, setChartType] = useState<ChartType>("candlestick");
-  const [hoverCandle, setHoverCandle] = useState<Candle | null>(null);
   const [liveUpdate, setLiveUpdate] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState<{ candle: Candle; x: number; y: number } | null>(null);
   const intervalRef = useRef<NodeJS.Timer | null>(null);
-  const [meta, setMeta] = useState<any>(null);
 
   const fetchData = async () => {
     try {
@@ -54,16 +47,23 @@ export default function Chart({
 
       const timestamps: number[] = chartResult.timestamp || [];
       const quotes = chartResult.indicators.quote[0];
-      const formatted: Candle[] = timestamps.map((t, i) => ({
-        t: t * 1000,
-        open: quotes.open[i],
-        high: quotes.high[i],
-        low: quotes.low[i],
-        close: quotes.close[i],
-        volume: quotes.volume[i],
-      }));
+
+      const formatted: Candle[] = timestamps
+        .map((t, i) => {
+          const candle = {
+            t: t * 1000,
+            open: quotes.open[i],
+            high: quotes.high[i],
+            low: quotes.low[i],
+            close: quotes.close[i],
+            volume: quotes.volume[i],
+          };
+          // Remove any candle with null/undefined value
+          return Object.values(candle).every((v) => v != null) ? candle : null;
+        })
+        .filter(Boolean) as Candle[];
+
       setData(formatted);
-      setMeta(chartResult.meta);
     } catch (err) {
       console.error(err);
     }
@@ -78,18 +78,15 @@ export default function Chart({
       intervalRef.current = setInterval(fetchData, 500);
     } else if (intervalRef.current) clearInterval(intervalRef.current);
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => intervalRef.current && clearInterval(intervalRef.current);
   }, [liveUpdate]);
 
-  const formatTime = (ts: number) =>
-    new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
+  const formatTime = (ts: number) => new Date(ts).toLocaleTimeString("en-IN", { hour12: false });
 
-  // Custom candlestick renderer
   const Candlestick = (props: any) => {
-    const { xAxisMap, yAxisMap, width, height } = props;
-    if (!xAxisMap || !yAxisMap || data.length === 0) return null;
+    const { xAxisMap, yAxisMap, width } = props;
+    if (!xAxisMap || !yAxisMap || !data.length) return null;
+
     const xScale = xAxisMap[0].scale;
     const yScale = yAxisMap.price.scale;
     const candleWidth = Math.max(3, Math.min(12, (width / data.length) * 0.6));
@@ -97,8 +94,7 @@ export default function Chart({
     return (
       <g>
         {data.map((d, i) => {
-          if (d.open == null || d.close == null || d.high == null || d.low == null)
-            return null;
+          if (d.open == null || d.close == null || d.high == null || d.low == null) return null;
           const x = xScale(i);
           const openY = yScale(d.open);
           const closeY = yScale(d.close);
@@ -109,9 +105,7 @@ export default function Chart({
 
           return (
             <g key={d.t}>
-              {/* High-Low line */}
               <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth={1} />
-              {/* Candle body */}
               <rect
                 x={x - candleWidth / 2}
                 y={Math.min(openY, closeY)}
@@ -135,38 +129,40 @@ export default function Chart({
           {["candlestick", "line", "area", "bar"].map((type) => (
             <button
               key={type}
-              className={`px-3 py-1 rounded ${
-                chartType === type ? "bg-blue-500 text-white" : "bg-gray-200"
-              }`}
+              className={`px-3 py-1 rounded ${chartType === type ? "bg-blue-500 text-white" : "bg-gray-200"}`}
               onClick={() => setChartType(type as ChartType)}
             >
               {type.toUpperCase()}
             </button>
           ))}
           <label className="flex items-center gap-2 ml-2">
-            <input
-              type="checkbox"
-              checked={liveUpdate}
-              onChange={(e) => setLiveUpdate(e.target.checked)}
-            />
+            <input type="checkbox" checked={liveUpdate} onChange={(e) => setLiveUpdate(e.target.checked)} />
             Live update (500ms)
           </label>
         </div>
       </div>
 
-      {hoverCandle && (
-        <div className="border p-2 rounded bg-gray-50 w-full max-w-[400px] absolute z-50 pointer-events-none">
-          <div>Time: {formatTime(hoverCandle.t)}</div>
-          <div>Open: {hoverCandle.open.toFixed(2)}</div>
-          <div>High: {hoverCandle.high.toFixed(2)}</div>
-          <div>Low: {hoverCandle.low.toFixed(2)}</div>
-          <div>Close: {hoverCandle.close.toFixed(2)}</div>
-          <div>Volume: {hoverCandle.volume.toLocaleString()}</div>
-          {meta && (
-            <div>
-              Range: {range} | Interval: {interval} | Currency: {meta.currency}
-            </div>
-          )}
+      {hoverInfo && (
+        <div
+          style={{
+            position: "fixed",
+            left: hoverInfo.x + 15,
+            top: hoverInfo.y + 15,
+            pointerEvents: "none",
+            background: "rgba(255,255,255,0.9)",
+            border: "1px solid #ccc",
+            padding: 8,
+            borderRadius: 4,
+            fontSize: 12,
+            zIndex: 1000,
+          }}
+        >
+          <div>Time: {formatTime(hoverInfo.candle.t)}</div>
+          <div>O: {hoverInfo.candle.open.toFixed(2)}</div>
+          <div>H: {hoverInfo.candle.high.toFixed(2)}</div>
+          <div>L: {hoverInfo.candle.low.toFixed(2)}</div>
+          <div>C: {hoverInfo.candle.close.toFixed(2)}</div>
+          <div>V: {hoverInfo.candle.volume.toLocaleString()}</div>
         </div>
       )}
 
@@ -174,25 +170,20 @@ export default function Chart({
         <ComposedChart
           data={data}
           onMouseMove={(state: any) => {
-            if (state.isTooltipActive && state.activePayload)
-              setHoverCandle(state.activePayload[0].payload);
+            if (state.isTooltipActive && state.activePayload) {
+              setHoverInfo({
+                candle: state.activePayload[0].payload,
+                x: state.chartX,
+                y: state.chartY,
+              });
+            }
           }}
-          onMouseLeave={() => setHoverCandle(null)}
+          onMouseLeave={() => setHoverInfo(null)}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="t"
-            tickFormatter={formatTime}
-            domain={["dataMin", "dataMax"]}
-          />
+          <XAxis dataKey="t" tickFormatter={formatTime} domain={["dataMin", "dataMax"]} />
           <YAxis yAxisId="price" domain={["auto", "auto"]} />
           <YAxis yAxisId="volume" orientation="right" hide />
-
-          <Tooltip
-            wrapperStyle={{ position: "relative" }}
-            labelFormatter={formatTime}
-            formatter={(v: any, name: string) => [v, name]}
-          />
 
           {chartType === "line" && <Line yAxisId="price" dataKey="close" stroke="#3b82f6" dot={false} />}
           {chartType === "area" && <Area yAxisId="price" dataKey="close" stroke="#3b82f6" fill="#93c5fd" />}
