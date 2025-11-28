@@ -48,127 +48,65 @@ function safeNum(v: any) {
   return typeof v === "number" && !Number.isNaN(v) ? v : null;
 }
 
-/* ---------- Indicator helpers ---------- */
-const sma = (data: number[], period: number) => {
-  const out: (number | null)[] = [];
-  for (let i = 0; i < data.length; i++) {
-    if (i + 1 < period) out.push(null);
-    else {
-      const slice = data.slice(i + 1 - period, i + 1);
-      const s = slice.reduce((a, b) => a + (b ?? 0), 0) / period;
-      out.push(s);
-    }
-  }
-  return out;
-};
 
-const ema = (data: number[], period: number) => {
-  const out: (number | null)[] = [];
-  const k = 2 / (period + 1);
-  let prev: number | null = null;
-  for (let i = 0; i < data.length; i++) {
-    const price = data[i];
-    if (price == null) { out.push(null); continue; }
-    if (prev == null) {
-      // seed with SMA of first period if available
-      const seedIdx = Math.max(0, i + 1 - period);
-      const slice = data.slice(seedIdx, i + 1).filter((x) => x != null) as number[];
-      const seed = slice.length ? (slice.reduce((a, b) => a + b, 0) / slice.length) : price;
-      prev = seed;
-    }
-    const cur = price * k + (prev as number) * (1 - k);
-    out.push(cur);
-    prev = cur;
-  }
-  return out;
-};
 
-const rsi = (data: number[], period = 14) => {
-  const out: (number | null)[] = [];
-  let gains = 0;
-  let losses = 0;
-  for (let i = 0; i < data.length; i++) {
-    if (i === 0 || data[i] == null || data[i - 1] == null) { out.push(null); continue; }
-    const diff = (data[i] as number) - (data[i - 1] as number);
-    const g = Math.max(0, diff);
-    const l = Math.max(0, -diff);
-    if (i <= period) {
-      gains += g; losses += l;
-      if (i < period) { out.push(null); continue; }
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      out.push(100 - 100 / (1 + rs));
-    } else {
-      // Wilder's smoothing
-      const prevRSI = out[i - 1] as number | null;
-      // But better compute avgGain/avgLoss iterative:
-      // Let's recompute using prior averages: but to keep simple, compute over window:
-      const slice = data.slice(i + 1 - period, i + 1);
-      let gsum = 0, lsum = 0;
-      for (let v = 1; v < slice.length; v++) {
-        const dd = (slice[v] ?? 0) - (slice[v - 1] ?? 0);
-        if (dd > 0) gsum += dd; else lsum += -dd;
-      }
-      const avgGain = gsum / period;
-      const avgLoss = lsum / period;
-      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      out.push(100 - 100 / (1 + rs));
-    }
-  }
-  return out;
-};
-
-const macd = (prices: number[], fast = 12, slow = 26, signal = 9) => {
-  const fastE = ema(prices, fast);
-  const slowE = ema(prices, slow);
-  const macdLine: (number | null)[] = prices.map((_, i) => {
-    const f = fastE[i], s = slowE[i];
-    return f == null || s == null ? null : f - s;
-  });
-  const signalLine = ema(macdLine.map((v) => (v == null ? 0 : v)), signal);
-  const hist = macdLine.map((v, i) => (v == null || signalLine[i] == null ? null : v - signalLine[i]));
-  return { macdLine, signalLine, hist };
-};
 
 /* ---------- Custom Candlestick renderer using Customized ---------- */
 function CandlesCustomized(props: any) {
-  const { xAxisMap, yAxisMap, width, height, data } = props as any;
-  try {
-    const xScale = xAxisMap[0].scale;
-    const yScale = yAxisMap.price.scale;
-    const candleWidth = Math.max(3, Math.min(12, (width / data.length) * 0.6));
+  const { xAxisMap, yAxisMap, data, width } = props;
 
-    return (
-      <g>
-        {data.map((d: Candle, i: number) => {
-          const x = xScale(i);
-          const openY = yScale(d.open);
-          const closeY = yScale(d.close);
-          const highY = yScale(d.high);
-          const lowY = yScale(d.low);
-          const isGreen = (d.close ?? 0) >= (d.open ?? 0);
-          const color = isGreen ? "#22c55e" : "#ef4444";
-          return (
-            <g key={d.t}>
-              <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth={1} />
-              <rect
-                x={x - candleWidth / 2}
-                y={Math.min(openY, closeY)}
-                width={candleWidth}
-                height={Math.max(1, Math.abs(closeY - openY))}
-                fill={color}
-                stroke={color}
-              />
-            </g>
-          );
-        })}
-      </g>
-    );
-  } catch (err) {
-    return null;
-  }
+  const xAxis = xAxisMap[0];
+  const yAxis = yAxisMap.price;
+
+  if (!xAxis || !yAxis) return null;
+
+  const xScale = xAxis.scale;
+  const yScale = yAxis.scale;
+
+  const candleWidth = Math.max(4, Math.min(12, (width / data.length) * 0.6));
+
+  return (
+    <g>
+      {data.map((d, i) => {
+        if (!d) return null;
+
+        const x = xScale(i);
+        const openY = yScale(d.open);
+        const closeY = yScale(d.close);
+        const highY = yScale(d.high);
+        const lowY = yScale(d.low);
+
+        const isGreen = d.close >= d.open;
+        const color = isGreen ? "#22c55e" : "#ef4444";
+
+        return (
+          <g key={d.t}>
+            {/* wick */}
+            <line
+              x1={x}
+              x2={x}
+              y1={highY}
+              y2={lowY}
+              stroke={color}
+              strokeWidth={1}
+            />
+
+            {/* body */}
+            <rect
+              x={x - candleWidth / 2}
+              y={Math.min(openY, closeY)}
+              width={candleWidth}
+              height={Math.max(1, Math.abs(closeY - openY))}
+              fill={color}
+              stroke={color}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
 }
+
 
 /* ---------- Crosshair & Hover renderer ---------- */
 function CrosshairCustomized({ x, y, activeIndex, data, yAxisMap, xAxisMap }: any) {
@@ -206,14 +144,6 @@ export default function AdvancedLiveStockChart({
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const pollRef = useRef<number | null>(null);
 
-  // UI states
-  const [showSMA10, setShowSMA10] = useState(true);
-  const [showSMA20, setShowSMA20] = useState(false);
-  const [showSMA50, setShowSMA50] = useState(false);
-  const [showEMA9, setShowEMA9] = useState(true);
-  const [showEMA20, setShowEMA20] = useState(false);
-  const [showEMA50, setShowEMA50] = useState(false);
-  const [showRSI, setShowRSI] = useState(true);
   const [showMACD, setShowMACD] = useState(true);
 
   // crosshair
@@ -308,14 +238,6 @@ export default function AdvancedLiveStockChart({
 
   // compute indicators
   const closes = useMemo(() => data.map((d) => d.close), [data]);
-  const sma10 = useMemo(() => sma(closes as number[], 10), [closes]);
-  const sma20 = useMemo(() => sma(closes as number[], 20), [closes]);
-  const sma50 = useMemo(() => sma(closes as number[], 50), [closes]);
-  const ema9 = useMemo(() => ema(closes as number[], 9), [closes]);
-  const ema20 = useMemo(() => ema(closes as number[], 20), [closes]);
-  const ema50 = useMemo(() => ema(closes as number[], 50), [closes]);
-  const rsi14 = useMemo(() => rsi(closes as number[], 14), [closes]);
-  const macdObj = useMemo(() => macd(closes as number[], 12, 26, 9), [closes]);
 
   // alert detection
   useEffect(() => {
@@ -425,20 +347,11 @@ export default function AdvancedLiveStockChart({
           }}>{r}</button>
         )) }
         <div style={{ width: 12 }} />
-        {/* indicators toggles */}
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showSMA10} onChange={(e)=>setShowSMA10(e.target.checked)} /> SMA10</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showSMA20} onChange={(e)=>setShowSMA20(e.target.checked)} /> SMA20</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showSMA50} onChange={(e)=>setShowSMA50(e.target.checked)} /> SMA50</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showEMA9} onChange={(e)=>setShowEMA9(e.target.checked)} /> EMA9</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showEMA20} onChange={(e)=>setShowEMA20(e.target.checked)} /> EMA20</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showEMA50} onChange={(e)=>setShowEMA50(e.target.checked)} /> EMA50</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showRSI} onChange={(e)=>setShowRSI(e.target.checked)} /> RSI</label>
-        <label style={{ fontSize: 13 }}><input type="checkbox" checked={showMACD} onChange={(e)=>setShowMACD(e.target.checked)} /> MACD</label>
       </div>
 
       {/* top chart: candles + indicators + volume */}
-      <div style={{ height: showRSI || showMACD ? 420 : 360, background: theme === "dark" ? "#001020" : "#fff", borderRadius: 10, padding: 8 }}>
-        <ResponsiveContainer width="100%" height={showRSI || showMACD ? 260 : 320}>
+      <div >
+        <ResponsiveContainer width="100%" >
           <ComposedChart
             data={data}
             onMouseMove={handleMouseMove}
@@ -446,9 +359,11 @@ export default function AdvancedLiveStockChart({
             margin={{ top: 10, right: 60, left: 10, bottom: 0 }}
           >
             <CartesianGrid stroke={colors.grid} />
-            <XAxis dataKey="time" tick={{ fill: colors.text }} interval={tickInterval} />
-            <YAxis yAxisId="price" tick={{ fill: colors.text }} domain={["auto","auto"]} />
-            <YAxis yAxisId="vol" orientation="right" tick={{ fill: colors.text }} hide />
+            <XAxis dataKey="time" xAxisId={0} />
+
+<YAxis yAxisId="price" domain={["auto", "auto"]} />
+
+<YAxis yAxisId="vol" orientation="right" hide />
 
             <Tooltip contentStyle={{ background: theme === "dark" ? "#0b1220" : "#fff", borderRadius: 6, borderColor: colors.grid }} />
 
@@ -472,7 +387,11 @@ export default function AdvancedLiveStockChart({
             })}
 
             {/* custom candles */}
-            <Customized component={<CandlesCustomized data={data} />} />
+            <Customized
+  component={<CandlesCustomized />}
+  xAxisId={0}
+  yAxisId="price"
+/>
 
             {/* crosshair overlay (we use customized via activeIndex) */}
             <Customized component={<CrosshairCustomized data={data} activeIndex={activeIndex} />} />
