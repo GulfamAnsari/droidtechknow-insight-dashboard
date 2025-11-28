@@ -65,7 +65,7 @@ export default function AdvancedLiveStockChart({
     async (selRange = range) => {
       setLoading(true);
       try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=1m`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${selRange}&interval=5m`;
         const res = await fetch(url);
         const json = await res.json();
         const r = json?.chart?.result?.[0];
@@ -123,7 +123,7 @@ export default function AdvancedLiveStockChart({
 
     pollRef.current = window.setInterval(async () => {
       try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1m`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=5m`;
         const res = await fetch(url);
         const json = await res.json();
         const r = json?.chart?.result?.[0];
