@@ -271,7 +271,7 @@ export default function AdvancedLiveStockChart({
     if (pollRef.current) window.clearInterval(pollRef.current);
     pollRef.current = window.setInterval(async () => {
       try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1m`;
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=5m`;
         const res = await fetch(url);
         const json = await res.json();
         const r = json?.chart?.result?.[0];
