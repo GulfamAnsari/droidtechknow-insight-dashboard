@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Modal from "@/components/modal";
+import LiveStockChart from "@/components/chart";
 
 /* ----------------------------- Types --------------------------------- */
 interface StockAlert {
@@ -389,10 +390,7 @@ export default function StockAlertsPct() {
 
   /* ---------------------- Graph modal / live graph -------------------- */
   const showGraphModal = (symbol: string) => {
-    // original behavior: open yahoo live chart in new tab
-    window.open(`https://in.finance.yahoo.com/quote/${encodeURIComponent(symbol)}`, "_blank");
-    // If you want an internal modal with sparkline, set graphModalSymbol and render Modal below
-    // setGraphModalSymbol(symbol);
+    setGraphModalSymbol(symbol);
   };
 
   /* ---------------------- UI ----------------------------------------- */
@@ -572,18 +570,12 @@ export default function StockAlertsPct() {
         </Card>
       )}
 
-      {/* Optional modal (if you want to implement internal charts) */}
-      {graphModalSymbol && (
+  
+      { graphModalSymbol && (
         <Modal onClose={() => setGraphModalSymbol(null)}>
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2">{graphModalSymbol}</h3>
-            <p>Live chart or details could be rendered here, or open external site instead.</p>
-            <div className="mt-3">
-              <Button onClick={() => window.open(`https://in.finance.yahoo.com/quote/${encodeURIComponent(graphModalSymbol)}`, "_blank")}>Open on Yahoo</Button>
-            </div>
-          </div>
+          <LiveStockChart symbol={graphModalSymbol} />
         </Modal>
-      )}
+      ) }
     </div>
   );
 }
