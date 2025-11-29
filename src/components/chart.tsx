@@ -81,8 +81,8 @@ export default function Chart({ symbol, range = "1d" }) {
                 x2={x}
                 y1={highY}
                 y2={lowY}
-                stroke={isGreen ? "#0cc90c" : "#ff3d3d"}
-                strokeWidth={1}
+                stroke={isGreen ? "#4ade80" : "#ef4444"}
+                strokeWidth={1.5}
               />
 
               {/* Candle body */}
@@ -91,7 +91,7 @@ export default function Chart({ symbol, range = "1d" }) {
                 y={isGreen ? closeY : openY}
                 width={candleWidth}
                 height={Math.max(2, Math.abs(closeY - openY))}
-                fill={isGreen ? "#0cc90c" : "#ff3d3d"}
+                fill={isGreen ? "#4ade80" : "#ef4444"}
               />
             </g>
           );
@@ -119,9 +119,9 @@ export default function Chart({ symbol, range = "1d" }) {
   };
 
   return (
-    <div className="w-full text-black">
+    <div className="w-full">
       {/* META INFO */}
-      <div className="p-4 mb-3 border rounded-xl bg-gray-100 text-sm grid grid-cols-2 gap-2">
+      <div className="p-4 mb-3 border rounded-xl bg-gray-800 text-white text-sm grid grid-cols-2 gap-2">
         <div><b>{meta.longName}</b> ({meta.symbol})</div>
         <div>Currency: {meta.currency}</div>
         <div>Day High: {meta.regularMarketDayHigh}</div>
@@ -137,8 +137,8 @@ export default function Chart({ symbol, range = "1d" }) {
         {ranges.map((r: string) => (
           <button
             key={r}
-            className={`px-3 py-1 rounded-full border ${
-              selectedRange === r ? "bg-black text-white" : "bg-white"
+            className={`px-3 py-1 rounded-full border transition-colors ${
+              selectedRange === r ? "bg-white text-black border-white" : "bg-gray-800 text-white border-gray-600 hover:border-white"
             }`}
             onClick={() => setSelectedRange(r)}
           >
@@ -148,26 +148,36 @@ export default function Chart({ symbol, range = "1d" }) {
       </div>
 
       {/* CHART */}
-      <div style={{ height: 420 }}>
+      <div className="bg-[#1a1a1a] rounded-xl p-4" style={{ height: 500 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
-            margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
+            margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" interval={20} />
-            <YAxis yAxisId="price" domain={["auto", "auto"]} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+            <XAxis 
+              dataKey="time" 
+              interval={20} 
+              stroke="#888"
+              tick={{ fill: '#888' }}
+            />
+            <YAxis 
+              yAxisId="price" 
+              domain={["auto", "auto"]} 
+              stroke="#888"
+              tick={{ fill: '#888' }}
+            />
             <YAxis yAxisId="vol" orientation="right" hide domain={[0, "auto"]} />
 
             <Tooltip content={<CustomTooltip />} />
 
-            {/* Volume bars */}
+            {/* Volume bars at bottom */}
             <Bar
               yAxisId="vol"
               dataKey="volume"
-              barSize={20}
-              fill="#8884d8"
-              opacity={0.2}
+              barSize={4}
+              fill="#4ade80"
+              opacity={0.4}
             />
 
             {/* Candlestick renderer */}

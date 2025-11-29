@@ -409,14 +409,30 @@ export default function StockAlertsPct() {
             <Bell className="mr-2 h-4 w-4" />
             {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
           </Button>
+          <Button 
+            variant="destructive" 
+            onClick={() => {
+              if (alerts.length === 0) {
+                toast.error("No alerts to clear");
+                return;
+              }
+              if (confirm(`Delete all ${alerts.length} alerts?`)) {
+                setAlerts([]);
+                toast.success("All alerts deleted");
+              }
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear All Alerts
+          </Button>
           <Button variant="outline" onClick={() => {
             localStorage.removeItem("pct_alerts_v1");
             localStorage.removeItem("pct_recent_v1");
             setAlerts([]);
             setRecent([]);
-            toast.success("Cleared local cached alerts & recent");
+            toast.success("Cleared local cache");
           }}>
-            Clear Local
+            Clear Local Cache
           </Button>
         </div>
       </div>
