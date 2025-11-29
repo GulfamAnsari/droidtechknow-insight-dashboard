@@ -74,7 +74,7 @@ console.log(results)
           {/* TOP CONTROLS */}
           <div className="flex gap-3 p-3 items-center bg-[#1a1a1a] flex-nowrap">
             {/* Search input */}
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <Command>
                 <CommandInput
                   placeholder="Search NSE Symbol..."
@@ -86,16 +86,16 @@ console.log(results)
                   {searchQuery.length >= 2 && searchResults.length === 0 && (
                     <CommandEmpty>No results</CommandEmpty>
                   )}
-                  <CommandGroup>
+                  <CommandList className="absolute " style={{ height: "200px", zIndex: 9999, background: 'black'}}>
                     {searchResults.map((r) => (
-                      <CommandItem key={r.symbol} onSelect={() => addChart(r.symbol, r.name)}>
-                        <div className="flex flex-col">
+                      <div key={r.symbol} onClick={() => addChart(r.symbol, r.name)} >
+                        <div className="flex flex-col flex-1 ">
                           <span className="font-medium">{r.symbol}</span>
                           <span className="text-xs text-muted-foreground">{r.name ?? "NSE"}</span>
                         </div>
-                      </CommandItem>
+                      </div>
                     ))}
-                  </CommandGroup>
+                  </CommandList>
                 </CommandList>
               </Command>
             </div>
