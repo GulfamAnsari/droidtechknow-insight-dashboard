@@ -35,6 +35,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Modal from "@/components/modal";
 import Chart from "@/components/chart";
+import StockDashboardModal from "@/components/stockDashboardModal";
 
 /* ----------------------------- Types --------------------------------- */
 interface StockAlert {
@@ -395,13 +396,12 @@ export default function StockAlertsPct() {
 
   /* ---------------------- UI ----------------------------------------- */
   return (
+    <>
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Indian Stocks — % Threshold Alerts</h1>
-          <p className="text-muted-foreground">
-            Threshold as percentage only (±%). Local symbol lookup used first.
-          </p>
+    
         </div>
 
         <div className="flex items-center gap-3">
@@ -425,15 +425,7 @@ export default function StockAlertsPct() {
             <Trash2 className="mr-2 h-4 w-4" />
             Clear All Alerts
           </Button>
-          <Button variant="outline" onClick={() => {
-            localStorage.removeItem("pct_alerts_v1");
-            localStorage.removeItem("pct_recent_v1");
-            setAlerts([]);
-            setRecent([]);
-            toast.success("Cleared local cache");
-          }}>
-            Clear Local Cache
-          </Button>
+          <StockDashboardModal localSymbols={localSymbols}/>
         </div>
       </div>
 
@@ -594,6 +586,8 @@ export default function StockAlertsPct() {
           </div>
         </Modal>
       )}
+      
     </div>
+    </>
   );
 }
