@@ -31,7 +31,7 @@ export default function Chart({ symbol }) {
   const intervalRef = useRef<any>(null);
 
   const fetchChart = async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+    const url = `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=${interval}&range=${range}`;
 
     const res = await fetch(url);
     const json = await res.json();

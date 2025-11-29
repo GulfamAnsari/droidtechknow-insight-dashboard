@@ -178,7 +178,7 @@ export default function StockAlertsPct() {
   /* ------------------------ Price Fetch -------------------------------- */
   const fetchCurrentPrice = async (symbol: string): Promise<number | null> => {
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=5m`;
+      const url = `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${encodeURIComponent(symbol)}&interval=5m`;
       const res = await fetch(url);
       const json = await res.json();
       const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
