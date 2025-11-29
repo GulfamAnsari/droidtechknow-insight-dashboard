@@ -163,8 +163,8 @@ const DashboardLayout = () => {
           <div
             className={
               !isMobile
-                ? "ml-16 flex-1 overflow-hidden "
-                : "flex-1 overflow-hidden "
+                ? "ml-16 flex-1 overflow-y-auto"
+                : "flex-1 overflow-y-auto"
             }
           >
             <Outlet context={{ refreshData, isRefreshing }} />

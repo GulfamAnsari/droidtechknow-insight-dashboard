@@ -20,7 +20,9 @@ import {
   AppleIcon,
   Video,
   CreditCard,
-  TrendingUp
+  TrendingUp,
+  ScanLine,
+  Bell
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -177,6 +179,20 @@ const Dashboard = () => {
         />
 
         <DashboardCard
+          icon={Video}
+          title="Video Editor"
+          description="Edit and export your recordings"
+          features={[
+            "Trim and cut videos",
+            "Combine multiple clips",
+            "Preview before export",
+            "Simple timeline controls"
+          ]}
+          link="/video-editor"
+          linkText="Open Video Editor"
+        />
+
+        <DashboardCard
           icon={TrendingUp}
           title="Stock Market News"
           description="Latest Indian market updates"
@@ -188,6 +204,34 @@ const Dashboard = () => {
           ]}
           link="/stock-news"
           linkText="Read Market News"
+        />
+
+        <DashboardCard
+          icon={ScanLine}
+          title="Pattern Detector"
+          description="Detect candlestick patterns from charts"
+          features={[
+            "Upload candlestick screenshots",
+            "Pattern detection engine",
+            "Highlighted patterns",
+            "Manual and AI modes"
+          ]}
+          link="/pattern-detector"
+          linkText="Open Pattern Detector"
+        />
+
+        <DashboardCard
+          icon={Bell}
+          title="Stock Alerts"
+          description="Configure price change alerts"
+          features={[
+            "Percentage-based alerts",
+            "NIFTY50 bulk alerts",
+            "Sound notifications",
+            "Recent symbols list"
+          ]}
+          link="/stock-alerts"
+          linkText="Open Stock Alerts"
         />
 
         <DashboardCard
