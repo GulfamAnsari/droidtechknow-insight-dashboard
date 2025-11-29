@@ -7,15 +7,18 @@ import {
   Tooltip,
   CartesianGrid,
   Bar,
-  Customized
+  Customized,
+  Line
 } from "recharts";
 import dayjs from "dayjs";
+import { Button } from "@/components/ui/button";
 
 export default function Chart({ symbol, range = "1d" }) {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState<any>(null);
   const [data, setData] = useState<any[]>([]);
   const [selectedRange, setSelectedRange] = useState(range);
+  const [chartType, setChartType] = useState<"candle" | "line">("candle");
 
   const intervalRef = useRef<any>(null);
 
@@ -52,9 +55,7 @@ export default function Chart({ symbol, range = "1d" }) {
     return () => clearInterval(intervalRef.current);
   }, [symbol, selectedRange]);
 
-  if (loading) return <div>Loading chart...</div>;
-
-  const ranges = meta?.validRanges ?? ["1d", "5d", "1mo", "3mo", "6mo", "1y", "max"];
+  if (loading) return <div className="flex items-center justify-center h-96 text-white">Loading chart...</div>;
 
   // ---- CUSTOM CANDLESTICK RENDERER ----
   const renderCandles = (props: any) => {
@@ -105,13 +106,20 @@ export default function Chart({ symbol, range = "1d" }) {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
       return (
-        <div className="bg-gray-800 text-white p-2 rounded shadow-md text-sm">
-          <div><b>Time:</b> {d.time}</div>
-          <div><b>Open:</b> {d.open}</div>
-          <div><b>High:</b> {d.high}</div>
-          <div><b>Low:</b> {d.low}</div>
-          <div><b>Close:</b> {d.close}</div>
-          <div><b>Volume:</b> {d.volume}</div>
+        <div className="bg-gray-900 border border-gray-700 text-white p-3 rounded-lg shadow-xl text-sm">
+          <div className="font-bold mb-1">{d.time}</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            <span className="text-gray-400">Open:</span>
+            <span className="font-medium">₹{d.open?.toFixed(2)}</span>
+            <span className="text-gray-400">High:</span>
+            <span className="font-medium text-green-400">₹{d.high?.toFixed(2)}</span>
+            <span className="text-gray-400">Low:</span>
+            <span className="font-medium text-red-400">₹{d.low?.toFixed(2)}</span>
+            <span className="text-gray-400">Close:</span>
+            <span className="font-medium">₹{d.close?.toFixed(2)}</span>
+            <span className="text-gray-400">Volume:</span>
+            <span className="font-medium">{d.volume?.toLocaleString()}</span>
+          </div>
         </div>
       );
     }
@@ -119,36 +127,39 @@ export default function Chart({ symbol, range = "1d" }) {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-hidden">
       {/* META INFO */}
-      <div className="p-4 mb-3 border rounded-xl bg-gray-800 text-white text-sm grid grid-cols-2 gap-2">
+      <div className="p-4 mb-3 border border-gray-700 rounded-xl bg-gray-800 text-white text-sm grid grid-cols-2 gap-2">
         <div><b>{meta.longName}</b> ({meta.symbol})</div>
         <div>Currency: {meta.currency}</div>
-        <div>Day High: {meta.regularMarketDayHigh}</div>
-        <div>Day Low: {meta.regularMarketDayLow}</div>
-        <div>52w High: {meta.fiftyTwoWeekHigh}</div>
-        <div>52w Low: {meta.fiftyTwoWeekLow}</div>
-        <div>Prev Close: {meta.previousClose}</div>
-        <div>Price: {meta.regularMarketPrice}</div>
+        <div>Day High: ₹{meta.regularMarketDayHigh?.toFixed(2)}</div>
+        <div>Day Low: ₹{meta.regularMarketDayLow?.toFixed(2)}</div>
+        <div>52w High: ₹{meta.fiftyTwoWeekHigh?.toFixed(2)}</div>
+        <div>52w Low: ₹{meta.fiftyTwoWeekLow?.toFixed(2)}</div>
+        <div>Prev Close: ₹{meta.previousClose?.toFixed(2)}</div>
+        <div>Price: <span className="text-green-400 font-bold">₹{meta.regularMarketPrice?.toFixed(2)}</span></div>
       </div>
 
-      {/* RANGE SELECTOR */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {ranges.map((r: string) => (
-          <button
-            key={r}
-            className={`px-3 py-1 rounded-full border transition-colors ${
-              selectedRange === r ? "bg-white text-black border-white" : "bg-gray-800 text-white border-gray-600 hover:border-white"
-            }`}
-            onClick={() => setSelectedRange(r)}
-          >
-            {r}
-          </button>
-        ))}
+      {/* CHART TYPE TOGGLE */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={chartType === "candle" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setChartType("candle")}
+        >
+          Candlestick
+        </Button>
+        <Button
+          variant={chartType === "line" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setChartType("line")}
+        >
+          Line Chart
+        </Button>
       </div>
 
       {/* CHART */}
-      <div className="bg-[#1a1a1a] rounded-xl p-4" style={{ height: 500 }}>
+      <div className="bg-[#1a1a1a] rounded-xl p-4 border border-gray-800" style={{ height: 500 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -158,14 +169,14 @@ export default function Chart({ symbol, range = "1d" }) {
             <XAxis 
               dataKey="time" 
               interval={20} 
-              stroke="#888"
-              tick={{ fill: '#888' }}
+              stroke="#666"
+              tick={{ fill: '#888', fontSize: 12 }}
             />
             <YAxis 
               yAxisId="price" 
               domain={["auto", "auto"]} 
-              stroke="#888"
-              tick={{ fill: '#888' }}
+              stroke="#666"
+              tick={{ fill: '#888', fontSize: 12 }}
             />
             <YAxis yAxisId="vol" orientation="right" hide domain={[0, "auto"]} />
 
@@ -177,11 +188,22 @@ export default function Chart({ symbol, range = "1d" }) {
               dataKey="volume"
               barSize={4}
               fill="#4ade80"
-              opacity={0.4}
+              opacity={0.3}
             />
 
-            {/* Candlestick renderer */}
-            <Customized yAxisId="price" xAxisId={0} data={data} component={renderCandles} />
+            {/* Conditional chart type */}
+            {chartType === "candle" ? (
+              <Customized yAxisId="price" xAxisId={0} data={data} component={renderCandles} />
+            ) : (
+              <Line
+                yAxisId="price"
+                type="monotone"
+                dataKey="close"
+                stroke="#4ade80"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
