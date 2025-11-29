@@ -376,7 +376,7 @@ export default function StockAlertsPct() {
       clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMonitoring, alerts]); // re-run when alerts change so we always check current list
+  }, [isMonitoring]); // re-run when alerts change so we always check current list
 
   /* ---------------------- Recent helpers ------------------------------ */
   const addToRecent = (sym: string) => {
