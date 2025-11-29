@@ -7,32 +7,43 @@ export default function Chart({ symbol }) {
   // Dropdown states
   const [range, setRange] = useState("1d");
   const [interval, setIntervalValue] = useState("5m"); // default
+  const [chartType, setChartType] = useState<"candlestick" | "line">("candlestick"); // ✅ chart type
+  const [live, setLive] = useState(false); // live toggle
 
-  const [options] = useState<any>({
+  const intervalRef = useRef<any>(null);
+
+  const [options, setOptions] = useState<any>({
     chart: {
-      id: "candlestick",
+      id: "chart",
       animations: {
         enabled: true,
-        dynamicAnimation: { speed: 500 }
-      }
+        dynamicAnimation: { speed: 500 },
+      },
     },
-    xaxis: { type: "datetime" },
+    xaxis: {
+      type: "datetime",
+      labels: { style: { colors: "#fff" } },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: "#fff" },
+        formatter: (val: number) => val.toFixed(2), // ✅ 2 decimal points
+      },
+    },
+    tooltip: { theme: "dark" },
     plotOptions: {
       candlestick: {
         colors: {
           upward: "#4ade80",
-          downward: "#ef4444"
-        }
-      }
+          downward: "#ef4444",
+        },
+      },
     },
-    tooltip: { theme: "dark" }
+    stroke: { width: 2 },
   });
-
-  const intervalRef = useRef<any>(null);
 
   const fetchChart = async () => {
     const url = `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=${interval}&range=${range}`;
-
     const res = await fetch(url);
     const json = await res.json();
     const result = json?.chart?.result?.[0];
@@ -42,21 +53,39 @@ export default function Chart({ symbol }) {
     const quote = indicators?.quote?.[0];
     if (!quote) return;
 
-    const data = timestamp.map((t: number, i: number) => [
-      t * 1000,
-      quote.open[i],
-      quote.high[i],
-      quote.low[i],
-      quote.close[i],
-    ]);
-
-    setSeries([{ data }]);
+    if (chartType === "candlestick") {
+      const data = timestamp.map((t: number, i: number) => [
+        t * 1000,
+        quote.open[i],
+        quote.high[i],
+        quote.low[i],
+        quote.close[i],
+      ]);
+      setSeries([{ data }]);
+    } else {
+      // line chart: use close prices
+      const data = timestamp.map((t: number, i: number) => [t * 1000, quote.close[i]]);
+      setSeries([{ name: symbol, data }]);
+    }
   };
 
-  // Fetch when symbol, range, or interval changes
+  // Fetch on symbol, range, interval, or chartType change
   useEffect(() => {
     fetchChart();
-  }, [symbol, range, interval]);
+  }, [symbol, range, interval, chartType]);
+
+  // Live updates
+  useEffect(() => {
+    if (live) {
+      intervalRef.current = setInterval(fetchChart, 500);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [live, symbol, range, interval, chartType]);
 
   return (
     <div
@@ -64,20 +93,12 @@ export default function Chart({ symbol }) {
         background: "#1a1a1a",
         padding: 10,
         borderRadius: 8,
-        position: "relative",
-        color: "white"
+        color: "white",
       }}
     >
       {/* ---------------- FILTERS ---------------- */}
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          marginBottom: 10,
-          alignItems: "center"
-        }}
-      >
-        {/* Range Selection */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 10, alignItems: "center" }}>
+        {/* Range */}
         <div>
           <label style={{ marginRight: 6 }}>Range:</label>
           <select
@@ -88,7 +109,7 @@ export default function Chart({ symbol }) {
               color: "white",
               border: "1px solid #333",
               padding: "4px 8px",
-              borderRadius: 6
+              borderRadius: 6,
             }}
           >
             <option value="1d">1D</option>
@@ -98,7 +119,7 @@ export default function Chart({ symbol }) {
           </select>
         </div>
 
-        {/* Interval Selection */}
+        {/* Interval */}
         <div>
           <label style={{ marginRight: 6 }}>Interval:</label>
           <select
@@ -109,7 +130,7 @@ export default function Chart({ symbol }) {
               color: "white",
               border: "1px solid #333",
               padding: "4px 8px",
-              borderRadius: 6
+              borderRadius: 6,
             }}
           >
             <option value="1m">1m</option>
@@ -120,15 +141,42 @@ export default function Chart({ symbol }) {
             <option value="1d">1d</option>
           </select>
         </div>
+
+        {/* Chart Type */}
+        <div>
+          <label style={{ marginRight: 6 }}>Chart:</label>
+          <select
+            value={chartType}
+            onChange={(e) => setChartType(e.target.value as "candlestick" | "line")}
+            style={{
+              background: "#0d0d0d",
+              color: "white",
+              border: "1px solid #333",
+              padding: "4px 8px",
+              borderRadius: 6,
+            }}
+          >
+            <option value="candlestick">Candlestick</option>
+            <option value="line">Line</option>
+          </select>
+        </div>
+
+        {/* Live */}
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              checked={live}
+              onChange={(e) => setLive(e.target.checked)}
+              style={{ marginRight: 4 }}
+            />
+            Live
+          </label>
+        </div>
       </div>
 
       {/* ---------------- CHART ---------------- */}
-      <ReactApexChart
-        options={options}
-        series={series}
-        type="candlestick"
-        height={500}
-      />
+      <ReactApexChart options={options} series={series} type={chartType} height={500} />
     </div>
   );
 }
