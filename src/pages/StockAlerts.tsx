@@ -582,7 +582,7 @@ export default function StockAlertsPct() {
       {graphModalSymbol && (
         <Modal onClose={() => setGraphModalSymbol(null)}>
           <div className="max-h-[90vh] overflow-y-auto">
-            <Chart symbol={graphModalSymbol} />
+            <Chart symbol={graphModalSymbol} height={500}/>
           </div>
         </Modal>
       )}

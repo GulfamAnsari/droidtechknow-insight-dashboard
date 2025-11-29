@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import ReactApexChart from "react-apexcharts";
 
-export default function Chart({ symbol }: { symbol: string }) {
+export default function Chart({ symbol, height }: { symbol: string, height: number }) {
   const [series, setSeries] = useState<any[]>([]);
   const [chartType, setChartType] = useState<"candlestick" | "line">("candlestick");
   const [range, setRange] = useState("1d");
@@ -166,7 +166,7 @@ export default function Chart({ symbol }: { symbol: string }) {
       </div>
 
       {/* Chart */}
-      <ReactApexChart options={options} series={series} type={chartType} height={500} />
+      <ReactApexChart options={options} series={series} type={chartType} height={height || 500} />
     </div>
   );
 }

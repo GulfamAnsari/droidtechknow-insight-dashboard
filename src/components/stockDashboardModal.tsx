@@ -16,6 +16,11 @@ export default function StockDashboardModal({ localSymbols }: StockDashboardModa
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const height = {
+    4: 320,
+    9: 175,
+    16: 70
+  }
 
   // Load charts from localStorage
   useEffect(() => {
@@ -143,7 +148,7 @@ export default function StockDashboardModal({ localSymbols }: StockDashboardModa
                       {chart.name ?? chart.symbol}
                     </div>
                     <div className="flex-1">
-                      <Chart symbol={chart.symbol} />
+                      <Chart symbol={chart.symbol} height={height[layout]} />
                     </div>
                   </>
                 )}
