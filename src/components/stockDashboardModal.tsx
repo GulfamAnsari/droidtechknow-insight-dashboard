@@ -35,7 +35,6 @@ export default function StockDashboardModal({ localSymbols }: StockDashboardModa
       setSearchResults([]);
       return;
     }
-console.log(localSymbols)
 
     const results = (localSymbols || [])
       .filter((s) => {
@@ -45,7 +44,6 @@ console.log(localSymbols)
       })
       .slice(0, 20)
       .map((s) => ({ symbol: s.symbol, name: s.name }));
-console.log(results)
     setSearchResults(results);
     // setIsSearching(false);
   }, [searchQuery, localSymbols]);
@@ -126,6 +124,7 @@ console.log(results)
             style={{
               gridTemplateColumns: `repeat(${cols}, 1fr)`,
               gridTemplateRows: `repeat(${rows}, 1fr)`,
+             
             }}
           >
             {chartGrid.map((chart, idx) => (
