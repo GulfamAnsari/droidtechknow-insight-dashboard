@@ -23,7 +23,7 @@ export default function Chart({ symbol, range = "1d" }) {
   const intervalRef = useRef<any>(null);
 
   const fetchChart = async () => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=${selectedRange}`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`;
     const res = await fetch(url);
     const json = await res.json();
     const result = json?.chart?.result?.[0];
