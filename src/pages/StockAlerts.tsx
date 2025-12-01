@@ -506,13 +506,13 @@ export default function StockAlertsPct() {
             {alerts.map((a) => (
               <Card key={a.id} className={`${a.triggeredUp || a.triggeredDown ? "border-red-500" : ""}`}>
                 <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-2xl font-bold">{a.symbol}</h3>
                         <Badge>±{a.thresholdPercent}%</Badge>
-                        {a.triggeredUp && <Badge variant="default" className="ml-2"><TrendingUp className="mr-1 h-3 w-3" />UP</Badge>}
-                        {a.triggeredDown && <Badge variant="destructive" className="ml-2"><TrendingDown className="mr-1 h-3 w-3" />DOWN</Badge>}
+                        {a.triggeredUp && <Badge variant="default"><TrendingUp className="mr-1 h-3 w-3" />UP</Badge>}
+                        {a.triggeredDown && <Badge variant="destructive"><TrendingDown className="mr-1 h-3 w-3" />DOWN</Badge>}
                         {/* star to quickly add to recent */}
                         <Button variant="outline" size="sm" onClick={() => addToRecent(a.symbol)}>
                           <Star className="h-4 w-4" />
@@ -537,7 +537,7 @@ export default function StockAlertsPct() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex flex-col gap-2 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => showGraphModal(a.symbol)}><BarChart className="h-4 w-4" /></Button>
                       <Button variant="outline" size="sm" onClick={() => resetAlert(a.id)}>Reset</Button>
                       <Button variant="destructive" size="sm" onClick={() => removeAlert(a.id)}><Trash2 className="h-4 w-4" /></Button>
