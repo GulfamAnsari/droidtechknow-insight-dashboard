@@ -425,7 +425,9 @@ export default function StockAlertsPct() {
   /* ---------------------- UI ----------------------------------------- */
   return (
     <>
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="h-full flex flex-col">
+      <div className="flex-1 overflow-auto p-2 md:p-8 w-full">
+        <div className="max-w-8xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Indian Stocks — % Threshold Alerts</h1>
@@ -639,6 +641,8 @@ export default function StockAlertsPct() {
         </Modal>
       )}
       
+        </div>
+      </div>
     </div>
     </>
   );
