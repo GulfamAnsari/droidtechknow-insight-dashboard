@@ -524,7 +524,13 @@ export default function StockAlertsPct() {
                         <div>
                           Current: {a.currentPrice ? `₹${a.currentPrice.toFixed(2)}` : "waiting..."}
                           {a.currentPrice && a.initialPrice ? (
-                            <span className="ml-3">({(((a.currentPrice - a.initialPrice) / a.initialPrice) * 100).toFixed(2)}%)</span>
+                            <span className={`ml-3 font-semibold ${
+                              ((a.currentPrice - a.initialPrice) / a.initialPrice) * 100 >= 0 
+                                ? 'text-green-500' 
+                                : 'text-red-500'
+                            }`}>
+                              ({(((a.currentPrice - a.initialPrice) / a.initialPrice) * 100).toFixed(2)}%)
+                            </span>
                           ) : null}
                         </div>
                         {a.lastChecked && <div className="text-xs text-muted-foreground">Last checked: {a.lastChecked.toLocaleTimeString()}</div>}
