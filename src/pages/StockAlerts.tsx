@@ -33,6 +33,13 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Modal from "@/components/modal";
 import Chart from "@/components/chart";
 import StockDashboardModal from "@/components/stockDashboardModal";
@@ -78,6 +85,7 @@ export default function StockAlertsPct() {
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"alerts" | "recent">("alerts");
+  const [sortBy, setSortBy] = useState<"symbol" | "change" | "triggered">("symbol");
 
   const [newSymbol, setNewSymbol] = useState("");
   const [newThresholdPct, setNewThresholdPct] = useState("");
@@ -394,6 +402,26 @@ export default function StockAlertsPct() {
     setGraphModalSymbol(symbol);
   };
 
+  /* ---------------------- Sort alerts --------------------------------- */
+  const sortedAlerts = [...alerts].sort((a, b) => {
+    if (sortBy === "symbol") {
+      return a.symbol.localeCompare(b.symbol);
+    } else if (sortBy === "change") {
+      const aChange = a.currentPrice && a.initialPrice 
+        ? ((a.currentPrice - a.initialPrice) / a.initialPrice) * 100 
+        : 0;
+      const bChange = b.currentPrice && b.initialPrice 
+        ? ((b.currentPrice - b.initialPrice) / b.initialPrice) * 100 
+        : 0;
+      return Math.abs(bChange) - Math.abs(aChange); // Sort by absolute change, highest first
+    } else if (sortBy === "triggered") {
+      const aTriggered = a.triggeredUp || a.triggeredDown ? 1 : 0;
+      const bTriggered = b.triggeredUp || b.triggeredDown ? 1 : 0;
+      return bTriggered - aTriggered; // Triggered alerts first
+    }
+    return 0;
+  });
+
   /* ---------------------- UI ----------------------------------------- */
   return (
     <>
@@ -430,9 +458,27 @@ export default function StockAlertsPct() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        <Button variant={activeTab === "alerts" ? "default" : "outline"} onClick={() => setActiveTab("alerts")}>Alerts ({alerts.length})</Button>
-        <Button variant={activeTab === "recent" ? "default" : "outline"} onClick={() => setActiveTab("recent")}>Recent ({recent.length})</Button>
+      <div className="flex gap-2 items-center justify-between">
+        <div className="flex gap-2">
+          <Button variant={activeTab === "alerts" ? "default" : "outline"} onClick={() => setActiveTab("alerts")}>Alerts ({alerts.length})</Button>
+          <Button variant={activeTab === "recent" ? "default" : "outline"} onClick={() => setActiveTab("recent")}>Recent ({recent.length})</Button>
+        </div>
+        
+        {activeTab === "alerts" && alerts.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">Sort by:</Label>
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="symbol">Symbol Name</SelectItem>
+                <SelectItem value="change">% Change</SelectItem>
+                <SelectItem value="triggered">Triggered Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* ALERTS TAB */}
@@ -503,7 +549,7 @@ export default function StockAlertsPct() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {alerts.length === 0 && <div className="text-center py-8 text-muted-foreground col-span-3">No alerts yet.</div>}
 
-            {alerts.map((a) => (
+            {sortedAlerts.map((a) => (
               <Card key={a.id} className={`${a.triggeredUp || a.triggeredDown ? "border-red-500" : ""}`}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between gap-2">
