@@ -109,7 +109,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <ul className="space-y-1 px-2">
           {navigation.map((item) => (
             <li key={item.name}>
@@ -156,7 +156,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             <Home className="h-6 w-6 text-primary" />
           </NavLink>
         </div>
-        <div className="flex-1 w-full overflow-y-auto">
+        <div className="flex-1 w-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <ul className="space-y-6 mt-2">
             {navigation.slice(1).map((item, index) => (
               <li 
