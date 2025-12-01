@@ -329,7 +329,7 @@ export default function StockAlertsPct() {
   /* ---------------------- Remove / Reset ------------------------------ */
   const removeAlert = (id: string) => setAlerts((p) => p.filter((a) => a.id !== id));
   const resetAlert = (id: string) => {
-    setAlerts((p) => p.map((a) => (a.id === id ? { ...a, triggeredUp: false, triggeredDown: false } : a)));
+    setAlerts((p) => p.map((a) => (a.id === id ? { ...a, triggeredUp: false, triggeredDown: false, initialPrice: a.currentPrice || a.initialPrice } : a)));
     playingAlertsRef.current[id] = false;
     maybeStopAudio();
   };
