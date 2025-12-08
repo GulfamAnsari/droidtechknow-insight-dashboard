@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom";
-import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music, Apple, Video, CreditCard, TrendingUp, Film, ScanLine, Bell, Users } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, X, CheckSquare, BookOpen, Cloud, Home, Menu, Music, Apple, Video, CreditCard, TrendingUp, Film, Bell, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -57,11 +57,6 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
       name: "Stock News",
       href: "/stock-news",
       icon: TrendingUp,
-    },
-    {
-      name: "Pattern Detector",
-      href: "/pattern-detector",
-      icon: ScanLine,
     },
     {
       name: "Stock Alerts",
