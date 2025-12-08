@@ -28,6 +28,7 @@ import ExpenseManager from "./pages/ExpenseManager";
 import StockNews from "./pages/StockNews";
 import PatternDetector from "./pages/PatternDetector";
 import StockAlerts from "./pages/StockAlerts";
+import VideoMeet from "./pages/VideoMeet";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +89,7 @@ const App = () => {
                     <Route path="stock-news" element={<StockNews />} />
                     <Route path="pattern-detector" element={<PatternDetector />} />
                     <Route path="stock-alerts" element={<StockAlerts />} />
+                    <Route path="video-meet" element={<VideoMeet />} />
                   </Route>
                 </Route>
                 
