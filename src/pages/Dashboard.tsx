@@ -22,7 +22,8 @@ import {
   CreditCard,
   TrendingUp,
   ScanLine,
-  Bell
+  Bell,
+  Users
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import httpClient from "@/utils/httpClient";
@@ -298,6 +299,20 @@ const Dashboard = () => {
           ]}
           link="/feedback"
           linkText="View Feedback"
+        />
+
+        <DashboardCard
+          icon={Users}
+          title="Video Meet"
+          description="Join video meetings instantly"
+          features={[
+            "Real-time video & audio",
+            "Up to 10 participants",
+            "Screen sharing",
+            "No login required"
+          ]}
+          link="/video-meet"
+          linkText="Join Meeting"
         />
       </div>
     </div>
