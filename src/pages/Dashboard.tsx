@@ -21,7 +21,6 @@ import {
   Video,
   CreditCard,
   TrendingUp,
-  ScanLine,
   Bell,
   Users
 } from "lucide-react";
@@ -205,20 +204,6 @@ const Dashboard = () => {
           ]}
           link="/stock-news"
           linkText="Read Market News"
-        />
-
-        <DashboardCard
-          icon={ScanLine}
-          title="Pattern Detector"
-          description="Detect candlestick patterns from charts"
-          features={[
-            "Upload candlestick screenshots",
-            "Pattern detection engine",
-            "Highlighted patterns",
-            "Manual and AI modes"
-          ]}
-          link="/pattern-detector"
-          linkText="Open Pattern Detector"
         />
 
         <DashboardCard
