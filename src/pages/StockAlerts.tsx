@@ -340,6 +340,11 @@ export default function StockAlertsPct() {
     setAlerts((p) => p.map((a) => (a.id === id ? { ...a, triggeredUp: false, triggeredDown: false, initialPrice: a.currentPrice || a.initialPrice } : a)));
     playingAlertsRef.current[id] = false;
     maybeStopAudio();
+    // Restart monitoring if stopped
+    if (!isMonitoring) {
+      setIsMonitoring(true);
+      toast.success("Monitoring restarted");
+    }
   };
 
   /* ---------------------- Monitoring loop ----------------------------- */
