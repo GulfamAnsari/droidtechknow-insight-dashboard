@@ -187,8 +187,15 @@ export default function StockAlertsPct() {
   /* ------------------------ Price Fetch -------------------------------- */
   const fetchCurrentPrice = async (symbol: string): Promise<number | null> => {
     try {
-      const url = `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${encodeURIComponent(symbol)}&interval=5m`;
-      const res = await fetch(url);
+      // Add timestamp to bust cache
+      const url = `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${encodeURIComponent(symbol)}&interval=5m&_t=${Date.now()}`;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
       const json = await res.json();
       const price = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
       return typeof price === "number" ? price : null;
