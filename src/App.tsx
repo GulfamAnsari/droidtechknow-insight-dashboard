@@ -28,6 +28,7 @@ import ExpenseManager from "./pages/ExpenseManager";
 import StockNews from "./pages/StockNews";
 import StockAlerts from "./pages/StockAlerts";
 import VideoMeet from "./pages/VideoMeet";
+import PdfEditor from "./pages/PdfEditor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +89,7 @@ const App = () => {
                     <Route path="stock-news" element={<StockNews />} />
                     <Route path="stock-alerts" element={<StockAlerts />} />
                     <Route path="video-meet" element={<VideoMeet />} />
+                    <Route path="pdf-editor" element={<PdfEditor />} />
                   </Route>
                 </Route>
                 
