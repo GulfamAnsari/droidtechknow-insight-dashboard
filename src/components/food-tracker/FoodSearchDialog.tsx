@@ -19,18 +19,42 @@ interface FoodSearchDialogProps {
   mealType: string;
 }
 
-interface OpenFoodFactsProduct {
-  code: string;
-  product_name?: string;
-  nutriments?: {
-    "energy-kcal_100g"?: number;
-    proteins_100g?: number;
-    carbohydrates_100g?: number;
-    fat_100g?: number;
-  };
-  serving_size?: string;
-  image_small_url?: string;
+interface USDAFood {
+  fdcId: number;
+  description: string;
+  foodNutrients?: {
+    nutrientId: number;
+    nutrientName: string;
+    value: number;
+    unitName: string;
+  }[];
+  servingSize?: number;
+  servingSizeUnit?: string;
 }
+
+// Common foods database as fallback
+const commonFoods: FoodItem[] = [
+  { id: "1", name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0, servingSize: "100g" },
+  { id: "2", name: "Apple", calories: 52, protein: 0, carbs: 14, fat: 0, servingSize: "100g" },
+  { id: "3", name: "Chicken Breast", calories: 165, protein: 31, carbs: 0, fat: 4, servingSize: "100g" },
+  { id: "4", name: "Rice (cooked)", calories: 130, protein: 3, carbs: 28, fat: 0, servingSize: "100g" },
+  { id: "5", name: "Egg", calories: 155, protein: 13, carbs: 1, fat: 11, servingSize: "100g" },
+  { id: "6", name: "Bread (white)", calories: 265, protein: 9, carbs: 49, fat: 3, servingSize: "100g" },
+  { id: "7", name: "Milk (whole)", calories: 61, protein: 3, carbs: 5, fat: 3, servingSize: "100ml" },
+  { id: "8", name: "Salmon", calories: 208, protein: 20, carbs: 0, fat: 13, servingSize: "100g" },
+  { id: "9", name: "Broccoli", calories: 34, protein: 3, carbs: 7, fat: 0, servingSize: "100g" },
+  { id: "10", name: "Pasta (cooked)", calories: 131, protein: 5, carbs: 25, fat: 1, servingSize: "100g" },
+  { id: "11", name: "Oatmeal", calories: 68, protein: 2, carbs: 12, fat: 1, servingSize: "100g" },
+  { id: "12", name: "Greek Yogurt", calories: 59, protein: 10, carbs: 4, fat: 0, servingSize: "100g" },
+  { id: "13", name: "Almonds", calories: 579, protein: 21, carbs: 22, fat: 50, servingSize: "100g" },
+  { id: "14", name: "Orange", calories: 47, protein: 1, carbs: 12, fat: 0, servingSize: "100g" },
+  { id: "15", name: "Potato (baked)", calories: 93, protein: 2, carbs: 21, fat: 0, servingSize: "100g" },
+  { id: "16", name: "Beef (ground)", calories: 250, protein: 26, carbs: 0, fat: 15, servingSize: "100g" },
+  { id: "17", name: "Cheese (cheddar)", calories: 403, protein: 25, carbs: 1, fat: 33, servingSize: "100g" },
+  { id: "18", name: "Avocado", calories: 160, protein: 2, carbs: 9, fat: 15, servingSize: "100g" },
+  { id: "19", name: "Toast with butter", calories: 313, protein: 6, carbs: 41, fat: 14, servingSize: "2 slices" },
+  { id: "20", name: "Coffee with milk", calories: 30, protein: 1, carbs: 3, fat: 1, servingSize: "1 cup" },
+];
 
 export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
   open,
@@ -52,33 +76,56 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
 
     setLoading(true);
     try {
+      // Try USDA API first
       const response = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
+        `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=${encodeURIComponent(
           searchQuery
-        )}&search_simple=1&action=process&json=1&page_size=20&fields=code,product_name,nutriments,serving_size,image_small_url`
+        )}&pageSize=15&dataType=Foundation,SR Legacy`
       );
-      const data = await response.json();
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.foods && data.foods.length > 0) {
+          const foods: FoodItem[] = data.foods
+            .filter((f: USDAFood) => f.description && f.foodNutrients)
+            .slice(0, 15)
+            .map((f: USDAFood) => {
+              const nutrients = f.foodNutrients || [];
+              const calories = nutrients.find(n => n.nutrientName === "Energy")?.value || 0;
+              const protein = nutrients.find(n => n.nutrientName === "Protein")?.value || 0;
+              const carbs = nutrients.find(n => n.nutrientName === "Carbohydrate, by difference")?.value || 0;
+              const fat = nutrients.find(n => n.nutrientName === "Total lipid (fat)")?.value || 0;
 
-      const foods: FoodItem[] = (data.products || [])
-        .filter(
-          (p: OpenFoodFactsProduct) =>
-            p.product_name && p.nutriments?.["energy-kcal_100g"]
-        )
-        .map((p: OpenFoodFactsProduct) => ({
-          id: p.code,
-          name: p.product_name || "Unknown",
-          calories: Math.round(p.nutriments?.["energy-kcal_100g"] || 0),
-          protein: Math.round(p.nutriments?.proteins_100g || 0),
-          carbs: Math.round(p.nutriments?.carbohydrates_100g || 0),
-          fat: Math.round(p.nutriments?.fat_100g || 0),
-          servingSize: p.serving_size || "100g",
-          imageUrl: p.image_small_url,
-        }));
+              return {
+                id: String(f.fdcId),
+                name: f.description,
+                calories: Math.round(calories),
+                protein: Math.round(protein),
+                carbs: Math.round(carbs),
+                fat: Math.round(fat),
+                servingSize: f.servingSize ? `${f.servingSize}${f.servingSizeUnit || 'g'}` : "100g",
+              };
+            });
 
-      setResults(foods);
+          setResults(foods);
+          return;
+        }
+      }
+      
+      // Fallback to local database
+      const filtered = commonFoods.filter(f => 
+        f.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setResults(filtered);
+      
     } catch (error) {
       console.error("Error searching foods:", error);
-      toast.error("Failed to search foods");
+      // Fallback to local database on error
+      const filtered = commonFoods.filter(f => 
+        f.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setResults(filtered);
     } finally {
       setLoading(false);
     }
@@ -109,6 +156,9 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
     onClose();
   };
 
+  // Show common foods when dialog opens
+  const displayResults = results.length > 0 ? results : (query.length < 2 ? commonFoods.slice(0, 10) : []);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md max-h-[80vh]">
@@ -134,25 +184,20 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
             </form>
 
             <ScrollArea className="h-[300px] mt-4">
-              {results.length > 0 ? (
+              {displayResults.length > 0 ? (
                 <div className="space-y-2">
-                  {results.map((food) => (
+                  {query.length < 2 && results.length === 0 && (
+                    <p className="text-xs text-muted-foreground mb-2">Popular foods</p>
+                  )}
+                  {displayResults.map((food) => (
                     <button
                       key={food.id}
                       onClick={() => setSelectedFood(food)}
                       className="w-full p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-left flex items-center gap-3"
                     >
-                      {food.imageUrl ? (
-                        <img
-                          src={food.imageUrl}
-                          alt={food.name}
-                          className="w-12 h-12 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                          <span className="text-xl">🍽️</span>
-                        </div>
-                      )}
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <span className="text-lg">🍽️</span>
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground text-sm line-clamp-1">
                           {food.name}
@@ -168,29 +213,17 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
                 <p className="text-center text-muted-foreground py-8">
                   No foods found. Try a different search term.
                 </p>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Search for foods to add them to your meal
-                </p>
-              )}
+              ) : null}
             </ScrollArea>
           </>
         ) : (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
-              {selectedFood.imageUrl ? (
-                <img
-                  src={selectedFood.imageUrl}
-                  alt={selectedFood.name}
-                  className="w-20 h-20 rounded-xl object-cover"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
-                  <span className="text-3xl">🍽️</span>
-                </div>
-              )}
+              <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
+                <span className="text-2xl">🍽️</span>
+              </div>
               <div>
-                <h3 className="font-semibold text-foreground">{selectedFood.name}</h3>
+                <h3 className="font-semibold text-foreground line-clamp-2">{selectedFood.name}</h3>
                 <p className="text-sm text-muted-foreground">{selectedFood.servingSize}</p>
               </div>
             </div>
