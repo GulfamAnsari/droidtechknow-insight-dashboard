@@ -1,0 +1,187 @@
+import axios from "axios";
+import dotenv from "dotenv";
+import chalk from "chalk";
+import fs from "fs";
+import path from "path";
+import { sendTelegramNews } from "./telegram.js";
+
+dotenv.config();
+
+const NEWS_API_URL = process.env.NEWS_API_URL;
+const STORE_PATH = path.resolve("./news-store.json");
+
+/* -------------------- Helpers -------------------- */
+
+const getTodayKey = () => new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+const normalize = (str = "") => str.toLowerCase().replace(/\s+/g, " ").trim();
+
+/* ---- SAFE READ ---- */
+function readStore() {
+  try {
+    if (!fs.existsSync(STORE_PATH)) {
+      return {};
+    }
+    const raw = fs.readFileSync(STORE_PATH, "utf-8");
+    return raw ? JSON.parse(raw) : {};
+  } catch (err) {
+    errorSend("⚠️ Store read failed, preserving data:", err.message);
+    console.error("⚠️ Store read failed, preserving data:", err.message);
+    // Backup corrupted file
+    const backupDir = path.resolve("./backup");
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
+
+    fs.renameSync(
+      STORE_PATH,
+      path.join(backupDir, `news-store.json.corrupt-${Date.now()}`)
+    );
+
+    fs.writeFileSync(STORE_PATH, JSON.stringify({}));
+    return {};
+  }
+}
+
+/* ---- ATOMIC WRITE ---- */
+function writeStore(data) {
+  if (!isValidJSON(data)) {
+    console.error("❌ Invalid JSON detected. Write aborted.");
+    return;
+  }
+
+  const tempFile = `${STORE_PATH}.tmp`;
+
+  try {
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2));
+    fs.renameSync(tempFile, STORE_PATH);
+  } catch (err) {
+    console.error("❌ Failed to write store:", err.message);
+  }
+}
+
+/* -------------------- Fetch News -------------------- */
+
+export async function fetchNews() {
+  try {
+    console.log(
+      chalk.green.bold(
+        `⏳ Fetching latest news at ${new Date().toLocaleString("en-IN", {
+          hour12: true
+        })}`
+      )
+    );
+
+    const res = await axios.get(NEWS_API_URL);
+    if (!Array.isArray(res.data?.feed)) return [];
+
+    const store = readStore();
+    const today = getTodayKey();
+    store[today] ||= [];
+
+    const latestNews = [];
+
+    for (const item of res.data.feed) {
+      const title = item?.data?.title;
+      if (!title) continue;
+
+      const normalizedTitle = normalize(title);
+
+      const isDuplicate = store[today].some(
+        (saved) =>
+          normalize(saved.title) === normalizedTitle ||
+          saved.postId === item.postId
+      );
+
+      if (isDuplicate) continue;
+
+      const symbol =
+        item?.data?.cta?.[0]?.meta?.nseScriptCode ||
+        item?.data?.cta?.[0]?.meta?.bseScriptCode ||
+        "N/A";
+
+      const newsObj = {
+        postId: item.postId,
+        title: normalizedTitle,
+        symbol,
+        body: item?.data?.body || "",
+        publishedAt: item?.publishedAt // ✅ FIXED
+      };
+
+      store[today].push(newsObj);
+      latestNews.push(item);
+    }
+
+    writeStore(store);
+    return latestNews;
+  } catch (err) {
+    console.error("❌ Error fetching news:", err.message);
+    errorSend("❌ Error fetching news:", err.message);
+    return [];
+  }
+}
+
+/* -------------------- Watcher -------------------- */
+
+export function watchNews(callback, interval = 10000) {
+  setInterval(async () => {
+    if (isBetween1AMAnd8AM_IST()) {
+      console.log(chalk.gray("🌙 Sleep time – skipping push"));
+      return;
+    }
+
+    const latest = await fetchNews();
+
+    latest.forEach((item) => {
+      const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
+        hour12: true
+      });
+      console.log(
+        "\n" +
+          chalk.gray("---------------------------") +
+          chalk.bgBlue.bold("\n📰 NEW NEWS ALERT 📰"),
+        "\n" +
+          chalk.green(
+            `Symbol: ${item?.data?.cta?.[0]?.meta?.nseScriptCode || item?.data?.cta?.[0]?.meta?.bseScriptCode || "N/A"}`
+          ),
+        "\n" + chalk.yellow(`Title: ${item?.data?.title || "No title"}`),
+        "\n" +
+          chalk.yellowBright(
+            `Fetched at: ${
+              new Date().toLocaleString("en-IN", { hour12: true }) || "No time"
+            } `
+          ),
+        "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
+        "\n" + chalk.gray("---------------------------")
+      );
+      callback(item);
+    });
+  }, interval);
+}
+
+/* -------------------- Time Guard -------------------- */
+
+function isBetween1AMAnd8AM_IST() {
+  const ist = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const hour = ist.getHours();
+  return hour >= 1 && hour < 8;
+}
+
+const errorSend = (error, errorMessage) => {
+  sendTelegramNews({
+    title: "Error ->>>" + error,
+    description: errorMessage,
+    url: "",
+    imageUrl: "",
+    publishedAt: new Date().toISOString()
+  });
+};
+
+function isValidJSON(data) {
+  try {
+    JSON.stringify(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
