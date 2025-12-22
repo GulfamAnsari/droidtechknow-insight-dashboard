@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stock News Dashboard</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0b0b0b;
+      color: #e6e6e6;
+      font-family: system-ui;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      margin: 10px;
+      background: #111;
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .left,
+    .right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button,
+    input[type="date"] {
+      background: #131313;
+      border: 1px solid #333;
+      color: #bbb;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    button.active {
+      background: #1e293b;
+      color: #93c5fd;
+    }
+
+    button.copy {
+      background: #052e16;
+      color: #86efac;
+      border-color: #14532d;
+    }
+
+    button.refresh {
+      background: #1a1a1a;
+      color: #60a5fa;
+      border-color: #334155;
+    }
+
+    main {
+      padding: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: #131313;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cardHeader {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    .stock {
+      font-size: 12px;
+      font-weight: 600;
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    .chg {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .time {
+      margin-left: auto;
+      font-size: 11px;
+      color: #777;
+    }
+
+    .title {
+      margin: 6px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .body {
+      font-size: 12px;
+      color: #cfcfcf;
+    }
+
+    .cardFooter {
+      margin-top: auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .sentimentSelect {
+      background: #131313;
+      color: #e6e6e6;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .analyzeBtn {
+      background: #052e16;
+      color: #86efac;
+      border: 1px solid #14532d;
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="left">
+    <input type="date" id="startDate" />
+    <input type="date" id="endDate" />
+    <button id="fetchBtn">Fetch</button>
+  </div>
+
+  <div class="right">
+    <button id="tabToday" class="active">Selected</button>
+    <button id="tabAfter">After 3:30 PM</button>
+    <button id="tabSaved">Saved</button>
+    <button id="copyBtn" class="copy">Copy</button>
+    <button id="refreshBtn" class="refresh">Refresh</button>
+  </div>
+</header>
+
+<main>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+(async function () {
+  const NEWS_API = "http://localhost:3000/getnews";
+  const LIVE_API = "http://localhost:3000/postnews";
+  const TZ = "Asia/Kolkata";
+
+  let feed = [];
+  let liveData = {};
+  let filteredNews = [];
+  let after330 = [];
+  let activeList = [];
+  const stockMap = {};
+
+  const SAVED_KEY = "savedNews";
+  let savedNews = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
+  startDate.value = today;
+  endDate.value = today;
+
+  let startDateVal = today;
+  let endDateVal = today;
+
+  const getKey = i =>
+    `${i.publishedAt}_${i.data?.cta?.[0]?.ctaText || ""}`;
+
+  const saveWithSentiment = (item, sentiment) => {
+    const key = getKey(item);
+    savedNews = savedNews.filter(n => getKey(n) !== key);
+    if (sentiment) savedNews.push({ ...item, sentiment });
+    localStorage.setItem(SAVED_KEY, JSON.stringify(savedNews));
+  };
+
+  const getSentiment = item =>
+    savedNews.find(n => getKey(n) === getKey(item))?.sentiment || "";
+
+  async function fetchNews() {
+    const res = await fetch(NEWS_API);
+    const json = await res.json();
+    feed = json.feed || [];
+
+    filteredNews = feed.filter(i => {
+      const d = new Date(i.publishedAt).toLocaleDateString("en-CA", { timeZone: TZ });
+      return d >= startDateVal && d <= endDateVal;
+    });
+
+    after330 = filteredNews.filter(i => {
+      const d = new Date(i.publishedAt);
+      const h = +d.toLocaleString("en-IN", { hour: "2-digit", hour12: false, timeZone: TZ });
+      const m = +d.toLocaleString("en-IN", { minute: "2-digit", timeZone: TZ });
+      return h > 15 || (h === 15 && m >= 30);
+    });
+
+    tabToday.innerText = `Selected (${filteredNews.length})`;
+    tabAfter.innerText = `After 3:30 PM (${after330.length})`;
+    tabSaved.innerText = `Saved (${savedNews.length})`;
+  }
+
+  function buildLivePayload(list) {
+    const NSE = [], BSE = [];
+    list.forEach(i => {
+      const cta = i.data?.cta?.[0];
+      if (!cta?.ctaText) return;
+      stockMap[cta.ctaText] = {
+        nse: cta.meta?.nseScriptCode,
+        bse: cta.meta?.bseScriptCode
+      };
+      cta.meta?.nseScriptCode && NSE.push(cta.meta.nseScriptCode);
+      cta.meta?.bseScriptCode && BSE.push(cta.meta.bseScriptCode);
+    });
+    return {
+      exchangeAggReqMap: {
+        NSE: { priceSymbolList: NSE, indexSymbolList: [] },
+        BSE: { priceSymbolList: BSE, indexSymbolList: [] }
+      }
+    };
+  }
+
+  async function fetchLiveData(list) {
+    if (!list.length) return;
+    const res = await fetch(LIVE_API, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(buildLivePayload(list))
+    });
+    liveData = (await res.json()).exchangeAggRespMap || {};
+  }
+
+  function render(list, append = false, isSavedTab = false) {
+    if (!append) grid.innerHTML = "";
+    if (!list.length && !append) {
+      grid.innerHTML = `<div style="color:#777">No news</div>`;
+      return;
+    }
+
+    list.forEach(item => {
+      const cta = item.data?.cta?.[0] || {};
+      const symbol = cta.ctaText || "";
+      const codes = stockMap[symbol] || {};
+      const price =
+        liveData.NSE?.priceLivePointsMap?.[codes.nse] ||
+        liveData.BSE?.priceLivePointsMap?.[codes.bse];
+
+      const d = new Date(item.publishedAt);
+      const date = d.toLocaleDateString("en-IN", { timeZone: TZ });
+      const time = d.toLocaleTimeString("en-IN", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="cardHeader">
+          <a class="stock" href="${cta.ctaUrl || "#"}" target="_blank">
+            <img class="logo" src="${cta.logoUrl || ""}"> ${symbol}
+          </a>
+          ${price ? `<span class="chg" style="color:${price.dayChangePerc >= 0 ? "#22c55e" : "#ef4444"}">
+            ${price.dayChangePerc.toFixed(2)}%</span>` : ""}
+          <span class="time">${date}, ${time}</span>
+        </div>
+        <div class="title">${item.data?.title || ""}</div>
+        <div class="body">${item.data?.body || ""}</div>
+        <div class="cardFooter">
+          <select class="sentimentSelect">
+            <option value="">Save</option>
+            <option value="bullish">Bullish</option>
+            <option value="bearish">Bearish</option>
+          </select>
+          <button class="analyzeBtn">Sentiments</button>
+        </div>
+        <div class="sentimentResult" style="margin-top:8px;font-size:12px;color:#93c5fd"></div>
+      `;
+
+      const sel = card.querySelector(".sentimentSelect");
+      sel.value = getSentiment(item);
+      sel.onchange = e => saveWithSentiment(item, e.target.value);
+
+        const btn = card.querySelector(".analyzeBtn");
+        const resultDiv = card.querySelector(".sentimentResult");
+        btn.onclick = async () => {
+          resultDiv.innerText = "Analyzing...";
+          const title = encodeURIComponent(item.data?.title || "");
+          const res = await fetch(`http://localhost:3000/sentiments?title=${title}`);
+          const data = await res.json();
+          resultDiv.innerText = data.map(s =>
+            `${s.label.toUpperCase()}: ${(s.score * 100).toFixed(2)}%`
+          ).join(" | ");
+        };
+   
+      grid.appendChild(card);
+    });
+  }
+
+  function setActive(btn) {
+    [tabToday, tabAfter, tabSaved].forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+
+  tabToday.onclick = async () => {
+    setActive(tabToday);
+    activeList = filteredNews;
+    await fetchLiveData(activeList);
+    render(activeList);
+  };
+
+  tabAfter.onclick = async () => {
+    setActive(tabAfter);
+    activeList = after330;
+    await fetchLiveData(activeList);
+    render(activeList);
+  };
+
+  tabSaved.onclick = () => {
+    setActive(tabSaved);
+    grid.innerHTML = "";
+    render(savedNews, true, true);
+  };
+
+  copyBtn.onclick = () => {
+    const list = tabSaved.classList.contains("active") ? savedNews : activeList;
+    const text = list.map(i => {
+      const t = new Date(i.publishedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+      return `[${t}] | ${i.data?.cta?.[0]?.ctaText || ""} | ${i.data?.title || ""}`;
+    }).join("\n");
+    navigator.clipboard.writeText(text);
+  };
+
+  fetchBtn.onclick = async () => {
+    startDateVal = startDate.value;
+    endDateVal = endDate.value;
+    await fetchNews();
+    tabToday.click();
+  };
+
+  refreshBtn.onclick = async () => {
+    await fetchNews();
+    await fetchLiveData(activeList);
+    render(activeList);
+  };
+
+  await fetchNews();
+  activeList = filteredNews;
+  await fetchLiveData(activeList);
+  render(activeList);
+})();
+</script>
+
+</body>
+</html>

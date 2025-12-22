@@ -3,7 +3,9 @@ import dotenv from "dotenv";
 import chalk from "chalk";
 import fs from "fs";
 import path from "path";
-import { sendTelegramNews } from "./telegram.js";
+import { sendError, sendTelegramNews } from "./telegram.js";
+import { getsentiment } from "./ml/sentiments.js";
+import { sleep } from "./utils.js";
 
 dotenv.config();
 
@@ -130,7 +132,7 @@ export function watchNews(callback, interval = 10000) {
 
     const latest = await fetchNews();
 
-    latest.forEach((item) => {
+    latest.forEach(async (item) => {
       const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
         hour12: true
       });
@@ -152,6 +154,7 @@ export function watchNews(callback, interval = 10000) {
         "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
         "\n" + chalk.gray("---------------------------")
       );
+      sleep(1000);
       callback(item);
     });
   }, interval);
@@ -168,12 +171,10 @@ function isBetween1AMAnd8AM_IST() {
 }
 
 const errorSend = (error, errorMessage) => {
-  sendTelegramNews({
-    title: "Error ->>>" + error,
+  sendError({
+    title: "Error ->>>",
     description: errorMessage,
-    url: "",
-    imageUrl: "",
-    publishedAt: new Date().toISOString()
+    publishedAt: new Date()
   });
 };
 

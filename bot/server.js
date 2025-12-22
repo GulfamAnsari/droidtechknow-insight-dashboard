@@ -2,14 +2,44 @@ import express from "express";
 import dotenv from "dotenv";
 import { watchNews } from "./newsFetcher.js";
 import { sendTelegramNews } from "./telegram.js";
+import { getsentiment } from "./ml/sentiments.js";
+import cors from 'cors';
+import { fileURLToPath } from "url";
+import path from "path";
+import axios from "axios";
+
 
 dotenv.config();
 const app = express();
 app.use(express.json());
+// Enable CORS for all routes
+app.use(cors());
 
-app.get("/", (req, res) => {
-  res.send("Telegram Stock News Bot Running ✅");
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.get("/news", (req, res) => {
+  res.sendFile(path.join(__dirname, "/routes/news/index.html"));
 });
+
+
+app.get("/sentiments", async(req, res) => {
+  const out = await getsentiment(req.query.title);
+  res.json(out);
+});
+
+app.get("/getnews", async(req, res) => {
+  const e = await axios.get(process.env.NEWS_API_URL_FOR_UI);
+  res.json(e.data);
+});
+
+
+app.post("/postnews", async(req, res) => {
+  const e = await axios.post(process.env.NEWS_AGGREGATOR, req.body);
+  res.json(e.data);
+});
+
 
 // Optional: manual notification endpoint
 app.post("/notify", async (req, res) => {
