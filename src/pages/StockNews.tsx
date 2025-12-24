@@ -141,13 +141,17 @@ export default function StockNews() {
     toast.success('Removed from saved');
   };
 
-  // Copy all news titles
+  // Copy all news with date and time
   const copyAllNews = () => {
     const currentNews = activeTab === 'saved' ? savedNews : 
                         activeTab === 'after330' ? getAfter330News() : news;
-    const titles = currentNews.map(item => item.data.title).join('\n\n');
-    navigator.clipboard.writeText(titles);
-    toast.success('Copied all news titles');
+    const formattedNews = currentNews.map(item => {
+      const date = format(new Date(item.publishedAt), 'dd-MM-yyyy');
+      const time = format(new Date(item.publishedAt), 'hh:mma');
+      return `${date} | ${time} | ${item.data.title}`;
+    }).join('\n');
+    navigator.clipboard.writeText(formattedNews);
+    toast.success('Copied all news');
   };
 
   // Check if news is saved
@@ -158,7 +162,15 @@ export default function StockNews() {
 
   const formatTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'hh:mm a');
+      return format(new Date(dateString), 'hh:mma');
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'dd MMM yyyy');
     } catch {
       return '';
     }
@@ -169,30 +181,33 @@ export default function StockNews() {
     const cta = item.data.cta?.[0];
     
     return (
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow border-border/50 bg-card">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow border-border/50 bg-card group">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             {cta?.logoUrl && (
               <img 
                 src={cta.logoUrl} 
                 alt={cta.ctaText}
-                className="w-10 h-10 rounded-lg object-cover shrink-0"
+                className="w-12 h-12 rounded-lg object-cover shrink-0"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                {cta && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">
-                    {cta.ctaText}
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {formatTime(item.publishedAt)}
-                </span>
+              {/* Stock Name - Large */}
+              {cta && (
+                <h2 className="text-lg font-bold text-foreground mb-1">
+                  {cta.ctaText}
+                </h2>
+              )}
+              
+              {/* Date and Time */}
+              <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                <span>{formatDate(item.publishedAt)}</span>
+                <span>•</span>
+                <span>{formatTime(item.publishedAt)}</span>
                 {showSentimentBadge && 'sentiment' in item && (
                   <span className={cn(
-                    "text-xs font-medium px-2 py-0.5 rounded flex items-center gap-1",
+                    "font-medium px-2 py-0.5 rounded flex items-center gap-1 ml-auto",
                     item.sentiment === 'bullish' 
                       ? "bg-green-500/20 text-green-500" 
                       : "bg-red-500/20 text-red-500"
@@ -203,11 +218,13 @@ export default function StockNews() {
                 )}
               </div>
               
+              {/* Title */}
               <h3 className="font-semibold text-sm leading-tight mb-2 line-clamp-2">
                 {item.data.title}
               </h3>
               
-              <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">
+              {/* Description - Show on hover */}
+              <p className="text-xs text-muted-foreground whitespace-pre-line max-h-0 overflow-hidden opacity-0 group-hover:max-h-24 group-hover:opacity-100 transition-all duration-300">
                 {item.data.body}
               </p>
               
