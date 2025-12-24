@@ -125,7 +125,7 @@ export async function fetchNews() {
 
 export function watchNews(callback, interval = 10000, saving = false) {
   setInterval(async () => {
-    if (isWeekdayBetween8AMAnd4PM_IST() && !saving) {
+    if (!isWeekdayBetween8AMAnd4PM_IST() && !saving) {
       console.log(chalk.gray("🌙 Sleep time – skipping push"));
       return;
     }
@@ -185,13 +185,11 @@ function isWeekdayBetween8AMAnd4PM_IST() {
   const ist = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
   );
-
   const day = ist.getDay(); // 0 = Sun, 6 = Sat
   const hour = ist.getHours(); // 0–23
 
   const isWeekday = day >= 1 && day <= 5; // Mon–Fri
   const isBetweenTime = hour >= 8 && hour < 16; // 8AM–4PM
-
   return isWeekday && isBetweenTime;
 }
 

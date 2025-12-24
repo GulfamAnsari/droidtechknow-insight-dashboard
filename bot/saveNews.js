@@ -1,6 +1,6 @@
 import axios from "axios";
 import chalk from "chalk";
-import { sendError } from "./telegram";
+import { sendError } from "./telegram.js";
 
 export async function saveNews(payload) {
   const d = new Date(payload?.publishedAt);
@@ -17,7 +17,7 @@ export async function saveNews(payload) {
       data: payload
     })
     .then((data) => {
-      console.log(chalk.green("Data saved to db"));
+      console.log(chalk.bgGreenBright("Data saved to db"));
       return "success";
     })
     .catch((e) => {
