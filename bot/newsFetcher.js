@@ -123,40 +123,51 @@ export async function fetchNews() {
 
 /* -------------------- Watcher -------------------- */
 
-export function watchNews(callback, interval = 10000) {
+export function watchNews(callback, interval = 10000, saving = false) {
   setInterval(async () => {
-    if (isBetween1AMAnd8AM_IST()) {
+    if (isWeekdayBetween8AMAnd4PM_IST() && !saving) {
       console.log(chalk.gray("🌙 Sleep time – skipping push"));
       return;
     }
 
     const latest = await fetchNews();
 
-    latest.forEach(async (item) => {
-      const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
-        hour12: true
-      });
-      console.log(
-        "\n" +
-          chalk.gray("---------------------------") +
-          chalk.bgBlue.bold("\n📰 NEW NEWS ALERT 📰"),
-        "\n" +
-          chalk.green(
-            `Symbol: ${item?.data?.cta?.[0]?.meta?.nseScriptCode || item?.data?.cta?.[0]?.meta?.bseScriptCode || "N/A"}`
-          ),
-        "\n" + chalk.yellow(`Title: ${item?.data?.title || "No title"}`),
-        "\n" +
-          chalk.yellowBright(
-            `Fetched at: ${
-              new Date().toLocaleString("en-IN", { hour12: true }) || "No time"
-            } `
-          ),
-        "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
-        "\n" + chalk.gray("---------------------------")
-      );
-      sleep(1000);
-      callback(item);
-    });
+    async function runSequentially(latest) {
+      for (const item of latest) {
+        const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
+          hour12: true
+        });
+
+        console.log(
+          "\n" +
+            chalk.gray("---------------------------") +
+            chalk.bgBlue.bold("\n📰 NEW NEWS ALERT 📰"),
+          "\n" +
+            chalk.green(
+              `Symbol: ${
+                item?.data?.cta?.[0]?.meta?.nseScriptCode ||
+                item?.data?.cta?.[0]?.meta?.bseScriptCode ||
+                "N/A"
+              }`
+            ),
+          "\n" + chalk.yellow(`Title: ${item?.data?.title || "No title"}`),
+          "\n" +
+            chalk.yellowBright(
+              `Fetched at: ${new Date().toLocaleString("en-IN", {
+                hour12: true
+              })}`
+            ),
+          "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
+          "\n" + chalk.gray("---------------------------")
+        );
+
+        console.log(1);
+
+        await sleep(1000); // ⏱️ THIS NOW WORKS SEQUENTIALLY
+        callback(item); // fires one-by-one
+      }
+    }
+    await runSequentially(latest);
   }, interval);
 }
 
@@ -168,6 +179,20 @@ function isBetween1AMAnd8AM_IST() {
   );
   const hour = ist.getHours();
   return hour >= 1 && hour < 8;
+}
+
+function isWeekdayBetween8AMAnd4PM_IST() {
+  const ist = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
+  const day = ist.getDay(); // 0 = Sun, 6 = Sat
+  const hour = ist.getHours(); // 0–23
+
+  const isWeekday = day >= 1 && day <= 5; // Mon–Fri
+  const isBetweenTime = hour >= 8 && hour < 16; // 8AM–4PM
+
+  return isWeekday && isBetweenTime;
 }
 
 const errorSend = (error, errorMessage) => {

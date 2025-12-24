@@ -7,6 +7,7 @@ import cors from 'cors';
 import { fileURLToPath } from "url";
 import path from "path";
 import axios from "axios";
+import { saveNews } from "./saveNews.js";
 
 
 dotenv.config();
@@ -50,7 +51,7 @@ app.post("/notify", async (req, res) => {
   res.json({ status: "sent" });
 });
 
-// Start watching Groww news every 10 sec
+// Start watching Groww news every timer
 watchNews((news) => {
   sendTelegramNews({
     title: news.data?.title,
@@ -59,7 +60,14 @@ watchNews((news) => {
     imageUrl: news.data?.cta[0]?.logoUrl,
     publishedAt: news?.publishedAt
   });
+  saveNews(news);
 }, process.env.TIMER);
+
+// Calling for every hour to save into db
+watchNews(async (news) => {
+  await saveNews(news);
+}, 1000 * 60 * 60, true);
+
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
