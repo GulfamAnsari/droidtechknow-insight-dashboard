@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger
 } from "@/components/ui/tabs";
@@ -33,13 +32,19 @@ import {
   RefreshCw,
   Copy,
   Filter,
-  ExternalLink,
   CalendarIcon
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getSentimentLocal } from "@/utils/sentiments";
 
 const STORAGE_KEY = "stock-news-saved";
+
+const mapSentiment = (label?: string) => {
+  if (label === "positive") return "bullish";
+  if (label === "negative") return "bearish";
+  return "neutral";
+};
 
 export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
@@ -59,7 +64,7 @@ export default function StockNews() {
     if (s) setSavedNews(JSON.parse(s));
   }, []);
 
-  /* ---------------- FETCH NEWS ---------------- */
+  /* ---------------- FETCH + SENTIMENT FIX ---------------- */
   const fetchNews = async () => {
     setLoading(true);
     try {
@@ -72,19 +77,64 @@ export default function StockNews() {
       );
 
       const json = await res.json();
-
       let all: any[] = [];
       Object.values(json.data || {}).forEach((d: any) => {
         if (Array.isArray(d)) all.push(...d);
       });
 
+      // newest first
       all.sort(
         (a, b) =>
           new Date(b.publishedAt).getTime() -
           new Date(a.publishedAt).getTime()
       );
 
-      setNews(all);
+      // 🔥 sentiment fallback
+      const enriched = await Promise.all(
+  all.map(async (item) => {
+    try {
+      // If ML sentiment already exists
+      if (item?.machineLearningSentiments?.label) {
+        return {
+          ...item,
+          __sentiment: mapSentiment(
+            item.machineLearningSentiments.label
+          ),
+          __confidence:
+            item.machineLearningSentiments.confidence ?? 0.5
+        };
+      }
+
+      // Guard missing title
+      const title = item?.data?.title;
+      if (!title) {
+        return {
+          ...item,
+          __sentiment: "neutral",
+          __confidence: 0.5
+        };
+      }
+
+      const local = await getSentimentLocal(title);
+
+      return {
+        ...item,
+        __sentiment: mapSentiment(local?.label),
+        __confidence: local?.confidence ?? 0.5
+      };
+    } catch (err) {
+      console.error("Sentiment failed for:", item?.postId, err);
+      return {
+        ...item,
+        __sentiment: "neutral",
+        __confidence: 0.5
+      };
+    }
+  })
+);
+
+
+      setNews(enriched);
     } catch {
       toast.error("Failed to fetch news");
     } finally {
@@ -93,11 +143,11 @@ export default function StockNews() {
   };
 
   /* ---------------- AUTO REFRESH ---------------- */
-  useEffect(() => {
-    fetchNews();
-    const i = setInterval(fetchNews, 60000);
-    return () => clearInterval(i);
-  }, []);
+  // useEffect(() => {
+  //   fetchNews();
+  //   const i = setInterval(fetchNews, 60000);
+  //   return () => clearInterval(i);
+  // }, []);
 
   /* ---------------- FILTERS ---------------- */
   const applyFilters = (items: any[]) => {
@@ -113,11 +163,7 @@ export default function StockNews() {
     }
 
     if (sentimentFilter !== "all") {
-      f = f.filter(i =>
-        savedNews.find(
-          s => s.postId === i.postId && s.sentiment === sentimentFilter
-        )
-      );
+      f = f.filter(i => i.__sentiment === sentimentFilter);
     }
 
     return f;
@@ -125,7 +171,7 @@ export default function StockNews() {
 
   const filteredNews = useMemo(
     () => applyFilters(news),
-    [news, timeFilter, sentimentFilter, savedNews]
+    [news, timeFilter, sentimentFilter]
   );
 
   const filteredSaved = useMemo(
@@ -152,53 +198,37 @@ export default function StockNews() {
     const list =
       activeTab === "saved" ? filteredSaved : filteredNews;
 
-    const txt = list
-      .map(
-        i =>
-          `${format(new Date(i.publishedAt), "dd MMM yyyy hh:mma")} | ${
-            i.data.title
-          }`
-      )
-      .join("\n");
-
-    navigator.clipboard.writeText(txt);
+    navigator.clipboard.writeText(
+      list.map(i => i.data.title).join("\n")
+    );
     toast.success("Copied");
   };
 
   /* ================= CARD ================= */
   const NewsCard = ({ item }: { item: any }) => {
     const cta = item.data?.cta?.[0];
-    const ml = item.machineLearningSentiments;
     const savedSentiment = getSavedSentiment(item.postId);
 
     return (
       <Card className="bg-[#0d1117] border border-white/10 rounded-lg">
-        <CardContent className="p-3 space-y-2">
+        <CardContent className="p-3 flex flex-col h-full">
 
           {/* HEADER */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             {cta?.logoUrl && (
-              <img
-                src={cta.logoUrl}
-                className="w-8 h-8 rounded"
-              />
+              <img src={cta.logoUrl} className="w-8 h-8 rounded" />
             )}
 
             <div className="flex-1">
               <a
                 href={cta?.ctaUrl}
                 target="_blank"
-                rel="noreferrer"
                 className="text-sm font-semibold text-blue-400 hover:underline"
               >
                 {cta?.ctaText || item.data.title}
               </a>
-
-              <div className="text-xs text-gray-400 mt-1">
-                {format(
-                  new Date(item.publishedAt),
-                  "dd MMM yyyy hh:mma"
-                )}
+              <div className="text-xs text-gray-400">
+                {format(new Date(item.publishedAt), "dd MMM yyyy hh:mma")}
               </div>
             </div>
           </div>
@@ -208,42 +238,37 @@ export default function StockNews() {
             {item.data.body}
           </p>
 
-          {/* FOOTER */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+          {/* FOOTER – ALWAYS BOTTOM */}
+          <div className="mt-auto pt-2 flex items-center justify-between border-t border-white/10">
 
-            {/* ML SENTIMENT */}
-            {ml && (
-              <span
-                className={cn(
-                  "text-xs px-2 py-[2px] rounded",
-                  ml.label === "positive" &&
-                    "bg-green-500/20 text-green-400",
-                  ml.label === "negative" &&
-                    "bg-red-500/20 text-red-400",
-                  ml.label === "neutral" &&
-                    "bg-yellow-500/20 text-yellow-400"
-                )}
-              >
-                {ml.label} ({(ml.confidence * 100).toFixed(0)}%)
-              </span>
-            )}
+            <span
+              className={cn(
+                "text-xs px-2 py-[2px] rounded",
+                item.__sentiment === "bullish" &&
+                  "bg-green-500/20 text-green-400",
+                item.__sentiment === "bearish" &&
+                  "bg-red-500/20 text-red-400",
+                item.__sentiment === "neutral" &&
+                  "bg-yellow-500/20 text-yellow-400"
+              )}
+            >
+              {item.__sentiment} ({(item.__confidence * 100).toFixed(0)}%)
+            </span>
 
             <Select
               value={savedSentiment}
-              onValueChange={v =>
-                saveNews(item, v as any)
-              }
+              onValueChange={v => saveNews(item, v as any)}
             >
               <SelectTrigger className="h-7 w-24 text-xs">
                 <SelectValue placeholder="Save" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="bullish">
-                  <TrendingUp className="h-3 w-3 inline mr-1" />
+                  <TrendingUp className="h-3 w-3 mr-1 inline" />
                   Bullish
                 </SelectItem>
                 <SelectItem value="bearish">
-                  <TrendingDown className="h-3 w-3 inline mr-1" />
+                  <TrendingDown className="h-3 w-3 mr-1 inline" />
                   Bearish
                 </SelectItem>
               </SelectContent>
@@ -254,72 +279,59 @@ export default function StockNews() {
     );
   };
 
-  const NewsGrid = ({ items }: any) => {
-    if (loading)
-      return (
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {[...Array(10)].map((_, i) => (
+  const NewsGrid = ({ items }: any) => (
+    <div className="grid md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      {loading
+        ? [...Array(10)].map((_, i) => (
             <Skeleton key={i} className="h-40" />
+          ))
+        : items.map((i: any) => (
+            <NewsCard key={i.postId} item={i} />
           ))}
-        </div>
-      );
-
-    return (
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        {items.map((i: any) => (
-          <NewsCard key={i.postId} item={i} />
-        ))}
-      </div>
-    );
-  };
+    </div>
+  );
 
   /* ================= UI ================= */
   return (
     <div className="h-[95vh] flex flex-col">
+
       {/* HEADER */}
-      <div className="flex flex-wrap items-center gap-3 p-3 border-b">
+      <div className="flex items-center gap-2 p-3 border-b">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {format(fromDate, "dd MMM yyyy")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent>
+            <Calendar
+              mode="single"
+              selected={fromDate}
+              onSelect={d => d && setFromDate(d)}
+            />
+          </PopoverContent>
+        </Popover>
 
-        {/* LEFT */}
-        <div className="flex gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                {format(fromDate, "dd MMM yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent>
-              <Calendar
-                mode="single"
-                selected={fromDate}
-                onSelect={d => d && setFromDate(d)}
-              />
-            </PopoverContent>
-          </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {format(toDate, "dd MMM yyyy")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent>
+            <Calendar
+              mode="single"
+              selected={toDate}
+              onSelect={d => d && setToDate(d)}
+            />
+          </PopoverContent>
+        </Popover>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                {format(toDate, "dd MMM yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent>
-              <Calendar
-                mode="single"
-                selected={toDate}
-                onSelect={d => d && setToDate(d)}
-              />
-            </PopoverContent>
-          </Popover>
+        <Button size="sm" onClick={fetchNews}>Fetch</Button>
 
-          <Button size="sm" onClick={fetchNews}>
-            Fetch
-          </Button>
-        </div>
-
-        {/* RIGHT */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="ml-auto flex gap-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="selected">Selected</TabsTrigger>
@@ -335,7 +347,6 @@ export default function StockNews() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          {/* TIME FILTER */}
           <Select value={timeFilter} onValueChange={setTimeFilter}>
             <SelectTrigger className="h-8 w-28 text-xs">
               <Filter className="h-3 w-3 mr-1" />
@@ -349,12 +360,8 @@ export default function StockNews() {
             </SelectContent>
           </Select>
 
-          {/* SENTIMENT FILTER */}
-          <Select
-            value={sentimentFilter}
-            onValueChange={setSentimentFilter}
-          >
-            <SelectTrigger className="h-8 w-32 text-xs">
+          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+            <SelectTrigger className="h-8 w-28 text-xs">
               Sentiment
             </SelectTrigger>
             <SelectContent>
@@ -366,7 +373,6 @@ export default function StockNews() {
         </div>
       </div>
 
-      {/* CONTENT */}
       <div className="flex-1 overflow-auto p-4">
         {activeTab === "saved" ? (
           <NewsGrid items={filteredSaved} />
