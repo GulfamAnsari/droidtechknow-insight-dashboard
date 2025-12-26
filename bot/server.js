@@ -2,12 +2,14 @@ import express from "express";
 import dotenv from "dotenv";
 import { watchNews } from "./newsFetcher.js";
 import { sendTelegramNews } from "./telegram.js";
-import { getsentiment } from "./ml/sentiments.js";
+import { getSentimentLocal } from "./ml/sentiments.js";
 import cors from 'cors';
 import { fileURLToPath } from "url";
 import path from "path";
 import axios from "axios";
 import { saveNews } from "./saveNews.js";
+import chalk from "chalk";
+import { getNextIntervalMs } from "./utils.js";
 
 
 dotenv.config();
@@ -26,7 +28,7 @@ app.get("/news", (req, res) => {
 
 
 app.get("/sentiments", async(req, res) => {
-  const out = await getsentiment(req.query.title);
+  const out = await getSentimentLocal(req.query.title);
   res.json(out);
 });
 
@@ -52,21 +54,43 @@ app.post("/notify", async (req, res) => {
 });
 
 // Start watching Groww news every timer
-watchNews((news) => {
-  sendTelegramNews({
-    title: news.data?.title,
-    description: news?.data?.body,
-    url: news.data?.cta[0]?.ctaUrl,
-    imageUrl: news.data?.cta[0]?.logoUrl,
-    publishedAt: news?.publishedAt
-  });
-  saveNews(news);
-}, process.env.TIMER);
+async function startWatch() {
+  try {
+    await watchNews(async (news) => {
+      const sentiment = await getSentimentLocal(news.data?.title);
+
+      const description = `${news?.data?.body}\n\nSentiment: ${sentiment?.label}\nConfidence level: ${sentiment?.confidence}`;
+
+      sendTelegramNews({
+        title: news.data?.title,
+        description,
+        url: news.data?.cta[0]?.ctaUrl,
+        imageUrl: news.data?.cta[0]?.logoUrl,
+        publishedAt: news?.publishedAt
+      });
+
+      saveNews(news);
+    });
+  } catch (err) {
+    console.error("watchNews error:", err);
+  } finally {
+    const nextInterval = getNextIntervalMs();
+    console.log(chalk.blackBright("Next run in", nextInterval / 60000, "minutes"));
+    setTimeout(startWatch, nextInterval);
+  }
+}
+
+// Start
+startWatch();
+
 
 // Calling for every hour to save into db
-watchNews(async (news) => {
-  await saveNews(news);
-}, 1000 * 60 * 60, true);
+setInterval(() => {
+  watchNews(async (news) => {
+    news['machineLearningSentiments'] = await getSentimentLocal(news.data?.title);
+    await saveNews(news);
+  });
+}, 1000 * 60 * 30);
 
 
 app.listen(process.env.PORT, () => {

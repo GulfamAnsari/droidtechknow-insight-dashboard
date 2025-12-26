@@ -4,7 +4,6 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import { sendError, sendTelegramNews } from "./telegram.js";
-import { getsentiment } from "./ml/sentiments.js";
 import { sleep } from "./utils.js";
 
 dotenv.config();
@@ -80,7 +79,6 @@ export async function fetchNews() {
     store[today] ||= [];
 
     const latestNews = [];
-
     for (const item of res.data.feed) {
       const title = item?.data?.title;
       if (!title) continue;
@@ -92,7 +90,6 @@ export async function fetchNews() {
           normalize(saved.title) === normalizedTitle ||
           saved.postId === item.postId
       );
-
       if (isDuplicate) continue;
 
       const symbol =
@@ -123,13 +120,7 @@ export async function fetchNews() {
 
 /* -------------------- Watcher -------------------- */
 
-export function watchNews(callback, interval = 10000, saving = false) {
-  setInterval(async () => {
-    if (!isWeekdayBetween8AMAnd4PM_IST() && !saving) {
-      console.log(chalk.gray("🌙 Sleep time – skipping push"));
-      return;
-    }
-
+export async function watchNews(callback) {
     const latest = await fetchNews();
 
     async function runSequentially(latest) {
@@ -161,14 +152,11 @@ export function watchNews(callback, interval = 10000, saving = false) {
           "\n" + chalk.gray("---------------------------")
         );
 
-        console.log(1);
-
         await sleep(1000); // ⏱️ THIS NOW WORKS SEQUENTIALLY
         callback(item); // fires one-by-one
       }
     }
     await runSequentially(latest);
-  }, interval);
 }
 
 /* -------------------- Time Guard -------------------- */
@@ -181,17 +169,6 @@ function isBetween1AMAnd8AM_IST() {
   return hour >= 1 && hour < 8;
 }
 
-function isWeekdayBetween8AMAnd4PM_IST() {
-  const ist = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  );
-  const day = ist.getDay(); // 0 = Sun, 6 = Sat
-  const hour = ist.getHours(); // 0–23
-
-  const isWeekday = day >= 1 && day <= 5; // Mon–Fri
-  const isBetweenTime = hour >= 8 && hour < 16; // 8AM–4PM
-  return isWeekday && isBetweenTime;
-}
 
 const errorSend = (error, errorMessage) => {
   sendError({

@@ -26,7 +26,6 @@ export async function saveNews(payload) {
         description: e?.message || e,
         publishedAt: new Date()
       });
-      console.log(chalk.red("Error while saving news", e));
-      throw e;
+      console.log(chalk.red("Error while saving news", e?.message));
     });
 }

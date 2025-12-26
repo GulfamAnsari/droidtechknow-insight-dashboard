@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -265,7 +267,7 @@
       return;
     }
 
-    list.forEach(item => {
+    list.forEach(async item => {
       const cta = item.data?.cta?.[0] || {};
       const symbol = cta.ctaText || "";
       const codes = stockMap[symbol] || {};
@@ -276,7 +278,7 @@
       const d = new Date(item.publishedAt);
       const date = d.toLocaleDateString("en-IN", { timeZone: TZ });
       const time = d.toLocaleTimeString("en-IN", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
-
+      const sent = await (await fetch(`http://localhost:3000/sentiments?title=${item.data?.title}`)).json();
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
@@ -296,26 +298,14 @@
             <option value="bullish">Bullish</option>
             <option value="bearish">Bearish</option>
           </select>
-          <button class="analyzeBtn">Sentiments</button>
         </div>
-        <div class="sentimentResult" style="margin-top:8px;font-size:12px;color:#93c5fd"></div>
+        <div class="sentimentResult" style="margin-top:8px;font-size:12px;color:#93c5fd">${`Sentiment: <span style="font-weight: bold; color: ${sent?.label === 'negative' ?'red': sent?.label == 'positive' ?  'green': 'grey'}">${sent?.label}</span> <br> Confidence: ${sent?.confidence}`}</div>
       `;
 
       const sel = card.querySelector(".sentimentSelect");
       sel.value = getSentiment(item);
       sel.onchange = e => saveWithSentiment(item, e.target.value);
 
-        const btn = card.querySelector(".analyzeBtn");
-        const resultDiv = card.querySelector(".sentimentResult");
-        btn.onclick = async () => {
-          resultDiv.innerText = "Analyzing...";
-          const title = encodeURIComponent(item.data?.title || "");
-          const res = await fetch(`http://localhost:3000/sentiments?title=${title}`);
-          const data = await res.json();
-          resultDiv.innerText = data.map(s =>
-            `${s.label.toUpperCase()}: ${(s.score * 100).toFixed(2)}%`
-          ).join(" | ");
-        };
    
       grid.appendChild(card);
     });

@@ -12,3 +12,19 @@ export const getsentiment = async (inputs) => {
     provider: "hf-inference"
   });
 };
+
+import { pipeline } from "@xenova/transformers";
+
+const sentimentPipeline = await pipeline(
+  "sentiment-analysis",
+  "Xenova/finbert"
+);
+
+export async function getSentimentLocal(text) {
+  const result = await sentimentPipeline(text);
+
+  return {
+    label: result[0].label.toLowerCase(), // positive / negative / neutral
+    confidence: result[0].score,
+  };
+}
