@@ -61,13 +61,13 @@ function writeStore(data) {
 
 /* -------------------- Fetch News -------------------- */
 
-export async function fetchNews() {
+export async function fetchNews(savingToDb = false) {
   try {
     console.log(
       chalk.green.bold(
         `⏳ Fetching latest news at ${new Date().toLocaleString("en-IN", {
           hour12: true
-        })}`
+        })} saving to ${savingToDb}`
       )
     );
 
@@ -76,7 +76,22 @@ export async function fetchNews() {
 
     const store = readStore();
     const today = getTodayKey();
-    store[today] ||= [];
+    let remoteStore = [];
+    if (savingToDb) {
+      const dateRev = today.split("-").reverse().join("-")
+      const data = (await axios.get(`https://droidtechknow.com/admin/api/stocks/news/save.php?from=${dateRev}&to=${dateRev}`)).data;
+      remoteStore = (data.data?.[dateRev]).map((d) => {
+        return {
+            "postId": d?.postId,
+            "title": d?.data?.title,
+            "symbol": d?.data?.cta?.[0]?.meta?.nseScriptCode || d?.data?.cta?.[0]?.meta?.bseScriptCode,
+            "body": d?.data?.body,
+            "publishedAt": d?.publishedAt
+          }
+      });
+    } else {
+      store[today] ||= [];
+    }
 
     const latestNews = [];
     for (const item of res.data.feed) {
@@ -84,13 +99,18 @@ export async function fetchNews() {
       if (!title) continue;
 
       const normalizedTitle = normalize(title);
-
-      const isDuplicate = store[today].some(
+      const s = savingToDb ? remoteStore: store[today];
+      const isDuplicate = s.some(
         (saved) =>
           normalize(saved.title) === normalizedTitle ||
           saved.postId === item.postId
       );
-      if (isDuplicate) continue;
+      if (isDuplicate) {
+        continue;
+      }
+      if (new Date(item?.publishedAt).toISOString().split("T")[0] !== today) {
+        continue;
+      }
 
       const symbol =
         item?.data?.cta?.[0]?.meta?.nseScriptCode ||
@@ -104,12 +124,11 @@ export async function fetchNews() {
         body: item?.data?.body || "",
         publishedAt: item?.publishedAt // ✅ FIXED
       };
-
-      store[today].push(newsObj);
+      if (!savingToDb) store[today].push(newsObj);
       latestNews.push(item);
     }
 
-    writeStore(store);
+    if (!savingToDb) writeStore(store);
     return latestNews;
   } catch (err) {
     console.error("❌ Error fetching news:", err.message);
@@ -120,8 +139,8 @@ export async function fetchNews() {
 
 /* -------------------- Watcher -------------------- */
 
-export async function watchNews(callback) {
-    const latest = await fetchNews();
+export async function watchNews(callback, savingToDb) {
+    const latest = await fetchNews(savingToDb);
 
     async function runSequentially(latest) {
       for (const item of latest) {

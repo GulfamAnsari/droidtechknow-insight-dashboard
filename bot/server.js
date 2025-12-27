@@ -85,11 +85,20 @@ startWatch();
 
 
 // Calling for every hour to save into db
+async function savetoDBAtNight() {
+  try {
+    watchNews(async (news) => {
+      news['machineLearningSentiments'] = await getSentimentLocal(news.data?.title);
+      await saveNews(news);
+      console.log(chalk.grey("Saving to DB successfull at night"));
+    }, true);
+  } catch {
+    console.log("Error in saving db in night")
+  }
+}
+
 setInterval(() => {
-  watchNews(async (news) => {
-    news['machineLearningSentiments'] = await getSentimentLocal(news.data?.title);
-    await saveNews(news);
-  });
+  savetoDBAtNight();
 }, 1000 * 60 * 30);
 
 
