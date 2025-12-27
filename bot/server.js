@@ -62,7 +62,7 @@ async function startWatch() {
 
       const description = `${news?.data?.body}\n\nSentiment: ${sentiment?.label}\nConfidence level: ${sentiment?.confidence}`;
 
-      sendTelegramNews({
+      await sendTelegramNews({
         title: news.data?.title,
         description,
         url: news.data?.cta[0]?.ctaUrl,
@@ -70,7 +70,7 @@ async function startWatch() {
         publishedAt: news?.publishedAt
       });
 
-      saveNews(news);
+      await saveNews(news);
     });
   } catch (err) {
     console.error("watchNews error:", err);
