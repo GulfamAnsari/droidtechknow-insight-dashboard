@@ -32,7 +32,8 @@ import {
   RefreshCw,
   Copy,
   Filter,
-  CalendarIcon
+  CalendarIcon,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -64,7 +65,7 @@ export default function StockNews() {
     if (s) setSavedNews(JSON.parse(s));
   }, []);
 
-  /* ---------------- FETCH + SENTIMENT FIX ---------------- */
+  /* ---------------- FETCH ---------------- */
   const fetchNews = async () => {
     setLoading(true);
     try {
@@ -82,57 +83,42 @@ export default function StockNews() {
         if (Array.isArray(d)) all.push(...d);
       });
 
-      // newest first
       all.sort(
         (a, b) =>
           new Date(b.publishedAt).getTime() -
           new Date(a.publishedAt).getTime()
       );
 
-      // 🔥 sentiment fallback
       const enriched = await Promise.all(
-  all.map(async (item) => {
-    try {
-      // If ML sentiment already exists
-      if (item?.machineLearningSentiments?.label) {
-        return {
-          ...item,
-          __sentiment: mapSentiment(
-            item.machineLearningSentiments.label
-          ),
-          __confidence:
-            item.machineLearningSentiments.confidence ?? 0.5
-        };
-      }
+        all.map(async (item) => {
+          try {
+            if (item?.machineLearningSentiments?.label) {
+              return {
+                ...item,
+                __sentiment: mapSentiment(
+                  item.machineLearningSentiments.label
+                ),
+                __confidence:
+                  item.machineLearningSentiments.confidence ?? 0.5
+              };
+            }
 
-      // Guard missing title
-      const title = item?.data?.title;
-      if (!title) {
-        return {
-          ...item,
-          __sentiment: "neutral",
-          __confidence: 0.5
-        };
-      }
+            const title = item?.data?.title;
+            if (!title) {
+              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+            }
 
-      const local = await getSentimentLocal(title);
-
-      return {
-        ...item,
-        __sentiment: mapSentiment(local?.label),
-        __confidence: local?.confidence ?? 0.5
-      };
-    } catch (err) {
-      console.error("Sentiment failed for:", item?.postId, err);
-      return {
-        ...item,
-        __sentiment: "neutral",
-        __confidence: 0.5
-      };
-    }
-  })
-);
-
+            const local = await getSentimentLocal(title);
+            return {
+              ...item,
+              __sentiment: mapSentiment(local?.label),
+              __confidence: local?.confidence ?? 0.5
+            };
+          } catch {
+            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+          }
+        })
+      );
 
       setNews(enriched);
     } catch {
@@ -141,13 +127,6 @@ export default function StockNews() {
       setLoading(false);
     }
   };
-
-  /* ---------------- AUTO REFRESH ---------------- */
-  // useEffect(() => {
-  //   fetchNews();
-  //   const i = setInterval(fetchNews, 60000);
-  //   return () => clearInterval(i);
-  // }, []);
 
   /* ---------------- FILTERS ---------------- */
   const applyFilters = (items: any[]) => {
@@ -188,6 +167,13 @@ export default function StockNews() {
     setSavedNews(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     toast.success(`Saved as ${sentiment}`);
+  };
+
+  const removeSaved = (postId: string) => {
+    const updated = savedNews.filter(s => s.postId !== postId);
+    setSavedNews(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    toast.success("Removed from saved");
   };
 
   const getSavedSentiment = (postId: string) =>
@@ -231,6 +217,13 @@ export default function StockNews() {
                 {format(new Date(item.publishedAt), "dd MMM yyyy hh:mma")}
               </div>
             </div>
+
+            {activeTab === "saved" && (
+              <Trash2
+                onClick={() => removeSaved(item.postId)}
+                className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
+              />
+            )}
           </div>
 
           {/* BODY */}
@@ -238,7 +231,13 @@ export default function StockNews() {
             {item.data.body}
           </p>
 
-          {/* FOOTER – ALWAYS BOTTOM */}
+          {item?.from && (
+            <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
+              {item.from}
+            </span>
+          )}
+
+          {/* FOOTER */}
           <div className="mt-auto pt-2 flex items-center justify-between border-t border-white/10">
 
             <span
@@ -252,14 +251,22 @@ export default function StockNews() {
                   "bg-yellow-500/20 text-yellow-400"
               )}
             >
-              {item.__sentiment} ({(item.__confidence * 100).toFixed(0)}%)
+              AI: {item.__sentiment} ({(item.__confidence * 100).toFixed(0)}%)
             </span>
 
             <Select
               value={savedSentiment}
               onValueChange={v => saveNews(item, v as any)}
             >
-              <SelectTrigger className="h-7 w-24 text-xs">
+              <SelectTrigger
+                className={cn(
+                  "h-7 w-24 text-xs",
+                  savedSentiment === "bullish" &&
+                    "bg-green-500/20 text-green-400",
+                  savedSentiment === "bearish" &&
+                    "bg-red-500/20 text-red-400"
+                )}
+              >
                 <SelectValue placeholder="Save" />
               </SelectTrigger>
               <SelectContent>
@@ -280,7 +287,7 @@ export default function StockNews() {
   };
 
   const NewsGrid = ({ items }: any) => (
-    <div className="grid md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
       {loading
         ? [...Array(10)].map((_, i) => (
             <Skeleton key={i} className="h-40" />
@@ -295,7 +302,7 @@ export default function StockNews() {
   return (
     <div className="h-[95vh] flex flex-col">
 
-      {/* HEADER */}
+      {/* HEADER (UNCHANGED) */}
       <div className="flex items-center gap-2 p-3 border-b">
         <Popover>
           <PopoverTrigger asChild>

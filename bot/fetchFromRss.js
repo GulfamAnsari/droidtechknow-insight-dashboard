@@ -9,11 +9,7 @@ const sources = [
     {
         name: "The hindustan bussiness line",
         rss: "https://www.thehindubusinessline.com/markets/stock-markets/feeder/default.rss"
-    },
-    // {
-    //     name: "livemint",
-    //     rss: "https://www.livemint.com/rss/markets"
-    // }
+    }
 ];
 
 const parser = new Parser();

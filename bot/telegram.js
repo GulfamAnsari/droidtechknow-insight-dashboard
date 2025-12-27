@@ -24,7 +24,7 @@ export async function sendTelegramNews({
   try {
     await axios.post(`${TELEGRAM_API}/sendPhoto`, {
       chat_id: CHAT_ID,
-      photo: imageUrl, // Image URL
+      photo: imageUrl || "https://picsum.photos/200/300", // Image URL
       caption: caption, // Title + description + link
       parse_mode: "MarkdownV2",
       disable_web_page_preview: false
