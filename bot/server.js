@@ -10,6 +10,7 @@ import axios from "axios";
 import { saveNews } from "./saveNews.js";
 import chalk from "chalk";
 import { getNextIntervalMs } from "./utils.js";
+import { fetchTodayNews } from "./fetchFromRss.js";
 
 
 dotenv.config();
@@ -100,6 +101,8 @@ async function savetoDBAtNight() {
 setInterval(() => {
   savetoDBAtNight();
 }, 1000 * 60 * 30);
+
+console.log(await fetchTodayNews());
 
 
 app.listen(process.env.PORT, () => {

@@ -18,7 +18,9 @@
     "chalk": "^5.6.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
+    "express": "^4.22.1",
+    "moment-timezone": "^0.6.0",
+    "node-fetch": "^3.3.2",
+    "rss-parser": "^3.13.0"
   }
 }
