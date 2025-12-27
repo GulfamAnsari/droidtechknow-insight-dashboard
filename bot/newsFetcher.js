@@ -4,11 +4,12 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import { sendError, sendTelegramNews } from "./telegram.js";
-import { sleep } from "./utils.js";
+import { convertToGrowwPost, sleep } from "./utils.js";
 
 dotenv.config();
 
 const NEWS_API_URL = process.env.NEWS_API_URL;
+const NEWS_AGGREGATOR_KOTAK = process.env.NEWS_AGGREGATOR_KOTAK;
 const STORE_PATH = path.resolve("./news-store.json");
 
 /* -------------------- Helpers -------------------- */
@@ -70,10 +71,14 @@ export async function fetchNews(savingToDb = false) {
         })} saving to ${savingToDb}`
       )
     );
-
+    const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
+    const kotakData = resKotek?.data?.data?.map((r) => {
+      return convertToGrowwPost(r);
+    }); 
     const res = await axios.get(NEWS_API_URL);
+    res.data.feed = [...res.data.feed, ...kotakData];
     if (!Array.isArray(res.data?.feed)) return [];
-
+ 
     const store = readStore();
     const today = getTodayKey();
     let remoteStore = [];
