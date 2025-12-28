@@ -1,16 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
-import {
-  Card,
-  CardContent
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -18,9 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import {
-  Calendar
-} from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -38,7 +29,17 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getSentimentLocal } from "@/utils/sentiments";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter
+} from "@dnd-kit/core";
 
+import { SortableContext, useSortable, arrayMove } from "@dnd-kit/sortable";
+
+import { CSS } from "@dnd-kit/utilities";
 const STORAGE_KEY = "stock-news-saved";
 
 const mapSentiment = (label?: string) => {
@@ -58,7 +59,9 @@ export default function StockNews() {
 
   const [timeFilter, setTimeFilter] = useState("all");
   const [sentimentFilter, setSentimentFilter] = useState("all");
-
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
   /* ---------------- LOAD SAVED ---------------- */
   useEffect(() => {
     const s = localStorage.getItem(STORAGE_KEY);
@@ -85,8 +88,7 @@ export default function StockNews() {
 
       all.sort(
         (a, b) =>
-          new Date(b.publishedAt).getTime() -
-          new Date(a.publishedAt).getTime()
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
 
       const enriched = await Promise.all(
@@ -95,11 +97,8 @@ export default function StockNews() {
             if (item?.machineLearningSentiments?.label) {
               return {
                 ...item,
-                __sentiment: mapSentiment(
-                  item.machineLearningSentiments.label
-                ),
-                __confidence:
-                  item.machineLearningSentiments.confidence ?? 0.5
+                __sentiment: mapSentiment(item.machineLearningSentiments.label),
+                __confidence: item.machineLearningSentiments.confidence ?? 0.5
               };
             }
 
@@ -133,7 +132,7 @@ export default function StockNews() {
     let f = [...items];
 
     if (timeFilter !== "all") {
-      f = f.filter(i => {
+      f = f.filter((i) => {
         const h = new Date(i.publishedAt).getHours();
         if (timeFilter === "morning") return h >= 9 && h < 12;
         if (timeFilter === "afternoon") return h >= 12 && h < 15;
@@ -142,7 +141,10 @@ export default function StockNews() {
     }
 
     if (sentimentFilter !== "all") {
-      f = f.filter(i => i.__sentiment === sentimentFilter);
+      f = f.filter(
+        (i) =>
+          i.__sentiment === sentimentFilter || i.sentiment === sentimentFilter
+      );
     }
 
     return f;
@@ -161,7 +163,7 @@ export default function StockNews() {
   /* ---------------- SAVE ---------------- */
   const saveNews = (item: any, sentiment: "bullish" | "bearish") => {
     const updated = [
-      ...savedNews.filter(s => s.postId !== item.postId),
+      ...savedNews.filter((s) => s.postId !== item.postId),
       { ...item, sentiment, savedAt: new Date().toISOString() }
     ];
     setSavedNews(updated);
@@ -170,37 +172,67 @@ export default function StockNews() {
   };
 
   const removeSaved = (postId: string) => {
-    const updated = savedNews.filter(s => s.postId !== postId);
+    const updated = savedNews.filter((s) => s.postId !== postId);
     setSavedNews(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     toast.success("Removed from saved");
   };
 
   const getSavedSentiment = (postId: string) =>
-    savedNews.find(s => s.postId === postId)?.sentiment || "";
+    savedNews.find((s) => s.postId === postId)?.sentiment || "";
 
   /* ---------------- COPY ---------------- */
   const copyAllNews = () => {
-    const list =
-      activeTab === "saved" ? filteredSaved : filteredNews;
+    const list = activeTab === "saved" ? filteredSaved : filteredNews;
 
     navigator.clipboard.writeText(
-      list.map((i) => {
-        return format(new Date(i.publishedAt), "dd MMM yyyy hh:mma") + ' | ' + i.data.title
-      }).join("\n")
+      list
+        .map((i) => {
+          return (
+            format(new Date(i.publishedAt), "dd MMM yyyy hh:mma") +
+            " | " +
+            i.data.title
+          );
+        })
+        .join("\n")
     );
     toast.success("Copied");
   };
 
+  const SortableNewsCard = ({ item }: { item: any }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } =
+      useSortable({ id: item.postId });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      width: "100%" // ensure grid items stretch
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} className="relative">
+        <NewsCard
+          item={item}
+          __dragHandleProps={{ ...attributes, ...listeners }}
+        />
+      </div>
+    );
+  };
+
   /* ================= CARD ================= */
-  const NewsCard = ({ item }: { item: any }) => {
+  const NewsCard = ({
+    item,
+    __dragHandleProps
+  }: {
+    item: any;
+    __dragHandleProps?: any;
+  }) => {
     const cta = item.data?.cta?.[0];
     const savedSentiment = getSavedSentiment(item.postId);
 
     return (
       <Card className="bg-[#0d1117] border border-white/10 rounded-lg">
         <CardContent className="p-3 flex flex-col h-full">
-
           {/* HEADER */}
           <div className="flex gap-2 mb-2">
             {cta?.logoUrl && (
@@ -240,15 +272,16 @@ export default function StockNews() {
           )}
 
           {/* FOOTER */}
-          <div className="mt-auto pt-2 flex items-center justify-between border-t border-white/10">
-
+          <div
+            {...__dragHandleProps}
+            className="mt-auto pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 cursor-grab active:cursor-grabbing"
+          >
             <span
               className={cn(
                 "text-xs px-2 py-[2px] rounded",
                 item.__sentiment === "bullish" &&
                   "bg-green-500/20 text-green-400",
-                item.__sentiment === "bearish" &&
-                  "bg-red-500/20 text-red-400",
+                item.__sentiment === "bearish" && "bg-red-500/20 text-red-400",
                 item.__sentiment === "neutral" &&
                   "bg-yellow-500/20 text-yellow-400"
               )}
@@ -258,15 +291,14 @@ export default function StockNews() {
 
             <Select
               value={savedSentiment}
-              onValueChange={v => saveNews(item, v as any)}
+              onValueChange={(v) => saveNews(item, v as any)}
             >
               <SelectTrigger
                 className={cn(
                   "h-7 w-24 text-xs",
                   savedSentiment === "bullish" &&
                     "bg-green-500/20 text-green-400",
-                  savedSentiment === "bearish" &&
-                    "bg-red-500/20 text-red-400"
+                  savedSentiment === "bearish" && "bg-red-500/20 text-red-400"
                 )}
               >
                 <SelectValue placeholder="Save" />
@@ -289,21 +321,16 @@ export default function StockNews() {
   };
 
   const NewsGrid = ({ items }: any) => (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
       {loading
-        ? [...Array(10)].map((_, i) => (
-            <Skeleton key={i} className="h-40" />
-          ))
-        : items.map((i: any) => (
-            <NewsCard key={i.postId} item={i} />
-          ))}
+        ? [...Array(10)].map((_, i) => <Skeleton key={i} className="h-40" />)
+        : items.map((i: any) => <SortableNewsCard key={i.postId} item={i} />)}
     </div>
   );
 
   /* ================= UI ================= */
   return (
     <div className="h-[95vh] flex flex-col">
-
       {/* HEADER (UNCHANGED) */}
       <div className="flex items-center gap-2 p-3 border-b">
         <Popover>
@@ -317,7 +344,7 @@ export default function StockNews() {
             <Calendar
               mode="single"
               selected={fromDate}
-              onSelect={d => d && setFromDate(d)}
+              onSelect={(d) => d && setFromDate(d)}
             />
           </PopoverContent>
         </Popover>
@@ -333,12 +360,14 @@ export default function StockNews() {
             <Calendar
               mode="single"
               selected={toDate}
-              onSelect={d => d && setToDate(d)}
+              onSelect={(d) => d && setToDate(d)}
             />
           </PopoverContent>
         </Popover>
 
-        <Button size="sm" onClick={fetchNews}>Fetch</Button>
+        <Button size="sm" onClick={fetchNews}>
+          Fetch
+        </Button>
 
         <div className="ml-auto flex gap-2">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -384,7 +413,28 @@ export default function StockNews() {
 
       <div className="flex-1 overflow-auto p-4">
         {activeTab === "saved" ? (
-          <NewsGrid items={filteredSaved} />
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => {
+              const { active, over } = event;
+              if (!over || active.id === over.id) return;
+
+              setSavedNews((prev) => {
+                const oldIndex = prev.findIndex((i) => i.postId === active.id);
+                const newIndex = prev.findIndex((i) => i.postId === over.id);
+                return arrayMove(prev, oldIndex, newIndex);
+              });
+            }}
+          >
+            <SortableContext items={savedNews.map((i) => i.postId)}>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
+                {filteredSaved.map((item) => (
+                  <SortableNewsCard key={item.postId} item={item} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         ) : (
           <NewsGrid items={filteredNews} />
         )}
