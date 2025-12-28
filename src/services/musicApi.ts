@@ -165,8 +165,9 @@ class MusicApiService {
       //   { skipAuth: true }
       // );
       // return response?.data?.songs || [];
+    
       let response = await httpClient.get(
-        `https://www.jiosaavn.com/api.php?__call=playlist.getDetails&_format=json&cc=in&_marker=0%3F_marker%3D0&listid=${playlistId}`,
+        `${SAVAN_URL}/api/playlists?id=${playlistId}`,
         { skipAuth: true }
       );
       response = await response.json();
