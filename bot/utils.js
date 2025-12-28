@@ -104,7 +104,9 @@ export function convertToGrowwPost(input) {
       ],
 
       title: input.title,
-      body: `${input.description}`
+      body: `${input.description || input.summary}`
     }
   };
 }
+
+

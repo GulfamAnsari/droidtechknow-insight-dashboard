@@ -10,6 +10,8 @@ dotenv.config();
 
 const NEWS_API_URL = process.env.NEWS_API_URL;
 const NEWS_AGGREGATOR_KOTAK = process.env.NEWS_AGGREGATOR_KOTAK;
+const INDIA_API_URL = process.env.INDIA_API_URL;
+const INDIA_API_KEY = process.env.INDIA_API_KEY;
 const STORE_PATH = path.resolve("./news-store.json");
 
 /* -------------------- Helpers -------------------- */
@@ -71,28 +73,47 @@ export async function fetchNews(savingToDb = false) {
         })} saving to ${savingToDb}`
       )
     );
+
+    // Use in future
+    // const options = {
+    //   method: "GET",
+    //   url: INDIA_API_URL,
+    //   headers: { "x-api-key": INDIA_API_KEY }
+    // };
+    // const { data } = await axios.request(options);
+    // console.log(data)
+    //  
     const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
     const kotakData = resKotek?.data?.data?.map((r) => {
       return convertToGrowwPost(r);
     });
     const res = await axios.get(NEWS_API_URL);
-    res.data.feed = [...res.data.feed.map((e) =>  ({...e, from: "Groww"} )), ...kotakData];
+    res.data.feed = [
+      ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
+      ...kotakData
+    ];
     if (!Array.isArray(res.data?.feed)) return [];
- 
+
     const store = readStore();
     const today = getTodayKey();
     let remoteStore = [];
     if (savingToDb) {
-      const dateRev = today.split("-").reverse().join("-")
-      const data = (await axios.get(`https://droidtechknow.com/admin/api/stocks/news/save.php?from=${dateRev}&to=${dateRev}`)).data;
+      const dateRev = today.split("-").reverse().join("-");
+      const data = (
+        await axios.get(
+          `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${dateRev}&to=${dateRev}`
+        )
+      ).data;
       remoteStore = (data.data?.[dateRev]).map((d) => {
         return {
-            "postId": d?.postId,
-            "title": d?.data?.title,
-            "symbol": d?.data?.cta?.[0]?.meta?.nseScriptCode || d?.data?.cta?.[0]?.meta?.bseScriptCode,
-            "body": d?.data?.body,
-            "publishedAt": d?.publishedAt
-          }
+          postId: d?.postId,
+          title: d?.data?.title,
+          symbol:
+            d?.data?.cta?.[0]?.meta?.nseScriptCode ||
+            d?.data?.cta?.[0]?.meta?.bseScriptCode,
+          body: d?.data?.body,
+          publishedAt: d?.publishedAt
+        };
       });
     } else {
       store[today] ||= [];
@@ -104,7 +125,7 @@ export async function fetchNews(savingToDb = false) {
       if (!title) continue;
 
       const normalizedTitle = normalize(title);
-      const s = savingToDb ? remoteStore: store[today];
+      const s = savingToDb ? remoteStore : store[today];
       const isDuplicate = s.some(
         (saved) =>
           normalize(saved.title) === normalizedTitle ||
@@ -145,42 +166,42 @@ export async function fetchNews(savingToDb = false) {
 /* -------------------- Watcher -------------------- */
 
 export async function watchNews(callback, savingToDb) {
-    const latest = await fetchNews(savingToDb);
+  const latest = await fetchNews(savingToDb);
 
-    async function runSequentially(latest) {
-      for (const item of latest) {
-        const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
-          hour12: true
-        });
+  async function runSequentially(latest) {
+    for (const item of latest) {
+      const time = new Date(item?.publishedAt).toLocaleString("en-IN", {
+        hour12: true
+      });
 
-        console.log(
-          "\n" +
-            chalk.gray("---------------------------") +
-            chalk.bgBlue.bold("\n📰 NEW NEWS ALERT 📰"),
-          "\n" +
-            chalk.green(
-              `Symbol: ${
-                item?.data?.cta?.[0]?.meta?.nseScriptCode ||
-                item?.data?.cta?.[0]?.meta?.bseScriptCode ||
-                "N/A"
-              }`
-            ),
-          "\n" + chalk.yellow(`Title: ${item?.data?.title || "No title"}`),
-          "\n" +
-            chalk.yellowBright(
-              `Fetched at: ${new Date().toLocaleString("en-IN", {
-                hour12: true
-              })}`
-            ),
-          "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
-          "\n" + chalk.gray("---------------------------")
-        );
+      console.log(
+        "\n" +
+          chalk.gray("---------------------------") +
+          chalk.bgBlue.bold("\n📰 NEW NEWS ALERT 📰"),
+        "\n" +
+          chalk.green(
+            `Symbol: ${
+              item?.data?.cta?.[0]?.meta?.nseScriptCode ||
+              item?.data?.cta?.[0]?.meta?.bseScriptCode ||
+              "N/A"
+            }`
+          ),
+        "\n" + chalk.yellow(`Title: ${item?.data?.title || "No title"}`),
+        "\n" +
+          chalk.yellowBright(
+            `Fetched at: ${new Date().toLocaleString("en-IN", {
+              hour12: true
+            })}`
+          ),
+        "\n" + chalk.yellow(`Published at: ${time || "No time"}`),
+        "\n" + chalk.gray("---------------------------")
+      );
 
-        await sleep(1000); // ⏱️ THIS NOW WORKS SEQUENTIALLY
-        callback(item); // fires one-by-one
-      }
+      await sleep(1000); // ⏱️ THIS NOW WORKS SEQUENTIALLY
+      callback(item); // fires one-by-one
     }
-    await runSequentially(latest);
+  }
+  await runSequentially(latest);
 }
 
 /* -------------------- Time Guard -------------------- */
@@ -192,7 +213,6 @@ function isBetween1AMAnd8AM_IST() {
   const hour = ist.getHours();
   return hour >= 1 && hour < 8;
 }
-
 
 const errorSend = (error, errorMessage) => {
   sendError({

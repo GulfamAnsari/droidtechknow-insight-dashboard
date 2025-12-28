@@ -185,7 +185,9 @@ export default function StockNews() {
       activeTab === "saved" ? filteredSaved : filteredNews;
 
     navigator.clipboard.writeText(
-      list.map(i => i.data.title).join("\n")
+      list.map((i) => {
+        return format(new Date(i.publishedAt), "dd MMM yyyy hh:mma") + ' | ' + i.data.title
+      }).join("\n")
     );
     toast.success("Copied");
   };

@@ -102,7 +102,7 @@ setInterval(() => {
   savetoDBAtNight();
 }, 1000 * 60 * 30);
 
-console.log(await fetchTodayNews());
+// console.log(await fetchTodayNews());
 
 
 app.listen(process.env.PORT, () => {
