@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { FoodItem } from "./types";
 import { toast } from "sonner";
+import { FOODS } from "./foods";
 
 interface FoodSearchDialogProps {
   open: boolean;
@@ -33,28 +34,7 @@ interface USDAFood {
 }
 
 // Common foods database as fallback
-const commonFoods: FoodItem[] = [
-  { id: "1", name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0, servingSize: "100g" },
-  { id: "2", name: "Apple", calories: 52, protein: 0, carbs: 14, fat: 0, servingSize: "100g" },
-  { id: "3", name: "Chicken Breast", calories: 165, protein: 31, carbs: 0, fat: 4, servingSize: "100g" },
-  { id: "4", name: "Rice (cooked)", calories: 130, protein: 3, carbs: 28, fat: 0, servingSize: "100g" },
-  { id: "5", name: "Egg", calories: 155, protein: 13, carbs: 1, fat: 11, servingSize: "100g" },
-  { id: "6", name: "Bread (white)", calories: 265, protein: 9, carbs: 49, fat: 3, servingSize: "100g" },
-  { id: "7", name: "Milk (whole)", calories: 61, protein: 3, carbs: 5, fat: 3, servingSize: "100ml" },
-  { id: "8", name: "Salmon", calories: 208, protein: 20, carbs: 0, fat: 13, servingSize: "100g" },
-  { id: "9", name: "Broccoli", calories: 34, protein: 3, carbs: 7, fat: 0, servingSize: "100g" },
-  { id: "10", name: "Pasta (cooked)", calories: 131, protein: 5, carbs: 25, fat: 1, servingSize: "100g" },
-  { id: "11", name: "Oatmeal", calories: 68, protein: 2, carbs: 12, fat: 1, servingSize: "100g" },
-  { id: "12", name: "Greek Yogurt", calories: 59, protein: 10, carbs: 4, fat: 0, servingSize: "100g" },
-  { id: "13", name: "Almonds", calories: 579, protein: 21, carbs: 22, fat: 50, servingSize: "100g" },
-  { id: "14", name: "Orange", calories: 47, protein: 1, carbs: 12, fat: 0, servingSize: "100g" },
-  { id: "15", name: "Potato (baked)", calories: 93, protein: 2, carbs: 21, fat: 0, servingSize: "100g" },
-  { id: "16", name: "Beef (ground)", calories: 250, protein: 26, carbs: 0, fat: 15, servingSize: "100g" },
-  { id: "17", name: "Cheese (cheddar)", calories: 403, protein: 25, carbs: 1, fat: 33, servingSize: "100g" },
-  { id: "18", name: "Avocado", calories: 160, protein: 2, carbs: 9, fat: 15, servingSize: "100g" },
-  { id: "19", name: "Toast with butter", calories: 313, protein: 6, carbs: 41, fat: 14, servingSize: "2 slices" },
-  { id: "20", name: "Coffee with milk", calories: 30, protein: 1, carbs: 3, fat: 1, servingSize: "1 cup" },
-];
+const commonFoods: FoodItem[] = FOODS;
 
 export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
   open,
