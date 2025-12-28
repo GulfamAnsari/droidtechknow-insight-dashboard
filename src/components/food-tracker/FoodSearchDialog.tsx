@@ -137,7 +137,7 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
   };
 
   // Show common foods when dialog opens
-  const displayResults = results.length > 0 ? results : (query.length < 2 ? commonFoods.slice(0, 10) : []);
+  const displayResults = results.length > 0 ? results : (query.length < 2 ? commonFoods : []);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
