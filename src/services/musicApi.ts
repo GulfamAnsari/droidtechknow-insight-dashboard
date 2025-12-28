@@ -160,17 +160,10 @@ class MusicApiService {
 
   async getPlaylistSongs(playlistId: string): Promise<Song[]> {
     try {
-      // const response = await httpClient.get(
-      //   `${SAVAN_URL}/api/playlists?id=${playlistId}`,
-      //   { skipAuth: true }
-      // );
-      // return response?.data?.songs || [];
-    
       let response = await httpClient.get(
         `${SAVAN_URL}/api/playlists?id=${playlistId}`,
         { skipAuth: true }
       );
-      response = await response.json();
       return response?.data?.songs || [];
     } catch (error) {
       console.error("Get playlist songs failed:", error);
