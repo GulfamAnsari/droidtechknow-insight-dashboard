@@ -1,1 +1,1 @@
-export const SAVAN_URL = "https://saavn.dev";
+export const SAVAN_URL = "https://saavn.sumit.co";
