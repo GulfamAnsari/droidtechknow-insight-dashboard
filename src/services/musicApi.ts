@@ -171,7 +171,7 @@ class MusicApiService {
         { skipAuth: true }
       );
       response = await response.json();
-      return response?.songs || [];
+      return response?.data?.songs || [];
     } catch (error) {
       console.error("Get playlist songs failed:", error);
       return [];
