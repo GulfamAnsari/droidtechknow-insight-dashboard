@@ -1,0 +1,1 @@
+export const SAVAN_URL = "https://saavn.dev";

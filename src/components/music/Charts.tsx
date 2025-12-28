@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Play, TrendingUp } from 'lucide-react';
 import httpClient from '@/utils/httpClient';
 import LazyImage from '@/components/ui/lazy-image';
+import { SAVAN_URL } from '@/services/config';
 
 interface Song {
   id: string;
@@ -33,7 +34,7 @@ const Charts = ({ onPlaySong }: ChartsProps) => {
   const { data: chartsData, isLoading } = useQuery({
     queryKey: ['charts'],
     queryFn: async () => {
-      const response = await httpClient.get('https://saavn.dev/api/charts', {
+      const response = await httpClient.get(`${SAVAN_URL}/api/charts`, {
         skipAuth: true
       });
       return response;

@@ -1,5 +1,6 @@
 import httpClient from "@/utils/httpClient";
 import { weightedPages } from "@/services/constants";
+import { SAVAN_URL } from "./config";
 export interface Song {
   id: string;
   name: string;
@@ -73,25 +74,25 @@ class MusicApiService {
       const [songsRes, albumsRes, artistsRes, playlistsRes] = await Promise.all(
         [
           httpClient.get(
-            `https://saavn.dev/api/search/songs?query=${encodeURIComponent(
+            `${SAVAN_URL}/api/search/songs?query=${encodeURIComponent(
               query
             )}&limit=${limit}&page=${page}`,
             { skipAuth: true }
           ),
           httpClient.get(
-            `https://saavn.dev/api/search/albums?query=${encodeURIComponent(
+            `${SAVAN_URL}/api/search/albums?query=${encodeURIComponent(
               query
             )}&limit=${limit}&page=${page}`,
             { skipAuth: true }
           ),
           httpClient.get(
-            `https://saavn.dev/api/search/artists?query=${encodeURIComponent(
+            `${SAVAN_URL}/api/search/artists?query=${encodeURIComponent(
               query
             )}&limit=${limit}&page=${page}`,
             { skipAuth: true }
           ),
           httpClient.get(
-            `https://saavn.dev/api/search/playlists?query=${encodeURIComponent(
+            `${SAVAN_URL}/api/search/playlists?query=${encodeURIComponent(
               query
             )}&limit=${limit}&page=${page}`,
             { skipAuth: true }
@@ -119,7 +120,7 @@ class MusicApiService {
   ) {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/${type}?query=${encodeURIComponent(
+        `${SAVAN_URL}/api/search/${type}?query=${encodeURIComponent(
           query
         )}&limit=${limit}&page=${page}`,
         { skipAuth: true }
@@ -134,7 +135,7 @@ class MusicApiService {
   async getAlbumSongs(albumId: string): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/albums?id=${albumId}`,
+        `${SAVAN_URL}/api/albums?id=${albumId}`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
@@ -147,7 +148,7 @@ class MusicApiService {
   async getArtistSongs(artistId: string, page: number = 1, limit: number = 10): Promise<Song[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/artists/${artistId}/songs?page=${page}&limit=${limit}`,
+        `${SAVAN_URL}/api/artists/${artistId}/songs?page=${page}&limit=${limit}`,
         { skipAuth: true }
       );
       return response?.data?.songs || [];
@@ -160,7 +161,7 @@ class MusicApiService {
   async getPlaylistSongs(playlistId: string): Promise<Song[]> {
     try {
       // const response = await httpClient.get(
-      //   `https://saavn.dev/api/playlists?id=${playlistId}`,
+      //   `${SAVAN_URL}/api/playlists?id=${playlistId}`,
       //   { skipAuth: true }
       // );
       // return response?.data?.songs || [];
@@ -179,7 +180,7 @@ class MusicApiService {
   async getSong(songId: string): Promise<Song | null> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/songs/${songId}`,
+        `${SAVAN_URL}/api/songs/${songId}`,
         { skipAuth: true }
       );
       return response?.data || null;
@@ -237,7 +238,7 @@ class MusicApiService {
   async getPopularArtists(page = 1, limit = 50): Promise<Artist[]> {
     try {
       const response = await httpClient.get(
-        `https://saavn.dev/api/search/artists?query=popular artists&limit=${limit}&page=${page}`,
+        `${SAVAN_URL}/api/search/artists?query=popular artists&limit=${limit}&page=${page}`,
         { skipAuth: true }
       );
       return response?.data?.results || [];

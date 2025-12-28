@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Music } from 'lucide-react';
 import httpClient from '@/utils/httpClient';
+import { SAVAN_URL } from '@/services/config';
 
 interface LyricsViewProps {
   songName: string;
@@ -20,7 +21,7 @@ const LyricsView = ({ songName, artistName, songId, onClose }: LyricsViewProps) 
       // First try Saavn API if songId is available
       if (songId) {
         try {
-          const saavnResponse = await httpClient.get(`https://saavn.dev/api/lyrics?id=${songId}`, {
+          const saavnResponse = await httpClient.get(`${SAVAN_URL}/api/lyrics?id=${songId}`, {
             skipAuth: true
           });
           if (saavnResponse?.data?.lyrics) {

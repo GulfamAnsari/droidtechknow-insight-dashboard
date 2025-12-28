@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, Play, Heart, Music } from 'lucide-react';
 import httpClient from '@/utils/httpClient';
 import LazyImage from '@/components/ui/lazy-image';
+import { SAVAN_URL } from '@/services/config';
 
 interface Song {
   id: string;
@@ -59,7 +60,7 @@ const LikedSongsManager = ({
       
       for (const songId of likedSongs) {
         try {
-          const response = await httpClient.get(`https://saavn.dev/api/songs/${songId}`, { skipAuth: true });
+          const response = await httpClient.get(`${SAVAN_URL}/api/songs/${songId}`, { skipAuth: true });
           if (response?.data) {
             songsData.push(response.data);
           }
