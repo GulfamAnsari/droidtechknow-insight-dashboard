@@ -88,7 +88,11 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
               };
             });
 
-          setResults(foods);
+            const filtered = commonFoods.filter(f => 
+              f.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+          setResults([...filtered, ...foods]);
           return;
         }
       }
