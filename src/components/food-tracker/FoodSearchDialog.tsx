@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Search, Plus, Minus, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -88,11 +88,8 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
               };
             });
 
-            const filtered = commonFoods.filter(f => 
-              f.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-
-          setResults([...filtered, ...foods]);
+          
+          setResults(foods);
           return;
         }
       }
@@ -114,6 +111,13 @@ export const FoodSearchDialog: React.FC<FoodSearchDialogProps> = ({
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+const filtered = commonFoods.filter(f => 
+        f.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setResults(filtered);
+  }, [query])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
