@@ -98,6 +98,7 @@ async function savetoDBAtNight() {
   }
 }
 
+savetoDBAtNight();
 setInterval(() => {
   savetoDBAtNight();
 }, 1000 * 60 * 30);

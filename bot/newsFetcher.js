@@ -83,15 +83,15 @@ export async function fetchNews(savingToDb = false) {
     // const { data } = await axios.request(options);
     // console.log(data)
     //  
-    const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
-    const kotakData = resKotek?.data?.data?.map((r) => {
-      return convertToGrowwPost(r);
-    });
+    // const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
+    // const kotakData = resKotek?.data?.data?.map((r) => {
+    //   return convertToGrowwPost(r);
+    // });
     const res = await axios.get(NEWS_API_URL);
-    res.data.feed = [
-      ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
-      ...kotakData
-    ];
+    // res.data.feed = [
+    //   ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
+    //   ...kotakData
+    // ];
     if (!Array.isArray(res.data?.feed)) return [];
 
     const store = readStore();
