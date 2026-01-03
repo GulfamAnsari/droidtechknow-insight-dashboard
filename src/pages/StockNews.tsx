@@ -52,6 +52,7 @@ export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
   const [savedNews, setSavedNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
 
   const [activeTab, setActiveTab] = useState("selected");
   const [fromDate, setFromDate] = useState(new Date());
@@ -62,6 +63,33 @@ export default function StockNews() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  /* ---------------- FETCH PRICE CHANGE ---------------- */
+  const fetchPriceChange = async (symbol: string) => {
+    if (priceCache[symbol] !== undefined) return;
+    
+    setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: true } }));
+    
+    try {
+      const res = await fetch(
+        `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=1d&range=1d`
+      );
+      const json = await res.json();
+      const meta = json?.result?.[0]?.meta;
+      
+      if (meta?.chartPreviousClose && meta?.regularMarketPrice) {
+        const prevClose = meta.chartPreviousClose;
+        const currentPrice = meta.regularMarketPrice;
+        const change = ((currentPrice - prevClose) / prevClose) * 100;
+        setPriceCache((prev) => ({ ...prev, [symbol]: { change, loading: false } }));
+      } else {
+        setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: false } }));
+      }
+    } catch {
+      setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: false } }));
+    }
+  };
+
   /* ---------------- LOAD SAVED ---------------- */
   useEffect(() => {
     const s = localStorage.getItem(STORAGE_KEY);
@@ -229,6 +257,15 @@ export default function StockNews() {
   }) => {
     const cta = item.data?.cta?.[0];
     const savedSentiment = getSavedSentiment(item.postId);
+    const symbol = cta?.ctaText || "";
+    const priceData = priceCache[symbol];
+
+    // Fetch price change when card mounts
+    useEffect(() => {
+      if (symbol) {
+        fetchPriceChange(symbol);
+      }
+    }, [symbol]);
 
     return (
       <Card className="bg-[#0d1117] border border-white/10 rounded-lg">
@@ -240,13 +277,31 @@ export default function StockNews() {
             )}
 
             <div className="flex-1">
-              <a
-                href={cta?.ctaUrl}
-                target="_blank"
-                className="text-sm font-semibold text-blue-400 hover:underline"
-              >
-                {cta?.ctaText || item.data.title}
-              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href={cta?.ctaUrl}
+                  target="_blank"
+                  className="text-sm font-semibold text-blue-400 hover:underline"
+                >
+                  {cta?.ctaText || item.data.title}
+                </a>
+                {priceData && !priceData.loading && priceData.change !== 0 && (
+                  <span
+                    className={cn(
+                      "text-xs font-semibold px-1.5 py-0.5 rounded",
+                      priceData.change >= 0
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-red-500/20 text-red-400"
+                    )}
+                  >
+                    {priceData.change >= 0 ? "+" : ""}
+                    {priceData.change.toFixed(2)}%
+                  </span>
+                )}
+                {priceData?.loading && (
+                  <span className="text-xs text-gray-500">...</span>
+                )}
+              </div>
               <div className="text-xs text-gray-400">
                 {format(new Date(item.publishedAt), "dd MMM yyyy hh:mma")}
               </div>
