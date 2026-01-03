@@ -75,8 +75,8 @@ export default function StockNews() {
         `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=1d&range=1d`
       );
       const json = await res.json();
-      const meta = json?.result?.[0]?.meta;
-      
+      const meta = json?.chart?.result?.[0]?.meta;
+ 
       if (meta?.chartPreviousClose && meta?.regularMarketPrice) {
         const prevClose = meta.chartPreviousClose;
         const currentPrice = meta.regularMarketPrice;
