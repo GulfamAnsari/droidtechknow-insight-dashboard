@@ -257,9 +257,9 @@ export default function StockNews() {
   }) => {
     const cta = item.data?.cta?.[0];
     const savedSentiment = getSavedSentiment(item.postId);
-    const nsesymbol = cta?.meta?.nseScriptCode + '.NS';
-    const bsesymbol = cta?.meta?.bseScriptCode + '.BS';
-    const symbol = nsesymbol || bsesymbol;
+    const nseCode = cta?.meta?.nseScriptCode;
+    const bseCode = cta?.meta?.bseScriptCode;
+    const symbol = nseCode ? `${nseCode}.NS` : bseCode ? `${bseCode}.BO` : "";
     const priceData = priceCache[symbol];
 
     // Fetch price change when card mounts
