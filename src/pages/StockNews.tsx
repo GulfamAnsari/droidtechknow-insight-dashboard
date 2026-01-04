@@ -60,7 +60,7 @@ export default function StockNews() {
 
   const [timeFilter, setTimeFilter] = useState("all");
   const [sentimentFilter, setSentimentFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<"time" | "change">("time");
+  const [sortBy, setSortBy] = useState<"time" | "change" | "sentiment">("time");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -193,6 +193,13 @@ export default function StockNews() {
         const changeA = priceCache[symbolA]?.change || 0;
         const changeB = priceCache[symbolB]?.change || 0;
         return changeB - changeA;
+      });
+    }
+    if (sortBy === "sentiment") {
+      return [...items].sort((a, b) => {
+        const confA = a.__confidence || 0;
+        const confB = b.__confidence || 0;
+        return confB - confA;
       });
     }
     return items;
@@ -462,13 +469,14 @@ export default function StockNews() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change")}>
-            <SelectTrigger className="h-8 w-28 text-xs">
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change" | "sentiment")}>
+            <SelectTrigger className="h-8 w-32 text-xs">
               Sort
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="time">Time</SelectItem>
               <SelectItem value="change">% Change</SelectItem>
+              <SelectItem value="sentiment">Sentiment %</SelectItem>
             </SelectContent>
           </Select>
 
