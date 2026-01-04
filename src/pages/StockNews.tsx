@@ -60,6 +60,7 @@ export default function StockNews() {
 
   const [timeFilter, setTimeFilter] = useState("all");
   const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"time" | "change">("time");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -178,14 +179,33 @@ export default function StockNews() {
     return f;
   };
 
+  const sortItems = (items: any[]) => {
+    if (sortBy === "change") {
+      return [...items].sort((a, b) => {
+        const nseA = a.data?.cta?.[0]?.meta?.nseScriptCode;
+        const bseA = a.data?.cta?.[0]?.meta?.bseScriptCode;
+        const symbolA = nseA ? `${nseA}.NS` : bseA ? `${bseA}.BO` : "";
+        
+        const nseB = b.data?.cta?.[0]?.meta?.nseScriptCode;
+        const bseB = b.data?.cta?.[0]?.meta?.bseScriptCode;
+        const symbolB = nseB ? `${nseB}.NS` : bseB ? `${bseB}.BO` : "";
+        
+        const changeA = priceCache[symbolA]?.change || 0;
+        const changeB = priceCache[symbolB]?.change || 0;
+        return changeB - changeA;
+      });
+    }
+    return items;
+  };
+
   const filteredNews = useMemo(
-    () => applyFilters(news),
-    [news, timeFilter, sentimentFilter]
+    () => sortItems(applyFilters(news)),
+    [news, timeFilter, sentimentFilter, sortBy, priceCache]
   );
 
   const filteredSaved = useMemo(
-    () => applyFilters(savedNews),
-    [savedNews, timeFilter, sentimentFilter]
+    () => sortItems(applyFilters(savedNews)),
+    [savedNews, timeFilter, sentimentFilter, sortBy, priceCache]
   );
 
   /* ---------------- SAVE ---------------- */
@@ -388,8 +408,8 @@ export default function StockNews() {
   /* ================= UI ================= */
   return (
     <div className="h-[95vh] flex flex-col">
-      {/* HEADER (UNCHANGED) */}
-      <div className="flex items-center gap-2 p-3 border-b">
+      {/* HEADER */}
+      <div className="flex flex-wrap items-center gap-2 p-3 border-b">
         <Popover>
           <PopoverTrigger asChild>
             <Button size="sm" variant="outline">
@@ -426,7 +446,7 @@ export default function StockNews() {
           Fetch
         </Button>
 
-        <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap gap-2 ml-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="selected">Selected</TabsTrigger>
@@ -441,6 +461,16 @@ export default function StockNews() {
           <Button size="sm" variant="outline" onClick={fetchNews}>
             <RefreshCw className="h-4 w-4" />
           </Button>
+
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change")}>
+            <SelectTrigger className="h-8 w-28 text-xs">
+              Sort
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="time">Time</SelectItem>
+              <SelectItem value="change">% Change</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Select value={timeFilter} onValueChange={setTimeFilter}>
             <SelectTrigger className="h-8 w-28 text-xs">
