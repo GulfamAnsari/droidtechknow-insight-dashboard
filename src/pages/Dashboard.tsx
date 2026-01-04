@@ -1,5 +1,21 @@
-
 import { Link } from "react-router-dom";
+import {
+  CheckSquare,
+  BookOpen,
+  Cloud,
+  BarChart3,
+  FileText,
+  MessageSquare,
+  Music,
+  Apple,
+  Video,
+  CreditCard,
+  TrendingUp,
+  Bell,
+  Users,
+  Film,
+  FileEdit
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,23 +25,27 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  CheckSquare,
-  BookOpen,
-  Cloud,
-  BarChart3,
-  FileText,
-  MessageSquare,
-  Music,
-  AppleIcon,
-  Video,
-  CreditCard,
-  TrendingUp,
-  Bell,
-  Users
-} from "lucide-react";
-import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 import httpClient from "@/utils/httpClient";
+
+const dashboardItems = [
+  { icon: Music, title: "Music", link: "/music", color: "text-purple-500" },
+  { icon: TrendingUp, title: "Stock News", link: "/stock-news", color: "text-emerald-500" },
+  { icon: Bell, title: "Stock Alerts", link: "/stock-alerts", color: "text-orange-500" },
+  { icon: Cloud, title: "My Cloud", link: "/myfiles", color: "text-sky-500" },
+  { icon: BookOpen, title: "Notepad", link: "/notepad", color: "text-amber-500" },
+  { icon: CreditCard, title: "Expenses", link: "/expense-manager", color: "text-yellow-500" },
+  { icon: Video, title: "Screen Recorder", link: "/screen-recorder", color: "text-red-500" },
+  { icon: Film, title: "Video Editor", link: "/video-editor", color: "text-pink-500" },
+  { icon: Users, title: "Video Meet", link: "/video-meet", color: "text-cyan-500" },
+  { icon: FileEdit, title: "PDF Editor", link: "/pdf-editor", color: "text-indigo-500" },
+  { icon: Apple, title: "Food Tracker", link: "/food-tracker", color: "text-green-500" },
+  { icon: FileText, title: "Articles", link: "/articles", color: "text-teal-500" },
+  { icon: MessageSquare, title: "Feedback", link: "/feedback", color: "text-violet-500" },
+  { icon: BarChart3, title: "Analytics", link: "/analytics", color: "text-rose-500" },
+];
+
 
 const DashboardTodoCard = () => {
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0 });
@@ -62,7 +82,6 @@ const DashboardTodoCard = () => {
           <CheckSquare className="h-5 w-5 text-primary" />
           Todo App
         </CardTitle>
-        <CardDescription>Manage your tasks efficiently</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-muted-foreground">
         {isLoading ? (
@@ -95,210 +114,49 @@ const DashboardTodoCard = () => {
   );
 };
 
-const DashboardCard = ({ icon: Icon, title, description, features, link, linkText }) => (
-  <Card className="hover:shadow-md transition-shadow">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-lg">
-        <Icon className="h-5 w-5 text-primary" />
-        {title}
-      </CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {features && (
-        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-          {features.map((f, i) => (
-            <li key={i}>{f}</li>
-          ))}
-        </ul>
-      )}
-    </CardContent>
-    <CardFooter>
-      <Button asChild variant="pill">
-        <Link to={link}>{linkText}</Link>
-      </Button>
-    </CardFooter>
-  </Card>
+
+
+const DashboardTile = ({ icon: Icon, title, link, color }: { 
+  icon: React.ElementType; 
+  title: string; 
+  link: string; 
+  color: string;
+}) => (
+  <Link
+    to={link}
+    className={cn(
+      "flex flex-col items-center justify-center gap-2 p-8 rounded-lg",
+      "bg-card border border-border hover:border-primary",
+      "hover:bg-primary/10 transition-all duration-200",
+      "hover:scale-110 hover:shadow-lg cursor-pointer",
+      "group"
+    )}
+  >
+    <div className={cn(
+      "p-2 rounded-lg transition-colors",
+      "bg-muted group-hover:bg-primary/20",
+      color
+    )}>
+      <Icon className="h-5 w-5" />
+    </div>
+    <span className="text-xs font-medium text-center line-clamp-1">{title}</span>
+  </Link>
 );
 
 const Dashboard = () => {
   return (
-    <div className="mx-auto p-6 inner-container">
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="p-4 inner-container">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
         <DashboardTodoCard />
-
-        <DashboardCard
-          icon={Music}
-          title="Music Player"
-          description="Stream and discover music"
-          features={[
-            "Search songs and artists",
-            "High-quality streaming",
-            "Playlist management",
-            "Offline listening"
-          ]}
-          link="/music"
-          linkText="Open Music App"
-        />
-
-        <DashboardCard
-          icon={AppleIcon}
-          title="Food tracker"
-          description="You can log your food intake"
-          features={["Log food", "Log weight and height", "Track calories", "View history"]}
-          link="/food-tracker"
-          linkText="Food tracker"
-        />
-
-        <DashboardCard
-          icon={CreditCard}
-          title="Expense Manager"
-          description="Track your expenses from Gmail"
-          features={[
-            "Gmail transaction extraction",
-            "Expense categorization",
-            "Monthly summaries",
-            "Real-time tracking"
-          ]}
-          link="/expense-manager"
-          linkText="Manage Expenses"
-        />
-
-        <DashboardCard
-          icon={Video}
-          title="Screen Recorder"
-          description="Record your screen with audio"
-          features={[
-            "High-quality screen recording",
-            "Audio capture support",
-            "Local storage",
-            "Multiple format support"
-          ]}
-          link="/screen-recorder"
-          linkText="Start Recording"
-        />
-
-        <DashboardCard
-          icon={Video}
-          title="Video Editor"
-          description="Edit and export your recordings"
-          features={[
-            "Trim and cut videos",
-            "Combine multiple clips",
-            "Preview before export",
-            "Simple timeline controls"
-          ]}
-          link="/video-editor"
-          linkText="Open Video Editor"
-        />
-
-        <DashboardCard
-          icon={TrendingUp}
-          title="Stock Market News"
-          description="Latest Indian market updates"
-          features={[
-            "Live market news feeds",
-            "Multiple news sources",
-            "Real-time updates",
-            "Image previews"
-          ]}
-          link="/stock-news"
-          linkText="Read Market News"
-        />
-
-        <DashboardCard
-          icon={Bell}
-          title="Stock Alerts"
-          description="Configure price change alerts"
-          features={[
-            "Percentage-based alerts",
-            "NIFTY50 bulk alerts",
-            "Sound notifications",
-            "Recent symbols list"
-          ]}
-          link="/stock-alerts"
-          linkText="Open Stock Alerts"
-        />
-
-        <DashboardCard
-          icon={BookOpen}
-          title="Notepad"
-          description="Take and manage your notes"
-          features={[
-            "Rich text formatting",
-            "Multiple notes support",
-            "Fullscreen mode",
-            "Auto-save functionality"
-          ]}
-          link="/notepad"
-          linkText="Open Notepad"
-        />
-
-        <DashboardCard
-          icon={Cloud}
-          title="My Cloud"
-          description="Store and manage your files"
-          features={[
-            "File upload and preview",
-            "Folder organization",
-            "Responsive layout"
-          ]}
-          link="/myfiles"
-          linkText="Open My Cloud"
-        />
-
-        <DashboardCard
-          icon={BarChart3}
-          title="Analytics"
-          description="Track your performance metrics"
-          features={[
-            "Performance metrics",
-            "Visual charts",
-            "Data export options"
-          ]}
-          link="/analytics"
-          linkText="View Analytics"
-        />
-
-        <DashboardCard
-          icon={FileText}
-          title="Articles"
-          description="Manage your content"
-          features={[
-            "Content management",
-            "Performance tracking",
-            "Publishing tools"
-          ]}
-          link="/articles"
-          linkText="Manage Articles"
-        />
-
-        <DashboardCard
-          icon={MessageSquare}
-          title="Feedback"
-          description="Review user feedback"
-          features={[
-            "Feedback collection",
-            "Comment management",
-            "Response tools"
-          ]}
-          link="/feedback"
-          linkText="View Feedback"
-        />
-
-        <DashboardCard
-          icon={Users}
-          title="Video Meet"
-          description="Join video meetings instantly"
-          features={[
-            "Real-time video & audio",
-            "Up to 10 participants",
-            "Screen sharing",
-            "No login required"
-          ]}
-          link="/video-meet"
-          linkText="Join Meeting"
-        />
+        {dashboardItems.map((item) => (
+          <DashboardTile
+            key={item.title}
+            icon={item.icon}
+            title={item.title}
+            link={item.link}
+            color={item.color}
+          />
+        ))}
       </div>
     </div>
   );
