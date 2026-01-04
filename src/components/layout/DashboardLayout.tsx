@@ -80,77 +80,69 @@ const DashboardLayout = () => {
     <div className="h-screen bg-background flex flex-col">
       <Toaster position={isMobile ? "bottom-center" : "top-right"} />
 
-      {/* Global Header */}
-      <header className="h-14 border-b flex items-center justify-between px-4 bg-background bg-sidebar">
-        <div className="text-lg font-semibold">
-          {isMobile
-            ? "DroidTechKnow Insights"
-            : user && `Welcome, ${user.username}`}
+      {/* Compact Header */}
+      <header className="h-12 border-b flex items-center justify-between px-3 bg-sidebar">
+        {/* Left: App name/logo */}
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">D</span>
+          </div>
+          <span className="font-semibold text-sm hidden sm:block">DTK Insights</span>
         </div>
 
-        <div className="flex items-center">
+        {/* Right: Icon buttons only */}
+        <div className="flex items-center gap-1">
           {!hideRefreshButton && (
             <Button
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon"
               onClick={refreshData}
               disabled={isRefreshing}
-              className="gap-2 mr-2"
+              className="h-8 w-8"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              {!isMobile && "Refresh"}
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             </Button>
           )}
 
           <Button
             onClick={toggleFullscreen}
-            size="sm"
-            variant="outline"
-            className="gap-2"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
           >
-            {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-            <span className="hidden md:inline">
-              {isFullscreen ? "Exit" : "Fullscreen"}
-            </span>
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
+
+          <Button
+            onClick={toggleTheme}
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <UserCircle />
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                <UserCircle className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                {isMobile && user ? `Welcome, ${user.username}` : "My Account"}
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{user?.username || "User"}</p>
+                  <p className="text-xs text-muted-foreground">Account</p>
+                </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={toggleTheme}>
-                {theme === "dark" ? (
-                  <>
-                    <Sun className="mr-2 h-4 w-4" />
-                    <span>Light Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="mr-2 h-4 w-4" />
-                    <span>Dark Mode</span>
-                  </>
-                )}
-              </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                Settings
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout}>
+              <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -159,7 +151,7 @@ const DashboardLayout = () => {
 
       <div className="flex-1 flex overflow-hidden">
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-        <main className="flex-1 flex flex-col w-full h-[calc(100vh-3.5rem)] overflow-hidden">
+        <main className="flex-1 flex flex-col w-full h-[calc(100vh-3rem)] overflow-hidden">
           <div
             className={
               !isMobile

@@ -155,7 +155,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   return (
     <>
       {/* Icon-only sidebar for desktop - don't take visible space */}
-      <aside className="fixed inset-y-0 top-14 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
+      <aside className="fixed inset-y-0 top-12 left-0 z-50 w-16 bg-sidebar border-r border-border transition-all duration-300 flex flex-col items-center py-4">
         <div className="mb-6">
           <NavLink to="/" className="flex justify-center">
             <Home className="h-6 w-6 text-primary" />
