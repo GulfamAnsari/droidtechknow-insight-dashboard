@@ -125,7 +125,7 @@ const DashboardTile = ({ icon: Icon, title, link, color }: {
   <Link
     to={link}
     className={cn(
-      "flex flex-col items-center justify-center gap-2 p-8 rounded-lg",
+      "flex flex-col items-center justify-center gap-2 p-12 rounded-lg",
       "bg-card border border-border hover:border-primary",
       "hover:bg-primary/10 transition-all duration-200",
       "hover:scale-110 hover:shadow-lg cursor-pointer",
