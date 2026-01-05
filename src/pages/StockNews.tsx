@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger
 } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   TrendingUp,
   TrendingDown,
@@ -53,6 +55,8 @@ export default function StockNews() {
   const [savedNews, setSavedNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
 
   const [activeTab, setActiveTab] = useState("selected");
   const [fromDate, setFromDate] = useState(new Date());
@@ -66,10 +70,10 @@ export default function StockNews() {
   );
 
   /* ---------------- FETCH PRICE CHANGE ---------------- */
-  const fetchPriceChange = async (symbol: string) => {
-    if (priceCache[symbol] !== undefined) return;
+  const fetchPriceChange = async (symbol: string, force = false) => {
+    if (!force && priceCache[symbol] !== undefined) return;
     
-    setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: true } }));
+    setPriceCache((prev) => ({ ...prev, [symbol]: { change: prev[symbol]?.change || 0, loading: !force } }));
     
     try {
       const res = await fetch(
@@ -88,9 +92,44 @@ export default function StockNews() {
         setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: false } }));
       }
     } catch {
-      setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: false } }));
+      setPriceCache((prev) => ({ ...prev, [symbol]: { change: prev[symbol]?.change || 0, loading: false } }));
     }
   };
+
+  /* ---------------- GET ALL SYMBOLS ---------------- */
+  const getAllSymbols = useCallback(() => {
+    const items = activeTab === "saved" ? savedNews : news;
+    const symbols: string[] = [];
+    items.forEach((item) => {
+      const cta = item.data?.cta?.[0];
+      const nseCode = cta?.meta?.nseScriptCode;
+      const bseCode = cta?.meta?.bseScriptCode;
+      const symbol = nseCode ? `${nseCode}.NS` : bseCode ? `${bseCode}.BO` : "";
+      if (symbol && !symbols.includes(symbol)) symbols.push(symbol);
+    });
+    return symbols;
+  }, [news, savedNews, activeTab]);
+
+  /* ---------------- AUTO REFRESH PRICES ---------------- */
+  useEffect(() => {
+    if (autoRefresh) {
+      autoRefreshRef.current = setInterval(() => {
+        const symbols = getAllSymbols();
+        symbols.forEach((symbol) => fetchPriceChange(symbol, true));
+      }, 1000);
+    } else {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+    }
+
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+    };
+  }, [autoRefresh, getAllSymbols]);
 
   /* ---------------- LOAD SAVED ---------------- */
   useEffect(() => {
@@ -469,6 +508,17 @@ export default function StockNews() {
           <Button size="sm" variant="outline" onClick={fetchNews}>
             <RefreshCw className="h-4 w-4" />
           </Button>
+
+          <div className="flex items-center gap-1.5">
+            <Checkbox 
+              id="auto-refresh" 
+              checked={autoRefresh} 
+              onCheckedChange={(checked) => setAutoRefresh(checked === true)}
+            />
+            <Label htmlFor="auto-refresh" className="text-xs cursor-pointer">
+              Auto
+            </Label>
+          </div>
 
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change" | "sentiment")}>
             <SelectTrigger className="h-8 w-32 text-xs">
