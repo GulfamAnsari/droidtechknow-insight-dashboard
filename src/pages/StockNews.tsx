@@ -73,7 +73,8 @@ export default function StockNews() {
     
     try {
       const res = await fetch(
-        `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=1d&range=1d`
+        `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=1d&range=1d`,
+        { cache: "no-store" }
       );
       const json = await res.json();
       const meta = json?.chart?.result?.[0]?.meta;
