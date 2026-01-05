@@ -116,7 +116,7 @@ export default function StockNews() {
       autoRefreshRef.current = setInterval(() => {
         const symbols = getAllSymbols();
         symbols.forEach((symbol) => fetchPriceChange(symbol, true));
-      }, 1000);
+      }, 2000);
     } else {
       if (autoRefreshRef.current) {
         clearInterval(autoRefreshRef.current);
