@@ -269,9 +269,10 @@ export default function StockNews() {
 
   /* ---------------- SAVE ---------------- */
   const saveNews = (item: any, sentiment: "bullish" | "bearish") => {
+    const existing = savedNews.find((s) => s.postId === item.postId);
     const updated = [
       ...savedNews.filter((s) => s.postId !== item.postId),
-      { ...item, sentiment, savedAt: new Date().toISOString() }
+      { ...item, sentiment, remark: existing?.remark || item.remark || "", savedAt: new Date().toISOString() }
     ];
     setSavedNews(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -283,6 +284,14 @@ export default function StockNews() {
     setSavedNews(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     toast.success("Removed from saved");
+  };
+
+  const updateSavedRemark = (postId: string, remark: string) => {
+    const updated = savedNews.map((item) =>
+      item.postId === postId ? { ...item, remark } : item
+    );
+    setSavedNews(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
   const getSavedSentiment = (postId: string) =>
@@ -477,13 +486,17 @@ export default function StockNews() {
             </span>
           )}
 
-          {/* REMARK - Only in Later tab */}
-          {activeTab === "later" && (
+          {/* REMARK - For Saved and Later tabs */}
+          {(activeTab === "saved" || activeTab === "later") && (
             <div className="mt-2">
               <Input
                 placeholder="Add remark..."
                 value={item.remark || ""}
-                onChange={(e) => updateRemark(item.postId, e.target.value)}
+                onChange={(e) => 
+                  activeTab === "saved" 
+                    ? updateSavedRemark(item.postId, e.target.value)
+                    : updateRemark(item.postId, e.target.value)
+                }
                 className="h-7 text-xs bg-white/5 border-white/10"
               />
             </div>
