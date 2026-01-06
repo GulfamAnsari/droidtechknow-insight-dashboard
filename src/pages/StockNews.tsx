@@ -26,8 +26,11 @@ import {
   Copy,
   Filter,
   CalendarIcon,
-  Trash2
+  Trash2,
+  Clock,
+  ArrowLeft
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getSentimentLocal } from "@/utils/sentiments";
@@ -43,6 +46,7 @@ import { SortableContext, useSortable, arrayMove } from "@dnd-kit/sortable";
 
 import { CSS } from "@dnd-kit/utilities";
 const STORAGE_KEY = "stock-news-saved";
+const LATER_STORAGE_KEY = "stock-news-later";
 
 const mapSentiment = (label?: string) => {
   if (label === "positive") return "bullish";
@@ -53,6 +57,7 @@ const mapSentiment = (label?: string) => {
 export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
   const [savedNews, setSavedNews] = useState<any[]>([]);
+  const [laterNews, setLaterNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -98,7 +103,7 @@ export default function StockNews() {
 
   /* ---------------- GET ALL SYMBOLS ---------------- */
   const getAllSymbols = useCallback(() => {
-    const items = activeTab === "saved" ? savedNews : news;
+    const items = activeTab === "saved" ? savedNews : activeTab === "later" ? laterNews : news;
     const symbols: string[] = [];
     items.forEach((item) => {
       const cta = item.data?.cta?.[0];
@@ -108,7 +113,7 @@ export default function StockNews() {
       if (symbol && !symbols.includes(symbol)) symbols.push(symbol);
     });
     return symbols;
-  }, [news, savedNews, activeTab]);
+  }, [news, savedNews, laterNews, activeTab]);
 
   /* ---------------- AUTO REFRESH PRICES ---------------- */
   useEffect(() => {
@@ -131,10 +136,12 @@ export default function StockNews() {
     };
   }, [autoRefresh, getAllSymbols]);
 
-  /* ---------------- LOAD SAVED ---------------- */
+  /* ---------------- LOAD SAVED & LATER ---------------- */
   useEffect(() => {
     const s = localStorage.getItem(STORAGE_KEY);
     if (s) setSavedNews(JSON.parse(s));
+    const l = localStorage.getItem(LATER_STORAGE_KEY);
+    if (l) setLaterNews(JSON.parse(l));
   }, []);
 
   /* ---------------- FETCH ---------------- */
@@ -255,6 +262,11 @@ export default function StockNews() {
     [savedNews, timeFilter, sentimentFilter, sortBy, priceCache]
   );
 
+  const filteredLater = useMemo(
+    () => sortItems(applyFilters(laterNews)),
+    [laterNews, timeFilter, sentimentFilter, sortBy, priceCache]
+  );
+
   /* ---------------- SAVE ---------------- */
   const saveNews = (item: any, sentiment: "bullish" | "bearish") => {
     const updated = [
@@ -276,9 +288,57 @@ export default function StockNews() {
   const getSavedSentiment = (postId: string) =>
     savedNews.find((s) => s.postId === postId)?.sentiment || "";
 
+  /* ---------------- SAVE FOR LATER ---------------- */
+  const moveToLater = (item: any, remark: string = "") => {
+    // Remove from saved
+    const updatedSaved = savedNews.filter((s) => s.postId !== item.postId);
+    setSavedNews(updatedSaved);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+    
+    // Add to later
+    const updatedLater = [
+      ...laterNews.filter((s) => s.postId !== item.postId),
+      { ...item, remark, movedAt: new Date().toISOString() }
+    ];
+    setLaterNews(updatedLater);
+    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+    toast.success("Moved to Save for Later");
+  };
+
+  const updateRemark = (postId: string, remark: string) => {
+    const updated = laterNews.map((item) =>
+      item.postId === postId ? { ...item, remark } : item
+    );
+    setLaterNews(updated);
+    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const removeLater = (postId: string) => {
+    const updated = laterNews.filter((s) => s.postId !== postId);
+    setLaterNews(updated);
+    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
+    toast.success("Removed from Save for Later");
+  };
+
+  const moveBackToSaved = (item: any) => {
+    // Remove from later
+    const updatedLater = laterNews.filter((s) => s.postId !== item.postId);
+    setLaterNews(updatedLater);
+    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+    
+    // Add back to saved
+    const updatedSaved = [
+      ...savedNews.filter((s) => s.postId !== item.postId),
+      { ...item, savedAt: new Date().toISOString() }
+    ];
+    setSavedNews(updatedSaved);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+    toast.success("Moved back to Saved");
+  };
+
   /* ---------------- COPY ---------------- */
   const copyAllNews = () => {
-    const list = activeTab === "saved" ? filteredSaved : filteredNews;
+    const list = activeTab === "saved" ? filteredSaved : activeTab === "later" ? filteredLater : filteredNews;
 
     navigator.clipboard.writeText(
       list
@@ -377,10 +437,32 @@ export default function StockNews() {
             </div>
 
             {activeTab === "saved" && (
-              <Trash2
-                onClick={() => removeSaved(item.postId)}
-                className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
-              />
+              <div className="flex gap-1">
+                <span title="Save for Later">
+                  <Clock
+                    onClick={() => moveToLater(item)}
+                    className="h-4 w-4 text-yellow-400 cursor-pointer hover:text-yellow-500"
+                  />
+                </span>
+                <Trash2
+                  onClick={() => removeSaved(item.postId)}
+                  className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
+                />
+              </div>
+            )}
+            {activeTab === "later" && (
+              <div className="flex gap-1">
+                <span title="Move back to Saved">
+                  <ArrowLeft
+                    onClick={() => moveBackToSaved(item)}
+                    className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
+                  />
+                </span>
+                <Trash2
+                  onClick={() => removeLater(item.postId)}
+                  className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
+                />
+              </div>
             )}
           </div>
 
@@ -393,6 +475,18 @@ export default function StockNews() {
             <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
               {item.from}
             </span>
+          )}
+
+          {/* REMARK - Only in Later tab */}
+          {activeTab === "later" && (
+            <div className="mt-2">
+              <Input
+                placeholder="Add remark..."
+                value={item.remark || ""}
+                onChange={(e) => updateRemark(item.postId, e.target.value)}
+                className="h-7 text-xs bg-white/5 border-white/10"
+              />
+            </div>
           )}
 
           {/* FOOTER */}
@@ -498,6 +592,7 @@ export default function StockNews() {
             <TabsList>
               <TabsTrigger value="selected">Selected</TabsTrigger>
               <TabsTrigger value="saved">Saved</TabsTrigger>
+              <TabsTrigger value="later">Later</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -576,6 +671,29 @@ export default function StockNews() {
             <SortableContext items={savedNews.map((i) => i.postId)}>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
                 {filteredSaved.map((item) => (
+                  <SortableNewsCard key={item.postId} item={item} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : activeTab === "later" ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => {
+              const { active, over } = event;
+              if (!over || active.id === over.id) return;
+
+              setLaterNews((prev) => {
+                const oldIndex = prev.findIndex((i) => i.postId === active.id);
+                const newIndex = prev.findIndex((i) => i.postId === over.id);
+                return arrayMove(prev, oldIndex, newIndex);
+              });
+            }}
+          >
+            <SortableContext items={laterNews.map((i) => i.postId)}>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
+                {filteredLater.map((item) => (
                   <SortableNewsCard key={item.postId} item={item} />
                 ))}
               </div>
