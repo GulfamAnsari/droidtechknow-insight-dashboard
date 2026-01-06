@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, act } from "react";
+import { useSwipeable } from "react-swipeable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,34 @@ import { Progress } from "@radix-ui/react-progress";
 import SearchSuggestions from "@/components/music/SearchSuggestions";
 import FavoriteArtistsModal from "@/components/music/FavoriteArtistsModal";
 import RecommendationSettingsModal from "@/components/music/RecommendationSettingsModal";
+
+// Swipeable sidebar component for Now Playing
+const SidebarSwipeable = ({ 
+  activeTab, 
+  setActiveTab, 
+  playlist, 
+  suggestedSongs,
+  children 
+}: { 
+  activeTab: string; 
+  setActiveTab: (tab: string) => void;
+  playlist: Song[];
+  suggestedSongs: Song[];
+  children: React.ReactNode;
+}) => {
+  const handlers = useSwipeable({
+    onSwipedLeft: () => setActiveTab("suggestions"),
+    onSwipedRight: () => setActiveTab("playlist"),
+    trackMouse: true,
+    preventScrollOnSwipe: true,
+  });
+
+  return (
+    <div {...handlers} className="w-80 border-l bg-muted/30 flex flex-col mb-6">
+      {children}
+    </div>
+  );
+};
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -725,7 +754,7 @@ const Music = () => {
 
         {/* Desktop Now Playing Sidebar */}
         {!isMobile && !isFullscreen && currentSong && showPlaylist && (
-          <div className="w-80 border-l bg-muted/30 flex flex-col mb-6">
+          <SidebarSwipeable activeTab={activeTab} setActiveTab={setActiveTab} playlist={playlist} suggestedSongs={suggestedSongs}>
             <div className="p-4 border-b">
               <Tabs
                 value={activeTab}
@@ -875,7 +904,7 @@ const Music = () => {
                 </div>
               )}
             </div>
-          </div>
+          </SidebarSwipeable>
         )}
       </div>
 
