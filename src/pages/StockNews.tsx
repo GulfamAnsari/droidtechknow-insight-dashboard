@@ -57,19 +57,9 @@ const mapSentiment = (label?: string) => {
   return "neutral";
 };
 
-// Time slider values: 0=All, 1=9-10, 2=10-11, ... 9=17-18
-const TIME_SLOTS = [
-  { label: "All", value: 0, start: 0, end: 24 },
-  { label: "9-10", value: 1, start: 9, end: 10 },
-  { label: "10-11", value: 2, start: 10, end: 11 },
-  { label: "11-12", value: 3, start: 11, end: 12 },
-  { label: "12-13", value: 4, start: 12, end: 13 },
-  { label: "13-14", value: 5, start: 13, end: 14 },
-  { label: "14-15", value: 6, start: 14, end: 15 },
-  { label: "15-16", value: 7, start: 15, end: 16 },
-  { label: "16-17", value: 8, start: 16, end: 17 },
-  { label: "17-18", value: 9, start: 17, end: 18 },
-];
+// Time range hours for double slider
+const TIME_MIN = 9;
+const TIME_MAX = 18;
 
 export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
@@ -85,7 +75,7 @@ export default function StockNews() {
   const [toDate, setToDate] = useState(new Date());
 
   // Combined filters
-  const [timeSlot, setTimeSlot] = useState(0); // slider value
+  const [timeRange, setTimeRange] = useState<[number, number]>([TIME_MIN, TIME_MAX]); // double slider [start, end]
   const [sentimentFilters, setSentimentFilters] = useState<string[]>([]); // checkboxes: bullish, bearish, neutral
   const [sourceFilter, setSourceFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -237,12 +227,11 @@ export default function StockNews() {
   const applyFilters = (items: any[]) => {
     let f = [...items];
 
-    // Time slot filter (slider)
-    if (timeSlot > 0) {
-      const slot = TIME_SLOTS[timeSlot];
+    // Time range filter (double slider)
+    if (timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) {
       f = f.filter((i) => {
         const h = new Date(i.publishedAt).getHours();
-        return h >= slot.start && h < slot.end;
+        return h >= timeRange[0] && h < timeRange[1];
       });
     }
 
@@ -310,17 +299,17 @@ export default function StockNews() {
 
   const filteredNews = useMemo(
     () => sortItems(applyFilters(news)),
-    [news, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [news, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   const filteredSaved = useMemo(
     () => sortItems(applyFilters(savedNews)),
-    [savedNews, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [savedNews, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   const filteredLater = useMemo(
     () => sortItems(applyFilters(laterNews)),
-    [laterNews, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [laterNews, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   /* ---------------- SAVE ---------------- */
@@ -701,32 +690,33 @@ export default function StockNews() {
               <Button size="sm" variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Filters
-                {(timeSlot > 0 || sentimentFilters.length > 0 || sourceFilter !== "all") && (
+                {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) || sentimentFilters.length > 0 || sourceFilter !== "all") && (
                   <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary text-primary-foreground rounded-full">
-                    {(timeSlot > 0 ? 1 : 0) + sentimentFilters.length + (sourceFilter !== "all" ? 1 : 0)}
+                    {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) ? 1 : 0) + sentimentFilters.length + (sourceFilter !== "all" ? 1 : 0)}
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-4" align="end">
               <div className="space-y-4">
-                {/* Time Slider */}
+                {/* Time Range Slider */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">Time: {TIME_SLOTS[timeSlot].label}</Label>
+                  <Label className="text-xs font-medium">
+                    Time: {timeRange[0]}:00 - {timeRange[1]}:00
+                  </Label>
                   <Slider
-                    value={[timeSlot]}
-                    onValueChange={([v]) => setTimeSlot(v)}
-                    min={0}
-                    max={9}
+                    value={timeRange}
+                    onValueChange={(v) => setTimeRange(v as [number, number])}
+                    min={TIME_MIN}
+                    max={TIME_MAX}
                     step={1}
                     className="w-full"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>All</span>
-                    <span>9-10</span>
-                    <span>12-13</span>
-                    <span>15-16</span>
-                    <span>17-18</span>
+                    <span>9:00</span>
+                    <span>12:00</span>
+                    <span>15:00</span>
+                    <span>18:00</span>
                   </div>
                 </div>
 
@@ -783,7 +773,7 @@ export default function StockNews() {
                   variant="ghost"
                   className="w-full text-xs"
                   onClick={() => {
-                    setTimeSlot(0);
+                    setTimeRange([TIME_MIN, TIME_MAX]);
                     setSentimentFilters([]);
                     setSourceFilter("all");
                   }}
