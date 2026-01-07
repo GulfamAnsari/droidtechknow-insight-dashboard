@@ -96,7 +96,7 @@ export async function fetchNews(savingToDb = false) {
     res.data.feed = [
       ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
       ...kotakData,
-      normalized[0]
+      ...normalized
     ];
     if (!Array.isArray(res.data?.feed)) return [];
 

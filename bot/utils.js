@@ -147,7 +147,7 @@ export function mapBseToNews(bseItem) {
       ],
 
       title: bseItem.HEADLINE || bseItem.NEWSSUB,
-      body: bseItem.NEWSSUB,
+      body: `${bseItem.NEWSSUB}\n\nCategory: ${bseItem.CATEGORYNAME}`,
       media: bseItem.ATTACHMENTNAME
         ? [
             {
