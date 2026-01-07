@@ -528,7 +528,10 @@ export default function StockNews() {
             {item.data.body}
           </p>
 
-          <div>
+          <div style={{
+            display: "flex",
+    justifyContent: "space-between"
+          }}>
             {item?.from && (
             <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
               {item.from}
@@ -538,7 +541,7 @@ export default function StockNews() {
           {
             item?.data?.media?.length ? <a href={`${item?.data?.media?.[0].url}`} target="_blank">
               <File
-                className="p-2 h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
+                className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
               />
             </a>: null
           }
