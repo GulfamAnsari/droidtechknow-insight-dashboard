@@ -1,3 +1,5 @@
+import { buildBseNseMap } from "./utils/mapper-builder";
+
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function getISTNow() {
@@ -110,3 +112,74 @@ export function convertToGrowwPost(input) {
 }
 
 
+export function mapBseToNews(bseItem) {
+  const publishedAt = new Date(bseItem.DT_TM);
+  const companySlug = (bseItem.SLONGNAME || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return {
+    name: `${bseItem.NEWSID}_${bseItem.SLONGNAME}`,
+    postId: bseItem.NEWSID,
+    category: bseItem.CATEGORYNAME || null,
+    publisher: "BSE India",
+    publisherId: "bseindia",
+    publishedAt: publishedAt.toISOString(),
+    expireAt: new Date(
+      publishedAt.getTime() + 5 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+    campaignType: "GENERIC",
+    from: "BSE INDIA",
+    data: {
+      cta: [
+        {
+          type: "STOCK",
+          ctaText: bseItem.SLONGNAME,
+          ctaUrl: `https://groww.in/stocks/${companySlug}`,
+          logoUrl: resolveStockLogo({
+            symbol: String(bseItem.SCRIP_CD),
+            companyName: bseItem.SLONGNAME,
+          }) || "https://picsum.photos/200/300",
+          meta: {
+            bseScriptCode: String(bseItem.SCRIP_CD)
+          }
+        }
+      ],
+
+      title: bseItem.HEADLINE || bseItem.NEWSSUB,
+      body: bseItem.NEWSSUB,
+      media: bseItem.ATTACHMENTNAME
+        ? [
+            {
+              type: "PDF",
+              url: `https://www.bseindia.com/xml-data/corpfiling/AttachLive/${bseItem.ATTACHMENTNAME}`
+            }
+          ]
+        : [],
+      reactions: [
+        {
+          type: "LIKE",
+          count: 0,
+          active: true
+        }
+      ]
+    },
+
+    machineLearningSentiments: null // you already enrich later
+  };
+}
+
+export function getTodayYYYYMMDD() {
+  const now = new Date();
+
+  // Convert to IST
+  const ist = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+
+  const y = ist.getFullYear();
+  const m = String(ist.getMonth() + 1).padStart(2, "0");
+  const d = String(ist.getDate()).padStart(2, "0");
+
+  return `${y}${m}${d}`;
+}

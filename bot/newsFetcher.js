@@ -4,12 +4,14 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import { sendError, sendTelegramNews } from "./telegram.js";
-import { convertToGrowwPost, sleep } from "./utils.js";
+import { convertToGrowwPost, getTodayYYYYMMDD, mapBseToNews, sleep } from "./utils.js";
+import { fetchBseAnnouncements } from "./bseNews.js";
 
 dotenv.config();
 
 const NEWS_API_URL = process.env.NEWS_API_URL;
 const NEWS_AGGREGATOR_KOTAK = process.env.NEWS_AGGREGATOR_KOTAK;
+const NEWS_AGGREGATOR_BSE = process.env.NEWS_AGGREGATOR_BSE;
 const INDIA_API_URL = process.env.INDIA_API_URL;
 const INDIA_API_KEY = process.env.INDIA_API_KEY;
 const STORE_PATH = path.resolve("./news-store.json");
@@ -83,15 +85,19 @@ export async function fetchNews(savingToDb = false) {
     // const { data } = await axios.request(options);
     // console.log(data)
     //  
-    // const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
-    // const kotakData = resKotek?.data?.data?.map((r) => {
-    //   return convertToGrowwPost(r);
-    // });
+    const raw = await fetchBseAnnouncements();
+    const normalized = raw.map(mapBseToNews);
+
+    const resKotek = await axios.get(NEWS_AGGREGATOR_KOTAK);
+    const kotakData = resKotek?.data?.data?.map((r) => {
+      return convertToGrowwPost(r);
+    });
     const res = await axios.get(NEWS_API_URL);
-    // res.data.feed = [
-    //   ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
-    //   ...kotakData
-    // ];
+    res.data.feed = [
+      ...res.data.feed.map((e) => ({ ...e, from: "Groww" })),
+      ...kotakData,
+      normalized[0]
+    ];
     if (!Array.isArray(res.data?.feed)) return [];
 
     const store = readStore();
@@ -204,15 +210,6 @@ export async function watchNews(callback, savingToDb) {
   await runSequentially(latest);
 }
 
-/* -------------------- Time Guard -------------------- */
-
-function isBetween1AMAnd8AM_IST() {
-  const ist = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  );
-  const hour = ist.getHours();
-  return hour >= 1 && hour < 8;
-}
 
 const errorSend = (error, errorMessage) => {
   sendError({
