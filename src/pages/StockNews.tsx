@@ -467,6 +467,7 @@ export default function StockNews() {
                 <a
                   href={cta?.ctaUrl}
                   target="_blank"
+                  rel="noreferrer"
                   className="text-sm font-semibold text-blue-400 hover:underline"
                 >
                   {cta?.ctaText || item.data.title}
@@ -539,7 +540,7 @@ export default function StockNews() {
           )}
 
           {
-            item?.data?.media?.length ? <a href={`${item?.data?.media?.[0].url}`} target="_blank">
+            item?.data?.media?.length ? <a rel="noreferrer" href={`${item?.data?.media?.[0].url}`} target="_blank">
               <File
                 className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
               />
