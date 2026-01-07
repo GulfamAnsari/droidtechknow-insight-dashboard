@@ -138,6 +138,8 @@ export default function StockNews() {
   /* ---------------- AUTO REFRESH PRICES ---------------- */
   useEffect(() => {
     if (autoRefresh) {
+      const symbols = getAllSymbols();
+      symbols.forEach((symbol) => fetchPriceChange(symbol, true));
       autoRefreshRef.current = setInterval(() => {
         const symbols = getAllSymbols();
         symbols.forEach((symbol) => fetchPriceChange(symbol, true));
