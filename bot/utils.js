@@ -1,4 +1,4 @@
-import { buildBseNseMap } from "./utils/mapper-builder";
+
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -139,7 +139,7 @@ export function mapBseToNews(bseItem) {
           logoUrl: resolveStockLogo({
             symbol: String(bseItem.SCRIP_CD),
             companyName: bseItem.SLONGNAME,
-          }) || "https://picsum.photos/200/300",
+          }) || "https://droidtechknow.com/admin/api/files/uploads/23/thumbnail/demo.png",
           meta: {
             bseScriptCode: String(bseItem.SCRIP_CD)
           }
