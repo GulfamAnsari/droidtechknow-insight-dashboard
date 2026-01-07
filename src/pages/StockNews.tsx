@@ -31,7 +31,8 @@ import {
   Clock,
   ArrowLeft,
   Search,
-  X
+  X,
+  File
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -532,6 +533,14 @@ export default function StockNews() {
               {item.from}
             </span>
           )}
+
+          {
+            item?.data?.media?.length ? <a href={`${item?.data?.media?.[0].url}`}>
+              <File
+                className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
+              />
+            </a>: null
+          }
 
           {/* REMARK - For Saved and Later tabs */}
           {(activeTab === "saved" || activeTab === "later") && (
