@@ -58,8 +58,8 @@ const mapSentiment = (label?: string) => {
 };
 
 // Time range hours for double slider
-const TIME_MIN = 9;
-const TIME_MAX = 18;
+const TIME_MIN = 0;
+const TIME_MAX = 24;
 
 export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
@@ -77,7 +77,7 @@ export default function StockNews() {
   // Combined filters
   const [timeRange, setTimeRange] = useState<[number, number]>([TIME_MIN, TIME_MAX]); // double slider [start, end]
   const [sentimentFilters, setSentimentFilters] = useState<string[]>([]); // checkboxes: bullish, bearish, neutral
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sourceFilters, setSourceFilters] = useState<string[]>([]); // checkboxes for sources
   const [searchQuery, setSearchQuery] = useState("");
   
   const [sortBy, setSortBy] = useState<"time" | "change" | "sentiment">("time");
@@ -244,9 +244,9 @@ export default function StockNews() {
       );
     }
 
-    // Source filter
-    if (sourceFilter !== "all") {
-      f = f.filter((i) => i.from === sourceFilter);
+    // Source filter (checkboxes)
+    if (sourceFilters.length > 0) {
+      f = f.filter((i) => sourceFilters.includes(i.from));
     }
 
     // Search filter
@@ -299,17 +299,17 @@ export default function StockNews() {
 
   const filteredNews = useMemo(
     () => sortItems(applyFilters(news)),
-    [news, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [news, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
   );
 
   const filteredSaved = useMemo(
     () => sortItems(applyFilters(savedNews)),
-    [savedNews, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [savedNews, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
   );
 
   const filteredLater = useMemo(
     () => sortItems(applyFilters(laterNews)),
-    [laterNews, timeRange, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
+    [laterNews, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
   );
 
   /* ---------------- SAVE ---------------- */
@@ -690,9 +690,9 @@ export default function StockNews() {
               <Button size="sm" variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Filters
-                {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) || sentimentFilters.length > 0 || sourceFilter !== "all") && (
+                {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) || sentimentFilters.length > 0 || sourceFilters.length > 0) && (
                   <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary text-primary-foreground rounded-full">
-                    {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) ? 1 : 0) + sentimentFilters.length + (sourceFilter !== "all" ? 1 : 0)}
+                    {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) ? 1 : 0) + sentimentFilters.length + sourceFilters.length}
                   </span>
                 )}
               </Button>
@@ -713,10 +713,11 @@ export default function StockNews() {
                     className="w-full"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>9:00</span>
+                    <span>0:00</span>
+                    <span>6:00</span>
                     <span>12:00</span>
-                    <span>15:00</span>
                     <span>18:00</span>
+                    <span>24:00</span>
                   </div>
                 </div>
 
@@ -751,20 +752,27 @@ export default function StockNews() {
                   </div>
                 </div>
 
-                {/* Source Filter */}
+                {/* Source Filter Checkboxes */}
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">Source</Label>
-                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="All Sources" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      {availableSources.map((source) => (
-                        <SelectItem key={source} value={source}>{source}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {availableSources.map((source) => (
+                      <div key={source} className="flex items-center gap-1.5">
+                        <Checkbox
+                          id={`source-${source}`}
+                          checked={sourceFilters.includes(source)}
+                          onCheckedChange={() => {
+                            setSourceFilters((prev) =>
+                              prev.includes(source)
+                                ? prev.filter((s) => s !== source)
+                                : [...prev, source]
+                            );
+                          }}
+                        />
+                        <Label htmlFor={`source-${source}`} className="text-xs cursor-pointer">{source}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Clear Filters */}
@@ -775,7 +783,7 @@ export default function StockNews() {
                   onClick={() => {
                     setTimeRange([TIME_MIN, TIME_MAX]);
                     setSentimentFilters([]);
-                    setSourceFilter("all");
+                    setSourceFilters([]);
                   }}
                 >
                   Clear All Filters
