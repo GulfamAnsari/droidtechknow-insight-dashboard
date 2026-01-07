@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   TrendingUp,
   TrendingDown,
@@ -28,7 +29,9 @@ import {
   CalendarIcon,
   Trash2,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  Search,
+  X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -54,6 +57,20 @@ const mapSentiment = (label?: string) => {
   return "neutral";
 };
 
+// Time slider values: 0=All, 1=9-10, 2=10-11, ... 9=17-18
+const TIME_SLOTS = [
+  { label: "All", value: 0, start: 0, end: 24 },
+  { label: "9-10", value: 1, start: 9, end: 10 },
+  { label: "10-11", value: 2, start: 10, end: 11 },
+  { label: "11-12", value: 3, start: 11, end: 12 },
+  { label: "12-13", value: 4, start: 12, end: 13 },
+  { label: "13-14", value: 5, start: 13, end: 14 },
+  { label: "14-15", value: 6, start: 14, end: 15 },
+  { label: "15-16", value: 7, start: 15, end: 16 },
+  { label: "16-17", value: 8, start: 16, end: 17 },
+  { label: "17-18", value: 9, start: 17, end: 18 },
+];
+
 export default function StockNews() {
   const [news, setNews] = useState<any[]>([]);
   const [savedNews, setSavedNews] = useState<any[]>([]);
@@ -67,12 +84,25 @@ export default function StockNews() {
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
 
-  const [timeFilter, setTimeFilter] = useState("all");
-  const [sentimentFilter, setSentimentFilter] = useState("all");
+  // Combined filters
+  const [timeSlot, setTimeSlot] = useState(0); // slider value
+  const [sentimentFilters, setSentimentFilters] = useState<string[]>([]); // checkboxes: bullish, bearish, neutral
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  
   const [sortBy, setSortBy] = useState<"time" | "change" | "sentiment">("time");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Get unique sources from news
+  const availableSources = useMemo(() => {
+    const sources = new Set<string>();
+    news.forEach((item) => {
+      if (item.from) sources.add(item.from);
+    });
+    return Array.from(sources);
+  }, [news]);
 
   /* ---------------- FETCH PRICE CHANGE ---------------- */
   const fetchPriceChange = async (symbol: string, force = false) => {
@@ -207,23 +237,49 @@ export default function StockNews() {
   const applyFilters = (items: any[]) => {
     let f = [...items];
 
-    if (timeFilter !== "all") {
+    // Time slot filter (slider)
+    if (timeSlot > 0) {
+      const slot = TIME_SLOTS[timeSlot];
       f = f.filter((i) => {
         const h = new Date(i.publishedAt).getHours();
-        if (timeFilter === "morning") return h >= 9 && h < 12;
-        if (timeFilter === "afternoon") return h >= 12 && h < 15;
-        return h >= 15;
+        return h >= slot.start && h < slot.end;
       });
     }
 
-    if (sentimentFilter !== "all") {
+    // Sentiment checkboxes filter
+    if (sentimentFilters.length > 0) {
       f = f.filter(
         (i) =>
-          i.__sentiment === sentimentFilter || i.sentiment === sentimentFilter
+          sentimentFilters.includes(i.__sentiment) || 
+          sentimentFilters.includes(i.sentiment)
       );
     }
 
+    // Source filter
+    if (sourceFilter !== "all") {
+      f = f.filter((i) => i.from === sourceFilter);
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      f = f.filter((i) => {
+        const title = i.data?.title?.toLowerCase() || "";
+        const body = i.data?.body?.toLowerCase() || "";
+        const ctaText = i.data?.cta?.[0]?.ctaText?.toLowerCase() || "";
+        return title.includes(query) || body.includes(query) || ctaText.includes(query);
+      });
+    }
+
     return f;
+  };
+
+  const toggleSentimentFilter = (sentiment: string) => {
+    setSentimentFilters((prev) =>
+      prev.includes(sentiment)
+        ? prev.filter((s) => s !== sentiment)
+        : [...prev, sentiment]
+    );
   };
 
   const sortItems = (items: any[]) => {
@@ -254,17 +310,17 @@ export default function StockNews() {
 
   const filteredNews = useMemo(
     () => sortItems(applyFilters(news)),
-    [news, timeFilter, sentimentFilter, sortBy, priceCache]
+    [news, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   const filteredSaved = useMemo(
     () => sortItems(applyFilters(savedNews)),
-    [savedNews, timeFilter, sentimentFilter, sortBy, priceCache]
+    [savedNews, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   const filteredLater = useMemo(
     () => sortItems(applyFilters(laterNews)),
-    [laterNews, timeFilter, sentimentFilter, sortBy, priceCache]
+    [laterNews, timeSlot, sentimentFilters, sourceFilter, searchQuery, sortBy, priceCache]
   );
 
   /* ---------------- SAVE ---------------- */
@@ -600,7 +656,7 @@ export default function StockNews() {
           Fetch
         </Button>
 
-        <div className="flex flex-wrap gap-2 ml-auto">
+        <div className="flex flex-wrap gap-2 ml-auto items-center">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="selected">Selected</TabsTrigger>
@@ -639,29 +695,121 @@ export default function StockNews() {
             </SelectContent>
           </Select>
 
-          <Select value={timeFilter} onValueChange={setTimeFilter}>
-            <SelectTrigger className="h-8 w-28 text-xs">
-              <Filter className="h-3 w-3 mr-1" />
-              Time
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="morning">Morning</SelectItem>
-              <SelectItem value="afternoon">Afternoon</SelectItem>
-              <SelectItem value="evening">Evening</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Combined Filters Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1">
+                <Filter className="h-4 w-4" />
+                Filters
+                {(timeSlot > 0 || sentimentFilters.length > 0 || sourceFilter !== "all") && (
+                  <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary text-primary-foreground rounded-full">
+                    {(timeSlot > 0 ? 1 : 0) + sentimentFilters.length + (sourceFilter !== "all" ? 1 : 0)}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="end">
+              <div className="space-y-4">
+                {/* Time Slider */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Time: {TIME_SLOTS[timeSlot].label}</Label>
+                  <Slider
+                    value={[timeSlot]}
+                    onValueChange={([v]) => setTimeSlot(v)}
+                    min={0}
+                    max={9}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>All</span>
+                    <span>9-10</span>
+                    <span>12-13</span>
+                    <span>15-16</span>
+                    <span>17-18</span>
+                  </div>
+                </div>
 
-          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-            <SelectTrigger className="h-8 w-28 text-xs">
-              Sentiment
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="bullish">Bullish</SelectItem>
-              <SelectItem value="bearish">Bearish</SelectItem>
-            </SelectContent>
-          </Select>
+                {/* Sentiment Checkboxes */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Sentiment</Label>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id="bullish"
+                        checked={sentimentFilters.includes("bullish")}
+                        onCheckedChange={() => toggleSentimentFilter("bullish")}
+                      />
+                      <Label htmlFor="bullish" className="text-xs cursor-pointer text-green-400">Bullish</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id="bearish"
+                        checked={sentimentFilters.includes("bearish")}
+                        onCheckedChange={() => toggleSentimentFilter("bearish")}
+                      />
+                      <Label htmlFor="bearish" className="text-xs cursor-pointer text-red-400">Bearish</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id="neutral"
+                        checked={sentimentFilters.includes("neutral")}
+                        onCheckedChange={() => toggleSentimentFilter("neutral")}
+                      />
+                      <Label htmlFor="neutral" className="text-xs cursor-pointer text-yellow-400">Neutral</Label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Source Filter */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Source</Label>
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="All Sources" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sources</SelectItem>
+                      {availableSources.map((source) => (
+                        <SelectItem key={source} value={source}>{source}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Clear Filters */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="w-full text-xs"
+                  onClick={() => {
+                    setTimeSlot(0);
+                    setSentimentFilters([]);
+                    setSourceFilter("all");
+                  }}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search news..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-40 pl-7 pr-7 text-xs"
+            />
+            {searchQuery && (
+              <X
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              />
+            )}
+          </div>
         </div>
       </div>
 
