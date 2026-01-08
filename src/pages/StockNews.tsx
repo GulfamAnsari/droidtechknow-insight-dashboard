@@ -679,16 +679,18 @@ export default function StockNews() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <div className="flex items-center gap-1.5">
-            <Checkbox 
-              id="auto-refresh" 
-              checked={autoRefresh} 
-              onCheckedChange={(checked) => setAutoRefresh(checked === true)}
-            />
-            <Label htmlFor="auto-refresh" className="text-xs cursor-pointer">
-              Auto
-            </Label>
-          </div>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => {
+              const symbols = getAllSymbols();
+              symbols.forEach((symbol) => fetchPriceChange(symbol, true));
+              toast.success(`Fetching prices for ${symbols.length} stocks`);
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Prices
+          </Button>
 
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change" | "sentiment")}>
             <SelectTrigger className="h-8 w-32 text-xs">
