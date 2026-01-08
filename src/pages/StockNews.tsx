@@ -266,15 +266,56 @@ export default function StockNews() {
 
   /* ---------------- FETCH ---------------- */
   // ---- module level (outside component, once) ----
-const sentimentCache = new Map<
-  string,
-  { label: string; confidence: number }
->();
+  const sentimentCache = new Map<
+    string,
+    { label: string; confidence: number }
+  >();
 
-const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
+  const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
 
-// ---- replace ONLY this function ----
-const fetchNews = async () => {
+  const sentimentCache = new Map<string, any>();
+
+async function enrichSentimentsInBackground(items: any[]) {
+  const BATCH = 10;
+
+  for (let i = 0; i < items.length; i += BATCH) {
+    const chunk = items.slice(i, i + BATCH);
+
+    const updates = await Promise.all(
+      chunk.map(async (item) => {
+        const title = item?.data?.title;
+        if (!title || sentimentCache.has(title)) return null;
+
+        try {
+          const s = await getSentimentLocal(title);
+          sentimentCache.set(title, s);
+
+          return {
+            postId: item.postId,
+            __sentiment: mapSentiment(s?.label),
+            __confidence: s?.confidence ?? 0.5
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    // apply updates incrementally
+    setNews((prev) =>
+      prev.map((n) => {
+        const u = updates.find((x) => x?.postId === n.postId);
+        return u ? { ...n, ...u } : n;
+      })
+    );
+
+    // yield UI
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+  // ---- replace ONLY this function ----
+  const fetchNews = async () => {
   setLoading(true);
 
   try {
@@ -297,90 +338,29 @@ const fetchNews = async () => {
       if (Array.isArray(d)) all.push(...d);
     });
 
-    // sort once
     all.sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() -
         new Date(a.publishedAt).getTime()
     );
 
-    console.log("total items", all.length);
+    // 🚀 INSTANT render — NO sentiment here
+    const initial = all.map((item) => ({
+      ...item,
+      __sentiment: item?.machineLearningSentiments?.label
+        ? mapSentiment(item.machineLearningSentiments.label)
+        : "neutral",
+      __confidence:
+        item?.machineLearningSentiments?.confidence ?? 0.5
+    }));
 
-    const enriched: any[] = [];
-    const CHUNK_SIZE = 25; // 🔥 critical for UI smoothness
+    console.log("finish initial render", new Date());
 
-    for (let i = 0; i < all.length; i += CHUNK_SIZE) {
-      const chunk = all.slice(i, i + CHUNK_SIZE);
+    setNews(initial);
+    newsIdsRef.current = new Set(initial.map((i) => i.postId));
 
-      const processed = await Promise.all(
-        chunk.map(async (item) => {
-          try {
-            // ✅ already enriched by backend
-            if (item?.machineLearningSentiments?.label) {
-              return {
-                ...item,
-                __sentiment: mapSentiment(
-                  item.machineLearningSentiments.label
-                ),
-                __confidence:
-                  item.machineLearningSentiments.confidence ?? 0.5
-              };
-            }
-
-            const title = item?.data?.title;
-            if (!title) {
-              return {
-                ...item,
-                __sentiment: "neutral",
-                __confidence: 0.5
-              };
-            }
-
-            // ✅ cache hit (huge speedup)
-            if (sentimentCache.has(title)) {
-              const cached = sentimentCache.get(title)!;
-              return {
-                ...item,
-                __sentiment: mapSentiment(cached.label),
-                __confidence: cached.confidence
-              };
-            }
-
-            // ⚠️ only when absolutely needed
-            const local = await getSentimentLocal(title);
-
-            const result = {
-              label: local?.label ?? "neutral",
-              confidence: local?.confidence ?? 0.5
-            };
-
-            sentimentCache.set(title, result);
-
-            return {
-              ...item,
-              __sentiment: mapSentiment(result.label),
-              __confidence: result.confidence
-            };
-          } catch {
-            return {
-              ...item,
-              __sentiment: "neutral",
-              __confidence: 0.5
-            };
-          }
-        })
-      );
-
-      enriched.push(...processed);
-
-      // 🔥 yield control so UI never freezes
-      await yieldToUI();
-    }
-
-    console.log("finish computation", new Date());
-
-    setNews(enriched);
-    newsIdsRef.current = new Set(enriched.map((item) => item.postId));
+    // 🔥 background sentiment enrichment (NON-BLOCKING)
+    enrichSentimentsInBackground(initial);
   } catch {
     toast.error("Failed to fetch news");
   } finally {
