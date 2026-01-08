@@ -763,6 +763,22 @@ export default function StockNews() {
           <Label htmlFor="auto-fetch-news" className="text-xs cursor-pointer">
             Auto
           </Label>
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search news..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-40 pl-7 pr-7 text-xs"
+            />
+            {searchQuery && (
+              <X
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground"
+                onClick={() => setSearchQuery("")}
+              />
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 ml-auto items-center">
@@ -913,23 +929,6 @@ export default function StockNews() {
               </div>
             </PopoverContent>
           </Popover>
-
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search news..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-40 pl-7 pr-7 text-xs"
-            />
-            {searchQuery && (
-              <X
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground"
-                onClick={() => setSearchQuery("")}
-              />
-            )}
-          </div>
         </div>
       </div>
 
