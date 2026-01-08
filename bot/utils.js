@@ -22,7 +22,7 @@ export function getNextIntervalMs() {
 
   // Weekdays
   if (hour >= 7 && hour < 16) {
-    return 1 * 60 * 1000; // 1 minute
+    return 1 * 30 * 1000; // 1 minute
   }
 
   if (hour >= 1 && hour < 7) {

@@ -211,7 +211,7 @@ export default function StockNews() {
     if (autoFetchNews) {
       autoFetchNewsRef.current = setInterval(() => {
         fetchNewsForAutoRefresh();
-      }, 30000);
+      }, 750);
     } else {
       if (autoFetchNewsRef.current) {
         clearInterval(autoFetchNewsRef.current);

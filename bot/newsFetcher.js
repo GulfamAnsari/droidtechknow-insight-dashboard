@@ -163,7 +163,7 @@ export async function fetchNews(savingToDb = false) {
     if (!savingToDb) writeStore(store);
     return latestNews;
   } catch (err) {
-    console.error("❌ Error fetching news:", err.message);
+    console.error("❌ Error fetching news:", err);
     errorSend("❌ Error fetching news:", err.message);
     return [];
   }
