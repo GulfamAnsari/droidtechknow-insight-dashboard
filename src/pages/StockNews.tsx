@@ -270,11 +270,12 @@ export default function StockNews() {
     try {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
-
+      console.log("start api", new Date());
       const res = await fetch(
         `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
+      console.log("finsihed api", new Date());
 
       const json = await res.json();
       let all: any[] = [];
@@ -315,6 +316,7 @@ export default function StockNews() {
         })
       );
 
+      console.log("finish computation", new Date());
       setNews(enriched);
       // Update ref with initial news IDs
       newsIdsRef.current = new Set(enriched.map((item) => item.postId));
