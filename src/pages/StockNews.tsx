@@ -67,22 +67,29 @@ export default function StockNews() {
   const [savedNews, setSavedNews] = useState<any[]>([]);
   const [laterNews, setLaterNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
+  const [priceCache, setPriceCache] = useState<
+    Record<string, { change: number; loading: boolean }>
+  >({});
   const [autoFetchNews, setAutoFetchNews] = useState(false);
   const autoFetchNewsRef = useRef<NodeJS.Timeout | null>(null);
   const newsIdsRef = useRef<Set<string>>(new Set());
-  const [highlightedNews, setHighlightedNews] = useState<Set<string>>(new Set());
+  const [highlightedNews, setHighlightedNews] = useState<Set<string>>(
+    new Set()
+  );
 
   const [activeTab, setActiveTab] = useState("selected");
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
 
   // Combined filters
-  const [timeRange, setTimeRange] = useState<[number, number]>([TIME_MIN, TIME_MAX]); // double slider [start, end]
+  const [timeRange, setTimeRange] = useState<[number, number]>([
+    TIME_MIN,
+    TIME_MAX
+  ]); // double slider [start, end]
   const [sentimentFilters, setSentimentFilters] = useState<string[]>([]); // checkboxes: bullish, bearish, neutral
   const [sourceFilters, setSourceFilters] = useState<string[]>([]); // checkboxes for sources
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const [sortBy, setSortBy] = useState<"time" | "change" | "sentiment">("time");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -100,9 +107,12 @@ export default function StockNews() {
   /* ---------------- FETCH PRICE CHANGE ---------------- */
   const fetchPriceChange = async (symbol: string, force = false) => {
     if (!force && priceCache[symbol] !== undefined) return;
-    
-    setPriceCache((prev) => ({ ...prev, [symbol]: { change: prev[symbol]?.change || 0, loading: !force } }));
-    
+
+    setPriceCache((prev) => ({
+      ...prev,
+      [symbol]: { change: prev[symbol]?.change || 0, loading: !force }
+    }));
+
     try {
       const res = await fetch(
         `https://droidtechknow.com/admin/api/stocks/chart.php?symbol=${symbol}&interval=1d&range=1d`,
@@ -110,23 +120,37 @@ export default function StockNews() {
       );
       const json = await res.json();
       const meta = json?.chart?.result?.[0]?.meta;
- 
+
       if (meta?.chartPreviousClose && meta?.regularMarketPrice) {
         const prevClose = meta.chartPreviousClose;
         const currentPrice = meta.regularMarketPrice;
         const change = ((currentPrice - prevClose) / prevClose) * 100;
-        setPriceCache((prev) => ({ ...prev, [symbol]: { change, loading: false } }));
+        setPriceCache((prev) => ({
+          ...prev,
+          [symbol]: { change, loading: false }
+        }));
       } else {
-        setPriceCache((prev) => ({ ...prev, [symbol]: { change: 0, loading: false } }));
+        setPriceCache((prev) => ({
+          ...prev,
+          [symbol]: { change: 0, loading: false }
+        }));
       }
     } catch {
-      setPriceCache((prev) => ({ ...prev, [symbol]: { change: prev[symbol]?.change || 0, loading: false } }));
+      setPriceCache((prev) => ({
+        ...prev,
+        [symbol]: { change: prev[symbol]?.change || 0, loading: false }
+      }));
     }
   };
 
   /* ---------------- GET ALL SYMBOLS ---------------- */
   const getAllSymbols = useCallback(() => {
-    const items = activeTab === "saved" ? savedNews : activeTab === "later" ? laterNews : news;
+    const items =
+      activeTab === "saved"
+        ? savedNews
+        : activeTab === "later"
+        ? laterNews
+        : news;
     const symbols: string[] = [];
     items.forEach((item) => {
       const cta = item.data?.cta?.[0];
@@ -161,7 +185,9 @@ export default function StockNews() {
       );
 
       // Find new items that weren't in previous news (use ref to avoid stale closure)
-      const newIds = all.filter((item) => !newsIdsRef.current.has(item.postId)).map((item) => item.postId);
+      const newIds = all
+        .filter((item) => !newsIdsRef.current.has(item.postId))
+        .map((item) => item.postId);
 
       const enriched = await Promise.all(
         all.map(async (item) => {
@@ -192,10 +218,10 @@ export default function StockNews() {
       );
 
       setNews(enriched);
-      
+
       // Update the ref with all current IDs
       newsIdsRef.current = new Set(all.map((item) => item.postId));
-      
+
       // Highlight new items
       if (newIds.length > 0) {
         setHighlightedNews((prev) => {
@@ -214,7 +240,7 @@ export default function StockNews() {
     if (autoFetchNews) {
       autoFetchNewsRef.current = setInterval(() => {
         fetchNewsForAutoRefresh();
-      }, 750);
+      }, 1000);
     } else {
       if (autoFetchNewsRef.current) {
         clearInterval(autoFetchNewsRef.current);
@@ -227,7 +253,7 @@ export default function StockNews() {
         clearInterval(autoFetchNewsRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFetchNews]);
 
   /* ---------------- LOAD SAVED & LATER ---------------- */
@@ -315,7 +341,7 @@ export default function StockNews() {
     if (sentimentFilters.length > 0) {
       f = f.filter(
         (i) =>
-          sentimentFilters.includes(i.__sentiment) || 
+          sentimentFilters.includes(i.__sentiment) ||
           sentimentFilters.includes(i.sentiment)
       );
     }
@@ -332,7 +358,11 @@ export default function StockNews() {
         const title = i.data?.title?.toLowerCase() || "";
         const body = i.data?.body?.toLowerCase() || "";
         const ctaText = i.data?.cta?.[0]?.ctaText?.toLowerCase() || "";
-        return title.includes(query) || body.includes(query) || ctaText.includes(query);
+        return (
+          title.includes(query) ||
+          body.includes(query) ||
+          ctaText.includes(query)
+        );
       });
     }
 
@@ -353,11 +383,11 @@ export default function StockNews() {
         const nseA = a.data?.cta?.[0]?.meta?.nseScriptCode;
         const bseA = a.data?.cta?.[0]?.meta?.bseScriptCode;
         const symbolA = nseA ? `${nseA}.NS` : bseA ? `${bseA}.BO` : "";
-        
+
         const nseB = b.data?.cta?.[0]?.meta?.nseScriptCode;
         const bseB = b.data?.cta?.[0]?.meta?.bseScriptCode;
         const symbolB = nseB ? `${nseB}.NS` : bseB ? `${bseB}.BO` : "";
-        
+
         const changeA = priceCache[symbolA]?.change || 0;
         const changeB = priceCache[symbolB]?.change || 0;
         return changeB - changeA;
@@ -375,17 +405,41 @@ export default function StockNews() {
 
   const filteredNews = useMemo(
     () => sortItems(applyFilters(news)),
-    [news, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
+    [
+      news,
+      timeRange,
+      sentimentFilters,
+      sourceFilters,
+      searchQuery,
+      sortBy,
+      priceCache
+    ]
   );
 
   const filteredSaved = useMemo(
     () => sortItems(applyFilters(savedNews)),
-    [savedNews, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
+    [
+      savedNews,
+      timeRange,
+      sentimentFilters,
+      sourceFilters,
+      searchQuery,
+      sortBy,
+      priceCache
+    ]
   );
 
   const filteredLater = useMemo(
     () => sortItems(applyFilters(laterNews)),
-    [laterNews, timeRange, sentimentFilters, sourceFilters, searchQuery, sortBy, priceCache]
+    [
+      laterNews,
+      timeRange,
+      sentimentFilters,
+      sourceFilters,
+      searchQuery,
+      sortBy,
+      priceCache
+    ]
   );
 
   /* ---------------- SAVE ---------------- */
@@ -393,7 +447,12 @@ export default function StockNews() {
     const existing = savedNews.find((s) => s.postId === item.postId);
     const updated = [
       ...savedNews.filter((s) => s.postId !== item.postId),
-      { ...item, sentiment, remark: existing?.remark || item.remark || "", savedAt: new Date().toISOString() }
+      {
+        ...item,
+        sentiment,
+        remark: existing?.remark || item.remark || "",
+        savedAt: new Date().toISOString()
+      }
     ];
     setSavedNews(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -424,7 +483,7 @@ export default function StockNews() {
     const updatedSaved = savedNews.filter((s) => s.postId !== item.postId);
     setSavedNews(updatedSaved);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
-    
+
     // Add to later
     const updatedLater = [
       ...laterNews.filter((s) => s.postId !== item.postId),
@@ -455,7 +514,7 @@ export default function StockNews() {
     const updatedLater = laterNews.filter((s) => s.postId !== item.postId);
     setLaterNews(updatedLater);
     localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
-    
+
     // Add back to saved
     const updatedSaved = [
       ...savedNews.filter((s) => s.postId !== item.postId),
@@ -468,7 +527,12 @@ export default function StockNews() {
 
   /* ---------------- COPY ---------------- */
   const copyAllNews = () => {
-    const list = activeTab === "saved" ? filteredSaved : activeTab === "later" ? filteredLater : filteredNews;
+    const list =
+      activeTab === "saved"
+        ? filteredSaved
+        : activeTab === "later"
+        ? filteredLater
+        : filteredNews;
 
     navigator.clipboard.writeText(
       list
@@ -538,11 +602,11 @@ export default function StockNews() {
     }, [symbol]);
 
     return (
-      <Card 
+      <Card
         className={cn(
           "bg-[#0d1117] rounded-lg cursor-pointer transition-all",
-          isHighlighted 
-            ? "border-2 border-yellow-500 shadow-lg shadow-yellow-500/20" 
+          isHighlighted
+            ? "border-2 border-yellow-500 shadow-lg shadow-yellow-500/20"
             : "border border-white/10"
         )}
         onClick={handleCardClick}
@@ -551,7 +615,12 @@ export default function StockNews() {
           {/* HEADER */}
           <div className="flex gap-2 mb-2">
             {cta?.logoUrl && (
-              <img src={cta.logoUrl} className="w-8 h-8 rounded" />
+              <img
+                src={cta.logoUrl}
+                className="w-8 h-8 rounded"
+                loading="lazy"
+                decoding="async"
+              />
             )}
 
             <div className="flex-1">
@@ -621,23 +690,27 @@ export default function StockNews() {
             {item.data.body}
           </p>
 
-          <div style={{
-            display: "flex",
-    justifyContent: "space-between"
-          }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between"
+            }}
+          >
             {item?.from && (
-            <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
-              {item.from}
-            </span>
-          )}
+              <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
+                {item.from}
+              </span>
+            )}
 
-          {
-            item?.data?.media?.length ? <a rel="noreferrer" href={`${item?.data?.media?.[0].url}`} target="_blank">
-              <File
-                className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
-              />
-            </a>: null
-          }
+            {item?.data?.media?.length ? (
+              <a
+                rel="noreferrer"
+                href={`${item?.data?.media?.[0].url}`}
+                target="_blank"
+              >
+                <File className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500" />
+              </a>
+            ) : null}
           </div>
 
           {/* REMARK - For Saved and Later tabs */}
@@ -646,8 +719,8 @@ export default function StockNews() {
               <Input
                 placeholder="Add remark..."
                 value={item.remark || ""}
-                onChange={(e) => 
-                  activeTab === "saved" 
+                onChange={(e) =>
+                  activeTab === "saved"
                     ? updateSavedRemark(item.postId, e.target.value)
                     : updateRemark(item.postId, e.target.value)
                 }
@@ -755,9 +828,9 @@ export default function StockNews() {
         </Button>
 
         <div className="flex items-center gap-1.5">
-          <Checkbox 
-            id="auto-fetch-news" 
-            checked={autoFetchNews} 
+          <Checkbox
+            id="auto-fetch-news"
+            checked={autoFetchNews}
             onCheckedChange={(checked) => setAutoFetchNews(checked === true)}
           />
           <Label htmlFor="auto-fetch-news" className="text-xs cursor-pointer">
@@ -798,9 +871,9 @@ export default function StockNews() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <Button
+            size="sm"
+            variant="outline"
             onClick={() => {
               const symbols = getAllSymbols();
               symbols.forEach((symbol) => fetchPriceChange(symbol, true));
@@ -811,10 +884,13 @@ export default function StockNews() {
             Prices
           </Button>
 
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "time" | "change" | "sentiment")}>
-            <SelectTrigger className="h-8 w-32 text-xs">
-              Sort
-            </SelectTrigger>
+          <Select
+            value={sortBy}
+            onValueChange={(v) =>
+              setSortBy(v as "time" | "change" | "sentiment")
+            }
+          >
+            <SelectTrigger className="h-8 w-32 text-xs">Sort</SelectTrigger>
             <SelectContent>
               <SelectItem value="time">Time</SelectItem>
               <SelectItem value="change">% Change</SelectItem>
@@ -828,9 +904,16 @@ export default function StockNews() {
               <Button size="sm" variant="outline" className="gap-1">
                 <Filter className="h-4 w-4" />
                 Filters
-                {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) || sentimentFilters.length > 0 || sourceFilters.length > 0) && (
+                {(timeRange[0] !== TIME_MIN ||
+                  timeRange[1] !== TIME_MAX ||
+                  sentimentFilters.length > 0 ||
+                  sourceFilters.length > 0) && (
                   <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-primary text-primary-foreground rounded-full">
-                    {((timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX) ? 1 : 0) + sentimentFilters.length + sourceFilters.length}
+                    {(timeRange[0] !== TIME_MIN || timeRange[1] !== TIME_MAX
+                      ? 1
+                      : 0) +
+                      sentimentFilters.length +
+                      sourceFilters.length}
                   </span>
                 )}
               </Button>
@@ -869,7 +952,12 @@ export default function StockNews() {
                         checked={sentimentFilters.includes("bullish")}
                         onCheckedChange={() => toggleSentimentFilter("bullish")}
                       />
-                      <Label htmlFor="bullish" className="text-xs cursor-pointer text-green-400">Bullish</Label>
+                      <Label
+                        htmlFor="bullish"
+                        className="text-xs cursor-pointer text-green-400"
+                      >
+                        Bullish
+                      </Label>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Checkbox
@@ -877,7 +965,12 @@ export default function StockNews() {
                         checked={sentimentFilters.includes("bearish")}
                         onCheckedChange={() => toggleSentimentFilter("bearish")}
                       />
-                      <Label htmlFor="bearish" className="text-xs cursor-pointer text-red-400">Bearish</Label>
+                      <Label
+                        htmlFor="bearish"
+                        className="text-xs cursor-pointer text-red-400"
+                      >
+                        Bearish
+                      </Label>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Checkbox
@@ -885,7 +978,12 @@ export default function StockNews() {
                         checked={sentimentFilters.includes("neutral")}
                         onCheckedChange={() => toggleSentimentFilter("neutral")}
                       />
-                      <Label htmlFor="neutral" className="text-xs cursor-pointer text-yellow-400">Neutral</Label>
+                      <Label
+                        htmlFor="neutral"
+                        className="text-xs cursor-pointer text-yellow-400"
+                      >
+                        Neutral
+                      </Label>
                     </div>
                   </div>
                 </div>
@@ -907,7 +1005,12 @@ export default function StockNews() {
                             );
                           }}
                         />
-                        <Label htmlFor={`source-${source}`} className="text-xs cursor-pointer">{source}</Label>
+                        <Label
+                          htmlFor={`source-${source}`}
+                          className="text-xs cursor-pointer"
+                        >
+                          {source}
+                        </Label>
                       </div>
                     ))}
                   </div>
