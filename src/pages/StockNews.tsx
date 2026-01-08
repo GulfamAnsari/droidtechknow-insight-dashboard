@@ -224,7 +224,8 @@ export default function StockNews() {
         clearInterval(autoFetchNewsRef.current);
       }
     };
-  }, [autoFetchNews, fetchNewsForAutoRefresh]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetchNews]);
 
   /* ---------------- LOAD SAVED & LATER ---------------- */
   useEffect(() => {
