@@ -178,6 +178,7 @@ export default function StockNews() {
       Object.values(json.data || {}).forEach((d: any) => {
         if (Array.isArray(d)) all.push(...d);
       });
+      
 
       all.sort(
         (a, b) =>
@@ -205,7 +206,13 @@ export default function StockNews() {
               return { ...item, __sentiment: "neutral", __confidence: 0.5 };
             }
 
-            const local = await getSentimentLocal(title);
+            let local: any = {};
+            if (sentimentMap.has(item?.postId)) {
+              local = sentimentMap.get(item?.postId)
+            } else {
+              local = await getSentimentLocal(title);
+              sentimentMap.set(item?.postId, local);
+            }
             return {
               ...item,
               __sentiment: mapSentiment(local?.label),
@@ -264,104 +271,73 @@ export default function StockNews() {
     if (l) setLaterNews(JSON.parse(l));
   }, []);
 
+  const sentimentMap = new Map();
   /* ---------------- FETCH ---------------- */
-
-
-  const sentimentCache = new Map<string, any>();
-
-async function enrichSentimentsInBackground(items: any[]) {
-  const BATCH = 10;
-
-  for (let i = 0; i < items.length; i += BATCH) {
-    const chunk = items.slice(i, i + BATCH);
-
-    const updates = await Promise.all(
-      chunk.map(async (item) => {
-        const title = item?.data?.title;
-        if (!title || sentimentCache.has(title)) return null;
-
-        try {
-          const s = await getSentimentLocal(title);
-          sentimentCache.set(title, s);
-
-          return {
-            postId: item.postId,
-            __sentiment: mapSentiment(s?.label),
-            __confidence: s?.confidence ?? 0.5
-          };
-        } catch {
-          return null;
-        }
-      })
-    );
-
-    // apply updates incrementally
-    setNews((prev) =>
-      prev.map((n) => {
-        const u = updates.find((x) => x?.postId === n.postId);
-        return u ? { ...n, ...u } : n;
-      })
-    );
-
-    // yield UI
-    await new Promise((r) => setTimeout(r, 0));
-  }
-}
-
-  // ---- replace ONLY this function ----
   const fetchNews = async () => {
-  setLoading(true);
+    setLoading(true);
+    try {
+      const from = format(fromDate, "dd-MM-yyyy");
+      const to = format(toDate, "dd-MM-yyyy");
+      console.log("start api", new Date());
+      const res = await fetch(
+        `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        { cache: "no-store" }
+      );
+      console.log("finsihed api", new Date());
 
-  try {
-    const from = format(fromDate, "dd-MM-yyyy");
-    const to = format(toDate, "dd-MM-yyyy");
+      const json = await res.json();
+      let all: any[] = [];
+      Object.values(json.data || {}).forEach((d: any) => {
+        if (Array.isArray(d)) all.push(...d);
+      });
 
-    console.log("start api", new Date());
+      all.sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+      const enriched = await Promise.all(
+        all.map(async (item) => {
+          try {
+            if (item?.machineLearningSentiments?.label) {
+              return {
+                ...item,
+                __sentiment: mapSentiment(item.machineLearningSentiments.label),
+                __confidence: item.machineLearningSentiments.confidence ?? 0.5
+              };
+            }
 
-    const res = await fetch(
-      `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
-      { cache: "no-store" }
-    );
+            const title = item?.data?.title;
+            if (!title) {
+              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+            }
+            let local: any = {};
+            if (sentimentMap.has(item?.postId)) {
+              local = sentimentMap.get(item?.postId)
+            } else {
+              local = await getSentimentLocal(title);
+              sentimentMap.set(item?.postId, local);
+            }
+            return {
+              ...item,
+              __sentiment: mapSentiment(local?.label),
+              __confidence: local?.confidence ?? 0.5
+            };
+          } catch {
+            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+          }
+        })
+      );
 
-    console.log("finished api", new Date());
-
-    const json = await res.json();
-
-    let all: any[] = [];
-    Object.values(json.data || {}).forEach((d: any) => {
-      if (Array.isArray(d)) all.push(...d);
-    });
-
-    all.sort(
-      (a, b) =>
-        new Date(b.publishedAt).getTime() -
-        new Date(a.publishedAt).getTime()
-    );
-
-    // 🚀 INSTANT render — NO sentiment here
-    const initial = all.map((item) => ({
-      ...item,
-      __sentiment: item?.machineLearningSentiments?.label
-        ? mapSentiment(item.machineLearningSentiments.label)
-        : "neutral",
-      __confidence:
-        item?.machineLearningSentiments?.confidence ?? 0.5
-    }));
-
-    console.log("finish initial render", new Date());
-
-    setNews(initial);
-    newsIdsRef.current = new Set(initial.map((i) => i.postId));
-
-    // 🔥 background sentiment enrichment (NON-BLOCKING)
-    enrichSentimentsInBackground(initial);
-  } catch {
-    toast.error("Failed to fetch news");
-  } finally {
-    setLoading(false);
-  }
-};
-
+      console.log("finish", new Date());
+      setNews(enriched);
+      // Update ref with initial news IDs
+      newsIdsRef.current = new Set(enriched.map((item) => item.postId));
+    } catch {
+      toast.error("Failed to fetch news");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* ---------------- FILTERS ---------------- */
   const applyFilters = (items: any[]) => {
