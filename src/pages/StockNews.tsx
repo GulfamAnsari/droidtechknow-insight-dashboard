@@ -70,6 +70,7 @@ export default function StockNews() {
   const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
   const [autoFetchNews, setAutoFetchNews] = useState(false);
   const autoFetchNewsRef = useRef<NodeJS.Timeout | null>(null);
+  const newsIdsRef = useRef<Set<string>>(new Set());
   const [highlightedNews, setHighlightedNews] = useState<Set<string>>(new Set());
 
   const [activeTab, setActiveTab] = useState("selected");
@@ -159,9 +160,8 @@ export default function StockNews() {
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
 
-      // Find new items that weren't in previous news
-      const existingIds = new Set(news.map((n) => n.postId));
-      const newIds = all.filter((item) => !existingIds.has(item.postId)).map((item) => item.postId);
+      // Find new items that weren't in previous news (use ref to avoid stale closure)
+      const newIds = all.filter((item) => !newsIdsRef.current.has(item.postId)).map((item) => item.postId);
 
       const enriched = await Promise.all(
         all.map(async (item) => {
@@ -193,6 +193,9 @@ export default function StockNews() {
 
       setNews(enriched);
       
+      // Update the ref with all current IDs
+      newsIdsRef.current = new Set(all.map((item) => item.postId));
+      
       // Highlight new items
       if (newIds.length > 0) {
         setHighlightedNews((prev) => {
@@ -205,7 +208,7 @@ export default function StockNews() {
     } catch {
       // Silent fail for auto-refresh
     }
-  }, [fromDate, toDate, news]);
+  }, [fromDate, toDate]);
 
   useEffect(() => {
     if (autoFetchNews) {
@@ -287,6 +290,8 @@ export default function StockNews() {
       );
 
       setNews(enriched);
+      // Update ref with initial news IDs
+      newsIdsRef.current = new Set(enriched.map((item) => item.postId));
     } catch {
       toast.error("Failed to fetch news");
     } finally {
