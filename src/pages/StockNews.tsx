@@ -265,13 +265,7 @@ export default function StockNews() {
   }, []);
 
   /* ---------------- FETCH ---------------- */
-  // ---- module level (outside component, once) ----
-  const sentimentCache = new Map<
-    string,
-    { label: string; confidence: number }
-  >();
 
-  const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
 
   const sentimentCache = new Map<string, any>();
 
