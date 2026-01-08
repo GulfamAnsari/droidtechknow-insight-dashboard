@@ -265,67 +265,129 @@ export default function StockNews() {
   }, []);
 
   /* ---------------- FETCH ---------------- */
-  const fetchNews = async () => {
-    setLoading(true);
-    try {
-      const from = format(fromDate, "dd-MM-yyyy");
-      const to = format(toDate, "dd-MM-yyyy");
-      console.log("start api", new Date());
-      const res = await fetch(
-        `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
-        { cache: "no-store" }
-      );
-      console.log("finsihed api", new Date());
+  // ---- module level (outside component, once) ----
+const sentimentCache = new Map<
+  string,
+  { label: string; confidence: number }
+>();
 
-      const json = await res.json();
-      let all: any[] = [];
-      Object.values(json.data || {}).forEach((d: any) => {
-        if (Array.isArray(d)) all.push(...d);
-      });
+const yieldToUI = () => new Promise((r) => setTimeout(r, 0));
 
-      all.sort(
-        (a, b) =>
-          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-      );
+// ---- replace ONLY this function ----
+const fetchNews = async () => {
+  setLoading(true);
 
-      const enriched = await Promise.all(
-        all.map(async (item) => {
+  try {
+    const from = format(fromDate, "dd-MM-yyyy");
+    const to = format(toDate, "dd-MM-yyyy");
+
+    console.log("start api", new Date());
+
+    const res = await fetch(
+      `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+      { cache: "no-store" }
+    );
+
+    console.log("finished api", new Date());
+
+    const json = await res.json();
+
+    let all: any[] = [];
+    Object.values(json.data || {}).forEach((d: any) => {
+      if (Array.isArray(d)) all.push(...d);
+    });
+
+    // sort once
+    all.sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() -
+        new Date(a.publishedAt).getTime()
+    );
+
+    console.log("total items", all.length);
+
+    const enriched: any[] = [];
+    const CHUNK_SIZE = 25; // 🔥 critical for UI smoothness
+
+    for (let i = 0; i < all.length; i += CHUNK_SIZE) {
+      const chunk = all.slice(i, i + CHUNK_SIZE);
+
+      const processed = await Promise.all(
+        chunk.map(async (item) => {
           try {
+            // ✅ already enriched by backend
             if (item?.machineLearningSentiments?.label) {
               return {
                 ...item,
-                __sentiment: mapSentiment(item.machineLearningSentiments.label),
-                __confidence: item.machineLearningSentiments.confidence ?? 0.5
+                __sentiment: mapSentiment(
+                  item.machineLearningSentiments.label
+                ),
+                __confidence:
+                  item.machineLearningSentiments.confidence ?? 0.5
               };
             }
 
             const title = item?.data?.title;
             if (!title) {
-              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+              return {
+                ...item,
+                __sentiment: "neutral",
+                __confidence: 0.5
+              };
             }
 
+            // ✅ cache hit (huge speedup)
+            if (sentimentCache.has(title)) {
+              const cached = sentimentCache.get(title)!;
+              return {
+                ...item,
+                __sentiment: mapSentiment(cached.label),
+                __confidence: cached.confidence
+              };
+            }
+
+            // ⚠️ only when absolutely needed
             const local = await getSentimentLocal(title);
+
+            const result = {
+              label: local?.label ?? "neutral",
+              confidence: local?.confidence ?? 0.5
+            };
+
+            sentimentCache.set(title, result);
+
             return {
               ...item,
-              __sentiment: mapSentiment(local?.label),
-              __confidence: local?.confidence ?? 0.5
+              __sentiment: mapSentiment(result.label),
+              __confidence: result.confidence
             };
           } catch {
-            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+            return {
+              ...item,
+              __sentiment: "neutral",
+              __confidence: 0.5
+            };
           }
         })
       );
 
-      console.log("finish computation", new Date());
-      setNews(enriched);
-      // Update ref with initial news IDs
-      newsIdsRef.current = new Set(enriched.map((item) => item.postId));
-    } catch {
-      toast.error("Failed to fetch news");
-    } finally {
-      setLoading(false);
+      enriched.push(...processed);
+
+      // 🔥 yield control so UI never freezes
+      await yieldToUI();
     }
-  };
+
+    console.log("finish computation", new Date());
+
+    setNews(enriched);
+    newsIdsRef.current = new Set(enriched.map((item) => item.postId));
+  } catch {
+    toast.error("Failed to fetch news");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   /* ---------------- FILTERS ---------------- */
   const applyFilters = (items: any[]) => {
