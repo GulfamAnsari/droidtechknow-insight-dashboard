@@ -68,8 +68,9 @@ export default function StockNews() {
   const [laterNews, setLaterNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [priceCache, setPriceCache] = useState<Record<string, { change: number; loading: boolean }>>({});
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoFetchNews, setAutoFetchNews] = useState(false);
+  const autoFetchNewsRef = useRef<NodeJS.Timeout | null>(null);
+  const [highlightedNews, setHighlightedNews] = useState<Set<string>>(new Set());
 
   const [activeTab, setActiveTab] = useState("selected");
   const [fromDate, setFromDate] = useState(new Date());
@@ -136,28 +137,94 @@ export default function StockNews() {
     return symbols;
   }, [news, savedNews, laterNews, activeTab]);
 
-  /* ---------------- AUTO REFRESH PRICES ---------------- */
+  /* ---------------- AUTO FETCH NEWS ---------------- */
+  const fetchNewsForAutoRefresh = useCallback(async () => {
+    try {
+      const from = format(fromDate, "dd-MM-yyyy");
+      const to = format(toDate, "dd-MM-yyyy");
+
+      const res = await fetch(
+        `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        { cache: "no-store" }
+      );
+
+      const json = await res.json();
+      let all: any[] = [];
+      Object.values(json.data || {}).forEach((d: any) => {
+        if (Array.isArray(d)) all.push(...d);
+      });
+
+      all.sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+
+      // Find new items that weren't in previous news
+      const existingIds = new Set(news.map((n) => n.postId));
+      const newIds = all.filter((item) => !existingIds.has(item.postId)).map((item) => item.postId);
+
+      const enriched = await Promise.all(
+        all.map(async (item) => {
+          try {
+            if (item?.machineLearningSentiments?.label) {
+              return {
+                ...item,
+                __sentiment: mapSentiment(item.machineLearningSentiments.label),
+                __confidence: item.machineLearningSentiments.confidence ?? 0.5
+              };
+            }
+
+            const title = item?.data?.title;
+            if (!title) {
+              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+            }
+
+            const local = await getSentimentLocal(title);
+            return {
+              ...item,
+              __sentiment: mapSentiment(local?.label),
+              __confidence: local?.confidence ?? 0.5
+            };
+          } catch {
+            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+          }
+        })
+      );
+
+      setNews(enriched);
+      
+      // Highlight new items
+      if (newIds.length > 0) {
+        setHighlightedNews((prev) => {
+          const updated = new Set(prev);
+          newIds.forEach((id) => updated.add(id));
+          return updated;
+        });
+        toast.success(`${newIds.length} new news items`);
+      }
+    } catch {
+      // Silent fail for auto-refresh
+    }
+  }, [fromDate, toDate, news]);
+
   useEffect(() => {
-    if (autoRefresh) {
-      const symbols = getAllSymbols();
-      symbols.forEach((symbol) => fetchPriceChange(symbol, true));
-      autoRefreshRef.current = setInterval(() => {
-        const symbols = getAllSymbols();
-        symbols.forEach((symbol) => fetchPriceChange(symbol, true));
-      }, 2000);
+    if (autoFetchNews) {
+      autoFetchNewsRef.current = setInterval(() => {
+        fetchNewsForAutoRefresh();
+      }, 30000);
     } else {
-      if (autoRefreshRef.current) {
-        clearInterval(autoRefreshRef.current);
-        autoRefreshRef.current = null;
+      if (autoFetchNewsRef.current) {
+        clearInterval(autoFetchNewsRef.current);
+        autoFetchNewsRef.current = null;
       }
     }
 
     return () => {
-      if (autoRefreshRef.current) {
-        clearInterval(autoRefreshRef.current);
+      if (autoFetchNewsRef.current) {
+        clearInterval(autoFetchNewsRef.current);
       }
     };
-  }, [autoRefresh, getAllSymbols]);
+  }, [autoFetchNews, fetchNewsForAutoRefresh]);
 
   /* ---------------- LOAD SAVED & LATER ---------------- */
   useEffect(() => {
@@ -445,6 +512,17 @@ export default function StockNews() {
     const bseCode = cta?.meta?.bseScriptCode;
     const symbol = nseCode ? `${nseCode}.NS` : bseCode ? `${bseCode}.BO` : "";
     const priceData = priceCache[symbol];
+    const isHighlighted = highlightedNews.has(item.postId);
+
+    const handleCardClick = () => {
+      if (isHighlighted) {
+        setHighlightedNews((prev) => {
+          const updated = new Set(prev);
+          updated.delete(item.postId);
+          return updated;
+        });
+      }
+    };
 
     // Fetch price change when card mounts
     useEffect(() => {
@@ -454,7 +532,15 @@ export default function StockNews() {
     }, [symbol]);
 
     return (
-      <Card className="bg-[#0d1117] border border-white/10 rounded-lg">
+      <Card 
+        className={cn(
+          "bg-[#0d1117] rounded-lg cursor-pointer transition-all",
+          isHighlighted 
+            ? "border-2 border-yellow-500 shadow-lg shadow-yellow-500/20" 
+            : "border border-white/10"
+        )}
+        onClick={handleCardClick}
+      >
         <CardContent className="p-3 flex flex-col h-full">
           {/* HEADER */}
           <div className="flex gap-2 mb-2">
@@ -661,6 +747,17 @@ export default function StockNews() {
         <Button size="sm" onClick={fetchNews}>
           Fetch
         </Button>
+
+        <div className="flex items-center gap-1.5">
+          <Checkbox 
+            id="auto-fetch-news" 
+            checked={autoFetchNews} 
+            onCheckedChange={(checked) => setAutoFetchNews(checked === true)}
+          />
+          <Label htmlFor="auto-fetch-news" className="text-xs cursor-pointer">
+            Auto
+          </Label>
+        </div>
 
         <div className="flex flex-wrap gap-2 ml-auto items-center">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
