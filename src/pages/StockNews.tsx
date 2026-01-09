@@ -167,9 +167,8 @@ export default function StockNews() {
     try {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
-
       const res = await fetch(
-        `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        location.hostname == 'localhost' ? `http://localhost:3000/allnews?from=${from}&to=${to}`: `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
 
@@ -280,7 +279,7 @@ export default function StockNews() {
       const to = format(toDate, "dd-MM-yyyy");
       console.log("start api", new Date());
       const res = await fetch(
-        `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        location.hostname == 'localhost' ? `http://localhost:3000/allnews?from=${from}&to=${to}`: `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
       console.log("finsihed api", new Date());

@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { watchNews } from "./newsFetcher.js";
 import { sendTelegramNews } from "./telegram.js";
 import { getSentimentLocal } from "./ml/sentiments.js";
-import cors from 'cors';
+import cors from "cors";
 import { fileURLToPath } from "url";
 import path from "path";
 import axios from "axios";
@@ -11,7 +11,7 @@ import { saveNews } from "./saveNews.js";
 import chalk from "chalk";
 import { getNextIntervalMs } from "./utils.js";
 import { fetchTodayNews } from "./fetchFromRss.js";
-
+import fs from "fs";
 
 dotenv.config();
 const app = express();
@@ -27,23 +27,77 @@ app.get("/news", (req, res) => {
   res.sendFile(path.join(__dirname, "/routes/news/index.html"));
 });
 
-
-app.get("/sentiments", async(req, res) => {
+app.get("/sentiments", async (req, res) => {
   const out = await getSentimentLocal(req.query.title);
   res.json(out);
 });
 
-app.get("/getnews", async(req, res) => {
+app.get("/getnews", async (req, res) => {
   const e = await axios.get(process.env.NEWS_API_URL_FOR_UI);
   res.json(e.data);
 });
 
+app.get("/allnews", (req, res) => {
+  const filePath = path.join(__dirname, "news-store.json");
+  const { from, to } = req.query;
 
-app.post("/postnews", async(req, res) => {
+  fs.readFile(filePath, "utf8", (err, fileData) => {
+    if (err) {
+      console.error("File read error:", err);
+      return res.status(500).json({ error: "Failed to read news file" });
+    }
+
+    try {
+      const jsonData = JSON.parse(fileData);
+
+      // If no date filter, return full object
+      if (!from && !to) {
+        return res.json(jsonData);
+      }
+
+      const fromDate = parseDate(from);
+      const toDate = parseDate(to);
+
+      if (!fromDate || !toDate) {
+        return res
+          .status(400)
+          .json({ error: "Invalid date format. Use DD-MM-YYYY" });
+      }
+
+      const filteredResult = {};
+
+      Object.keys(jsonData).forEach(dateKey => {
+        const keyDate = new Date(dateKey); // YYYY-MM-DD
+
+        if (keyDate >= fromDate && keyDate <= toDate) {
+          filteredResult[dateKey] = jsonData[dateKey];
+        }
+      });
+
+      res.json({ data: filteredResult, to, from, status: "success"});
+    } catch (e) {
+      console.error("JSON parse error:", e);
+      res.status(500).json({ error: "Invalid JSON data" });
+    }
+  });
+});
+
+/**
+ * Converts DD-MM-YYYY → Date
+ */
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  const [dd, mm, yyyy] = dateStr.split("-");
+  if (!dd || !mm || !yyyy) return null;
+  return new Date(`${yyyy}-${mm}-${dd}`);
+}
+
+
+
+app.post("/postnews", async (req, res) => {
   const e = await axios.post(process.env.NEWS_AGGREGATOR, req.body);
   res.json(e.data);
 });
-
 
 // Optional: manual notification endpoint
 app.post("/notify", async (req, res) => {
@@ -76,7 +130,9 @@ async function startWatch() {
     console.error("watchNews error:", err);
   } finally {
     const nextInterval = getNextIntervalMs();
-    console.log(chalk.blackBright("Next run in", nextInterval / 60000, "minutes"));
+    console.log(
+      chalk.blackBright("Next run in", nextInterval / 60000, "minutes")
+    );
     setTimeout(startWatch, nextInterval);
   }
 }
@@ -84,17 +140,18 @@ async function startWatch() {
 // Start
 startWatch();
 
-
 // Calling for every hour to save into db
 async function savetoDBAtNight() {
   try {
     watchNews(async (news) => {
-      news['machineLearningSentiments'] = await getSentimentLocal(news.data?.title);
+      news["machineLearningSentiments"] = await getSentimentLocal(
+        news.data?.title
+      );
       await saveNews(news);
       console.log(chalk.grey("Saving to DB successfull at night"));
     }, true);
   } catch {
-    console.log("Error in saving db in night")
+    console.log("Error in saving db in night");
   }
 }
 
@@ -104,7 +161,6 @@ setInterval(() => {
 }, 1000 * 60 * 30);
 
 // console.log(await fetchTodayNews());
-
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

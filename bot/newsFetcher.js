@@ -150,13 +150,13 @@ export async function fetchNews(savingToDb = false) {
         "N/A";
 
       const newsObj = {
-        postId: item.postId,
+        ...item,
         title: normalizedTitle,
         symbol,
         body: item?.data?.body || "",
         publishedAt: item?.publishedAt // ✅ FIXED
       };
-      if (!savingToDb) store[today].push(newsObj);
+      if (!savingToDb) store[today].push(item);
       latestNews.push(item);
     }
 
