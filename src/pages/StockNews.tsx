@@ -37,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import StockNewsCard from "@/components/stock-news/StockNewsCard";
 import { getSentimentLocal } from "@/utils/sentiments";
 import {
   DndContext,
@@ -70,12 +71,20 @@ export default function StockNews() {
   const [priceCache, setPriceCache] = useState<
     Record<string, { change: number; loading: boolean }>
   >({});
+
+  // Perf-related refs/caches
+  const sentimentCacheRef = useRef<Map<string, any>>(new Map());
+  const newsByIdRef = useRef<Map<string, any>>(new Map());
+  const autoRefreshInFlightRef = useRef(false);
+  const autoRefreshHandlerRef = useRef<null | (() => void)>(null);
+
   const [autoFetchNews, setAutoFetchNews] = useState(false);
   const autoFetchNewsRef = useRef<NodeJS.Timeout | null>(null);
   const newsIdsRef = useRef<Set<string>>(new Set());
-  const [highlightedNews, setHighlightedNews] = useState<Set<string>>(
-    new Set()
-  );
+  const [highlightedNews, setHighlightedNews] = useState<Set<string>>(new Set());
+
+  // Only used for the (potentially huge) Selected list to keep UI responsive
+  const [renderLimit, setRenderLimit] = useState(80);
 
   const [activeTab, setActiveTab] = useState("selected");
   const [fromDate, setFromDate] = useState(new Date());
@@ -162,13 +171,69 @@ export default function StockNews() {
     return symbols;
   }, [news, savedNews, laterNews, activeTab]);
 
+  /* ---------------- SENTIMENT ENRICH ---------------- */
+  const enrichItemWithSentiment = useCallback(async (item: any) => {
+    try {
+      if (item?.machineLearningSentiments?.label) {
+        return {
+          ...item,
+          __sentiment: mapSentiment(item.machineLearningSentiments.label),
+          __confidence: item.machineLearningSentiments.confidence ?? 0.5
+        };
+      }
+
+      const title = item?.data?.title;
+      if (!title) return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+
+      if (sentimentCacheRef.current.has(item?.postId)) {
+        const cached = sentimentCacheRef.current.get(item?.postId);
+        return {
+          ...item,
+          __sentiment: mapSentiment(cached?.label),
+          __confidence: cached?.confidence ?? 0.5
+        };
+      }
+
+      const local = await getSentimentLocal(title);
+      sentimentCacheRef.current.set(item?.postId, local);
+      return {
+        ...item,
+        __sentiment: mapSentiment(local?.label),
+        __confidence: local?.confidence ?? 0.5
+      };
+    } catch {
+      return { ...item, __sentiment: "neutral", __confidence: 0.5 };
+    }
+  }, []);
+
+  const getSymbolFromItem = useCallback((item: any) => {
+    const cta = item?.data?.cta?.[0];
+    const nseCode = cta?.meta?.nseScriptCode;
+    const bseCode = cta?.meta?.bseScriptCode;
+    return nseCode ? `${nseCode}.NS` : bseCode ? `${bseCode}.BO` : "";
+  }, []);
+
+  const clearHighlight = useCallback((postId: string) => {
+    setHighlightedNews((prev) => {
+      if (!prev.has(postId)) return prev;
+      const updated = new Set(prev);
+      updated.delete(postId);
+      return updated;
+    });
+  }, []);
+
   /* ---------------- AUTO FETCH NEWS ---------------- */
   const fetchNewsForAutoRefresh = useCallback(async () => {
+    if (autoRefreshInFlightRef.current) return;
+    autoRefreshInFlightRef.current = true;
+
     try {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
       const res = await fetch(
-        location.hostname == 'localhost' ? `http://localhost:3000/allnews?from=${from}&to=${to}`: `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        location.hostname == "localhost"
+          ? `http://localhost:3000/allnews?from=${from}&to=${to}`
+          : `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
 
@@ -177,76 +242,58 @@ export default function StockNews() {
       Object.values(json.data || {}).forEach((d: any) => {
         if (Array.isArray(d)) all.push(...d);
       });
-      
 
       all.sort(
         (a, b) =>
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
 
-      // Find new items that weren't in previous news (use ref to avoid stale closure)
+      // Only do work (and re-render) if there are actually new IDs.
       const newIds = all
         .filter((item) => !newsIdsRef.current.has(item.postId))
         .map((item) => item.postId);
+      if (newIds.length === 0) return;
 
-      const enriched = await Promise.all(
-        all.map(async (item) => {
-          try {
-            if (item?.machineLearningSentiments?.label) {
-              return {
-                ...item,
-                __sentiment: mapSentiment(item.machineLearningSentiments.label),
-                __confidence: item.machineLearningSentiments.confidence ?? 0.5
-              };
-            }
-
-            const title = item?.data?.title;
-            if (!title) {
-              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
-            }
-
-            let local: any = {};
-            if (sentimentMap.has(item?.postId)) {
-              local = sentimentMap.get(item?.postId)
-            } else {
-              local = await getSentimentLocal(title);
-              sentimentMap.set(item?.postId, local);
-            }
-            return {
-              ...item,
-              __sentiment: mapSentiment(local?.label),
-              __confidence: local?.confidence ?? 0.5
-            };
-          } catch {
-            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
-          }
-        })
-      );
-
-      setNews(enriched);
-
-      // Update the ref with all current IDs
-      newsIdsRef.current = new Set(all.map((item) => item.postId));
-
-      // Highlight new items
-      if (newIds.length > 0) {
-        setHighlightedNews((prev) => {
-          const updated = new Set(prev);
-          newIds.forEach((id) => updated.add(id));
-          return updated;
-        });
-        toast.success(`${newIds.length} new news items`);
+      // Reuse existing objects to avoid remounts + image reloads + heavy re-renders.
+      const existingMap = newsByIdRef.current;
+      const merged: any[] = [];
+      for (const raw of all) {
+        const existing = existingMap.get(raw.postId);
+        if (existing) {
+          merged.push(existing);
+        } else {
+          merged.push(await enrichItemWithSentiment(raw));
+        }
       }
+
+      setNews(merged);
+      newsByIdRef.current = new Map(merged.map((i) => [i.postId, i]));
+      newsIdsRef.current = new Set(merged.map((i) => i.postId));
+
+      setHighlightedNews((prev) => {
+        const updated = new Set(prev);
+        newIds.forEach((id) => updated.add(id));
+        return updated;
+      });
+
+      toast.success(`${newIds.length} new news items`);
     } catch {
       // Silent fail for auto-refresh
+    } finally {
+      autoRefreshInFlightRef.current = false;
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, enrichItemWithSentiment]);
+
+  // Keep interval stable but always call the latest handler.
+  useEffect(() => {
+    autoRefreshHandlerRef.current = fetchNewsForAutoRefresh;
+  }, [fetchNewsForAutoRefresh]);
 
   useEffect(() => {
     if (autoFetchNews) {
       autoFetchNewsRef.current = setInterval(() => {
-        fetchNewsForAutoRefresh();
-      }, 1000);
+        autoRefreshHandlerRef.current?.();
+      }, 30000); // 30s
     } else {
       if (autoFetchNewsRef.current) {
         clearInterval(autoFetchNewsRef.current);
@@ -270,16 +317,19 @@ export default function StockNews() {
     if (l) setLaterNews(JSON.parse(l));
   }, []);
 
-  const sentimentMap = new Map();
   /* ---------------- FETCH ---------------- */
   const fetchNews = async () => {
     setLoading(true);
+    setRenderLimit(80);
+
     try {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
       console.log("start api", new Date());
       const res = await fetch(
-        location.hostname == 'localhost' ? `http://localhost:3000/allnews?from=${from}&to=${to}`: `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        location.hostname == "localhost"
+          ? `http://localhost:3000/allnews?from=${from}&to=${to}`
+          : `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
       console.log("finsihed api", new Date());
@@ -294,43 +344,91 @@ export default function StockNews() {
         (a, b) =>
           new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
-      const enriched = await Promise.all(
-        all.map(async (item) => {
-          try {
-            if (item?.machineLearningSentiments?.label) {
-              return {
-                ...item,
-                __sentiment: mapSentiment(item.machineLearningSentiments.label),
-                __confidence: item.machineLearningSentiments.confidence ?? 0.5
-              };
-            }
 
-            const title = item?.data?.title;
-            if (!title) {
-              return { ...item, __sentiment: "neutral", __confidence: 0.5 };
-            }
-            let local: any = {};
-            if (sentimentMap.has(item?.postId)) {
-              local = sentimentMap.get(item?.postId)
-            } else {
-              local = await getSentimentLocal(title);
-              sentimentMap.set(item?.postId, local);
-            }
-            return {
-              ...item,
-              __sentiment: mapSentiment(local?.label),
-              __confidence: local?.confidence ?? 0.5
-            };
-          } catch {
-            return { ...item, __sentiment: "neutral", __confidence: 0.5 };
-          }
-        })
-      );
+      // Fast path: render immediately with whatever sentiment we already have.
+      const base = all.map((item) => {
+        if (item?.machineLearningSentiments?.label) {
+          return {
+            ...item,
+            __sentiment: mapSentiment(item.machineLearningSentiments.label),
+            __confidence: item.machineLearningSentiments.confidence ?? 0.5
+          };
+        }
+
+        const cached = sentimentCacheRef.current.get(item?.postId);
+        if (cached) {
+          return {
+            ...item,
+            __sentiment: mapSentiment(cached?.label),
+            __confidence: cached?.confidence ?? 0.5
+          };
+        }
+
+        return { ...item, __sentiment: "neutral", __confidence: 0.5, __pending: true };
+      });
 
       console.log("finish", new Date());
-      setNews(enriched);
-      // Update ref with initial news IDs
-      newsIdsRef.current = new Set(enriched.map((item) => item.postId));
+      setNews(base);
+      newsByIdRef.current = new Map(base.map((i) => [i.postId, i]));
+      newsIdsRef.current = new Set(base.map((i) => i.postId));
+
+      // Resolve missing sentiments in small batches to avoid freezing the UI.
+      const pendingIds = base
+        .filter((i) => i.__pending && i?.data?.title)
+        .map((i) => i.postId);
+
+      if (pendingIds.length) {
+        // fire-and-forget
+        (async () => {
+          const updates = new Map<string, { __sentiment: string; __confidence: number }>();
+
+          for (let idx = 0; idx < pendingIds.length; idx++) {
+            const id = pendingIds[idx];
+            const current = newsByIdRef.current.get(id);
+            if (!current) continue;
+
+            // If it got resolved already, skip
+            if (sentimentCacheRef.current.has(id)) continue;
+
+            const title = current?.data?.title;
+            if (!title) continue;
+
+            const local = await getSentimentLocal(title);
+            sentimentCacheRef.current.set(id, local);
+            updates.set(id, {
+              __sentiment: mapSentiment(local?.label),
+              __confidence: local?.confidence ?? 0.5
+            });
+
+            // Yield every 10 items
+            if (idx % 10 === 0) {
+              await new Promise((r) => setTimeout(r, 0));
+              if (updates.size) {
+                setNews((prev) => {
+                  const next = prev.map((it) => {
+                    const u = updates.get(it.postId);
+                    return u ? { ...it, ...u, __pending: false } : it;
+                  });
+                  newsByIdRef.current = new Map(next.map((i) => [i.postId, i]));
+                  return next;
+                });
+                updates.clear();
+              }
+            }
+          }
+
+          if (updates.size) {
+            setNews((prev) => {
+              const next = prev.map((it) => {
+                const u = updates.get(it.postId);
+                return u ? { ...it, ...u, __pending: false } : it;
+              });
+              newsByIdRef.current = new Map(next.map((i) => [i.postId, i]));
+              return next;
+            });
+          }
+        })();
+      }
     } catch {
       toast.error("Failed to fetch news");
     } finally {
@@ -571,233 +669,80 @@ export default function StockNews() {
       width: "100%" // ensure grid items stretch
     };
 
+    const symbol = getSymbolFromItem(item);
+    const priceData = priceCache[symbol];
+
     return (
       <div ref={setNodeRef} style={style} className="relative">
-        <NewsCard
+        <StockNewsCard
           item={item}
-          __dragHandleProps={{ ...attributes, ...listeners }}
+          activeTab={activeTab as any}
+          isHighlighted={highlightedNews.has(item.postId)}
+          onClearHighlight={clearHighlight}
+          symbol={symbol}
+          priceData={priceData}
+          onRequestPrice={fetchPriceChange}
+          savedSentiment={getSavedSentiment(item.postId)}
+          onSave={saveNews}
+          onMoveToLater={moveToLater}
+          onRemoveSaved={removeSaved}
+          onMoveBackToSaved={moveBackToSaved}
+          onRemoveLater={removeLater}
+          onUpdateRemark={(postId, remark, tab) =>
+            tab === "saved" ? updateSavedRemark(postId, remark) : updateRemark(postId, remark)
+          }
+          dragHandleProps={{ ...attributes, ...listeners }}
         />
       </div>
     );
   };
 
-  /* ================= CARD ================= */
-  const NewsCard = ({
-    item,
-    __dragHandleProps
-  }: {
-    item: any;
-    __dragHandleProps?: any;
-  }) => {
-    const cta = item.data?.cta?.[0];
-    const savedSentiment = getSavedSentiment(item.postId);
-    const nseCode = cta?.meta?.nseScriptCode;
-    const bseCode = cta?.meta?.bseScriptCode;
-    const symbol = nseCode ? `${nseCode}.NS` : bseCode ? `${bseCode}.BO` : "";
-    const priceData = priceCache[symbol];
-    const isHighlighted = highlightedNews.has(item.postId);
-
-    const handleCardClick = () => {
-      if (isHighlighted) {
-        setHighlightedNews((prev) => {
-          const updated = new Set(prev);
-          updated.delete(item.postId);
-          return updated;
-        });
-      }
-    };
-
-    // Fetch price change when card mounts
-    useEffect(() => {
-      if (symbol) {
-        fetchPriceChange(symbol);
-      }
-    }, [symbol]);
+  const NewsGrid = ({ items }: { items: any[] }) => {
+    const visible = items.slice(0, renderLimit);
 
     return (
-      <Card
-        className={cn(
-          "bg-[#0d1117] rounded-lg cursor-pointer transition-all",
-          isHighlighted
-            ? "border-2 border-yellow-500 shadow-lg shadow-yellow-500/20"
-            : "border border-white/10"
+      <div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
+          {loading
+            ? [...Array(10)].map((_, i) => <Skeleton key={i} className="h-40" />)
+            : visible.map((item: any) => {
+                const symbol = getSymbolFromItem(item);
+                return (
+                  <StockNewsCard
+                    key={item.postId}
+                    item={item}
+                    activeTab={"selected"}
+                    isHighlighted={highlightedNews.has(item.postId)}
+                    onClearHighlight={clearHighlight}
+                    symbol={symbol}
+                    priceData={priceCache[symbol]}
+                    onRequestPrice={fetchPriceChange}
+                    savedSentiment={getSavedSentiment(item.postId)}
+                    onSave={saveNews}
+                    onMoveToLater={moveToLater}
+                    onRemoveSaved={removeSaved}
+                    onMoveBackToSaved={moveBackToSaved}
+                    onRemoveLater={removeLater}
+                    onUpdateRemark={() => {}}
+                  />
+                );
+              })}
+        </div>
+
+        {!loading && items.length > renderLimit && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRenderLimit((p) => Math.min(p + 80, items.length))}
+            >
+              Load more ({renderLimit} / {items.length})
+            </Button>
+          </div>
         )}
-        onClick={handleCardClick}
-      >
-        <CardContent className="p-3 flex flex-col h-full">
-          {/* HEADER */}
-          <div className="flex gap-2 mb-2">
-            {cta?.logoUrl && (
-              <img
-                src={cta.logoUrl}
-                className="w-8 h-8 rounded"
-                loading="lazy"
-                decoding="async"
-              />
-            )}
-
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <a
-                  href={cta?.ctaUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-semibold text-blue-400 hover:underline"
-                >
-                  {cta?.ctaText || item.data.title}
-                </a>
-                {priceData && !priceData.loading && priceData.change !== 0 && (
-                  <span
-                    className={cn(
-                      "text-xs font-semibold px-1.5 py-0.5 rounded",
-                      priceData.change >= 0
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-red-500/20 text-red-400"
-                    )}
-                  >
-                    {priceData.change >= 0 ? "+" : ""}
-                    {priceData.change.toFixed(2)}%
-                  </span>
-                )}
-                {priceData?.loading && (
-                  <span className="text-xs text-gray-500">...</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-400">
-                {format(new Date(item.publishedAt), "dd MMM yyyy hh:mma")}
-              </div>
-            </div>
-
-            {activeTab === "saved" && (
-              <div className="flex gap-1">
-                <span title="Save for Later">
-                  <Clock
-                    onClick={() => moveToLater(item)}
-                    className="h-4 w-4 text-yellow-400 cursor-pointer hover:text-yellow-500"
-                  />
-                </span>
-                <Trash2
-                  onClick={() => removeSaved(item.postId)}
-                  className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
-                />
-              </div>
-            )}
-            {activeTab === "later" && (
-              <div className="flex gap-1">
-                <span title="Move back to Saved">
-                  <ArrowLeft
-                    onClick={() => moveBackToSaved(item)}
-                    className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500"
-                  />
-                </span>
-                <Trash2
-                  onClick={() => removeLater(item.postId)}
-                  className="h-4 w-4 text-red-400 cursor-pointer hover:text-red-500"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* BODY */}
-          <p className="text-sm text-gray-300 whitespace-pre-line">
-            {item.data.body}
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between"
-            }}
-          >
-            {item?.from && (
-              <span className="mt-2 inline-block text-xs px-2 py-[2px] rounded bg-white/10 text-gray-300 w-fit">
-                {item.from}
-              </span>
-            )}
-
-            {item?.data?.media?.length ? (
-              <a
-                rel="noreferrer"
-                href={`${item?.data?.media?.[0].url}`}
-                target="_blank"
-              >
-                <File className="h-4 w-4 text-blue-400 cursor-pointer hover:text-blue-500" />
-              </a>
-            ) : null}
-          </div>
-
-          {/* REMARK - For Saved and Later tabs */}
-          {(activeTab === "saved" || activeTab === "later") && (
-            <div className="mt-2">
-              <Input
-                placeholder="Add remark..."
-                value={item.remark || ""}
-                onChange={(e) =>
-                  activeTab === "saved"
-                    ? updateSavedRemark(item.postId, e.target.value)
-                    : updateRemark(item.postId, e.target.value)
-                }
-                className="h-7 text-xs bg-white/5 border-white/10"
-              />
-            </div>
-          )}
-
-          {/* FOOTER */}
-          <div
-            {...__dragHandleProps}
-            className="mt-auto pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 cursor-grab active:cursor-grabbing"
-          >
-            <span
-              className={cn(
-                "text-xs px-2 py-[2px] rounded",
-                item.__sentiment === "bullish" &&
-                  "bg-green-500/20 text-green-400",
-                item.__sentiment === "bearish" && "bg-red-500/20 text-red-400",
-                item.__sentiment === "neutral" &&
-                  "bg-yellow-500/20 text-yellow-400"
-              )}
-            >
-              AI: {item.__sentiment} ({(item.__confidence * 100).toFixed(0)}%)
-            </span>
-
-            <Select
-              value={savedSentiment}
-              onValueChange={(v) => saveNews(item, v as any)}
-            >
-              <SelectTrigger
-                className={cn(
-                  "h-7 w-24 text-xs",
-                  savedSentiment === "bullish" &&
-                    "bg-green-500/20 text-green-400",
-                  savedSentiment === "bearish" && "bg-red-500/20 text-red-400"
-                )}
-              >
-                <SelectValue placeholder="Save" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bullish">
-                  <TrendingUp className="h-3 w-3 mr-1 inline" />
-                  Bullish
-                </SelectItem>
-                <SelectItem value="bearish">
-                  <TrendingDown className="h-3 w-3 mr-1 inline" />
-                  Bearish
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      </div>
     );
   };
-
-  const NewsGrid = ({ items }: any) => (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 auto-rows-min">
-      {loading
-        ? [...Array(10)].map((_, i) => <Skeleton key={i} className="h-40" />)
-        : items.map((i: any) => <SortableNewsCard key={i.postId} item={i} />)}
-    </div>
-  );
 
   /* ================= UI ================= */
   return (
