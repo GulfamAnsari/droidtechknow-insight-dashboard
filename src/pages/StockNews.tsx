@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -291,9 +291,11 @@ export default function StockNews() {
 
   useEffect(() => {
     if (autoFetchNews) {
+      // Immediate first call
+      autoRefreshHandlerRef.current?.();
       autoFetchNewsRef.current = setInterval(() => {
         autoRefreshHandlerRef.current?.();
-      }, 30000); // 30s
+      }, 5000); // 5s
     } else {
       if (autoFetchNewsRef.current) {
         clearInterval(autoFetchNewsRef.current);
@@ -554,87 +556,103 @@ export default function StockNews() {
   );
 
   /* ---------------- SAVE ---------------- */
-  const saveNews = (item: any, sentiment: "bullish" | "bearish") => {
-    const existing = savedNews.find((s) => s.postId === item.postId);
-    const updated = [
-      ...savedNews.filter((s) => s.postId !== item.postId),
-      {
-        ...item,
-        sentiment,
-        remark: existing?.remark || item.remark || "",
-        savedAt: new Date().toISOString()
-      }
-    ];
-    setSavedNews(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const saveNews = useCallback((item: any, sentiment: "bullish" | "bearish") => {
+    setSavedNews((prev) => {
+      const existing = prev.find((s) => s.postId === item.postId);
+      const updated = [
+        ...prev.filter((s) => s.postId !== item.postId),
+        {
+          ...item,
+          sentiment,
+          remark: existing?.remark || item.remark || "",
+          savedAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
     toast.success(`Saved as ${sentiment}`);
-  };
+  }, []);
 
-  const removeSaved = (postId: string) => {
-    const updated = savedNews.filter((s) => s.postId !== postId);
-    setSavedNews(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  const removeSaved = useCallback((postId: string) => {
+    setSavedNews((prev) => {
+      const updated = prev.filter((s) => s.postId !== postId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
     toast.success("Removed from saved");
-  };
+  }, []);
 
-  const updateSavedRemark = (postId: string, remark: string) => {
-    const updated = savedNews.map((item) =>
-      item.postId === postId ? { ...item, remark } : item
-    );
-    setSavedNews(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
+  const updateSavedRemark = useCallback((postId: string, remark: string) => {
+    setSavedNews((prev) => {
+      const updated = prev.map((item) =>
+        item.postId === postId ? { ...item, remark } : item
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
-  const getSavedSentiment = (postId: string) =>
-    savedNews.find((s) => s.postId === postId)?.sentiment || "";
+  const getSavedSentiment = useCallback(
+    (postId: string) => savedNews.find((s) => s.postId === postId)?.sentiment || "",
+    [savedNews]
+  );
 
   /* ---------------- SAVE FOR LATER ---------------- */
-  const moveToLater = (item: any, remark: string = "") => {
-    // Remove from saved
-    const updatedSaved = savedNews.filter((s) => s.postId !== item.postId);
-    setSavedNews(updatedSaved);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+  const moveToLater = useCallback((item: any, remark: string = "") => {
+    setSavedNews((prev) => {
+      const updatedSaved = prev.filter((s) => s.postId !== item.postId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+      return updatedSaved;
+    });
 
-    // Add to later
-    const updatedLater = [
-      ...laterNews.filter((s) => s.postId !== item.postId),
-      { ...item, remark, movedAt: new Date().toISOString() }
-    ];
-    setLaterNews(updatedLater);
-    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+    setLaterNews((prev) => {
+      const updatedLater = [
+        ...prev.filter((s) => s.postId !== item.postId),
+        { ...item, remark, movedAt: new Date().toISOString() }
+      ];
+      localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+      return updatedLater;
+    });
     toast.success("Moved to Save for Later");
-  };
+  }, []);
 
-  const updateRemark = (postId: string, remark: string) => {
-    const updated = laterNews.map((item) =>
-      item.postId === postId ? { ...item, remark } : item
-    );
-    setLaterNews(updated);
-    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
-  };
+  const updateRemark = useCallback((postId: string, remark: string) => {
+    setLaterNews((prev) => {
+      const updated = prev.map((item) =>
+        item.postId === postId ? { ...item, remark } : item
+      );
+      localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
-  const removeLater = (postId: string) => {
-    const updated = laterNews.filter((s) => s.postId !== postId);
-    setLaterNews(updated);
-    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
+  const removeLater = useCallback((postId: string) => {
+    setLaterNews((prev) => {
+      const updated = prev.filter((s) => s.postId !== postId);
+      localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
     toast.success("Removed from Save for Later");
-  };
+  }, []);
 
-  const moveBackToSaved = (item: any) => {
-    // Remove from later
-    const updatedLater = laterNews.filter((s) => s.postId !== item.postId);
-    setLaterNews(updatedLater);
-    localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+  const moveBackToSaved = useCallback((item: any) => {
+    setLaterNews((prev) => {
+      const updatedLater = prev.filter((s) => s.postId !== item.postId);
+      localStorage.setItem(LATER_STORAGE_KEY, JSON.stringify(updatedLater));
+      return updatedLater;
+    });
 
-    // Add back to saved
-    const updatedSaved = [
-      ...savedNews.filter((s) => s.postId !== item.postId),
-      { ...item, savedAt: new Date().toISOString() }
-    ];
-    setSavedNews(updatedSaved);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+    setSavedNews((prev) => {
+      const updatedSaved = [
+        ...prev.filter((s) => s.postId !== item.postId),
+        { ...item, savedAt: new Date().toISOString() }
+      ];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSaved));
+      return updatedSaved;
+    });
     toast.success("Moved back to Saved");
-  };
+  }, []);
 
   /* ---------------- COPY ---------------- */
   const copyAllNews = () => {
@@ -697,7 +715,9 @@ export default function StockNews() {
     );
   };
 
-  const NewsGrid = ({ items }: { items: any[] }) => {
+  const handleUpdateRemarkNoop = useCallback(() => {}, []);
+
+  const NewsGrid = memo(({ items }: { items: any[] }) => {
     const visible = items.slice(0, renderLimit);
 
     return (
@@ -723,7 +743,7 @@ export default function StockNews() {
                     onRemoveSaved={removeSaved}
                     onMoveBackToSaved={moveBackToSaved}
                     onRemoveLater={removeLater}
-                    onUpdateRemark={() => {}}
+                    onUpdateRemark={handleUpdateRemarkNoop}
                   />
                 );
               })}
@@ -742,7 +762,7 @@ export default function StockNews() {
         )}
       </div>
     );
-  };
+  });
 
   /* ================= UI ================= */
   return (
