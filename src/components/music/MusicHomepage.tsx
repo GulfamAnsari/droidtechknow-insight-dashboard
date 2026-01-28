@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Heart, MoreHorizontal, Download, Loader2, X, Star, Music, HardDrive } from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X, Star, Music, HardDrive, Radio } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { weightedPages } from "@/services/constants";
+import RadioTab from "@/components/music/RadioTab";
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
@@ -301,9 +302,12 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   return (
     <div className="space-y-4">
       <Tabs defaultValue={activeTab} onValueChange={(v) => setActiveTab(v)} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="recommended" className="flex flex-col items-center">
             <Music className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Recommended</span>
+          </TabsTrigger>
+          <TabsTrigger value="radio" className="flex flex-col items-center">
+            <Radio className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Radio</span>
           </TabsTrigger>
           <TabsTrigger value="likes" className="flex flex-col items-center">
             <Heart className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Likes</span>
@@ -425,6 +429,13 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
                 </div>
               </>
             )}
+          </div>
+        </TabsContent>
+
+        {/* Radio */}
+        <TabsContent value="radio" className="space-y-4">
+          <div className="mt-6">
+            <RadioTab onPlaySong={onPlaySong} setPlaylist={setPlaylist} />
           </div>
         </TabsContent>
 
