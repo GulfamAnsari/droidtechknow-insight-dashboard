@@ -15,7 +15,8 @@ import {
   Lightbulb,
   MoreHorizontal,
   Loader2,
-  X
+  X,
+  Smartphone
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -68,7 +69,12 @@ const SidebarSwipeable = ({
 
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const isMobile = useIsMobile();
+  const isMobileDevice = useIsMobile();
+  const [forceMobileUI, setForceMobileUI] = useState(() => {
+    return localStorage.getItem("musicForceMobileUI") === "true";
+  });
+  // Effective mobile state: true if device is mobile OR user forced mobile UI
+  const isMobile = isMobileDevice || forceMobileUI;
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
   const [activeTab, setActiveTab] = useState("playlist");
@@ -670,6 +676,20 @@ const Music = () => {
               Now Playing
             </Button>
           )}
+
+          {/* Mobile UI Toggle */}
+          <Button
+            variant={forceMobileUI ? "default" : "outline"}
+            size="icon"
+            onClick={() => {
+              const newValue = !forceMobileUI;
+              setForceMobileUI(newValue);
+              localStorage.setItem("musicForceMobileUI", String(newValue));
+            }}
+            title={forceMobileUI ? "Switch to Desktop UI" : "Switch to Mobile UI"}
+          >
+            <Smartphone className="h-4 w-4" />
+          </Button>
 
           {/* Action Menu */}
           <DropdownMenu>
