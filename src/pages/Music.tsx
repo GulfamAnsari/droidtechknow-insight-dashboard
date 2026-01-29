@@ -15,8 +15,7 @@ import {
   Lightbulb,
   MoreHorizontal,
   Loader2,
-  X,
-  Smartphone
+  X
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,7 +31,7 @@ import FullscreenPlayer from "@/components/music/FullscreenPlayer";
 import SwipeAnimations from "@/components/music/SwipeAnimations";
 import MusicHomepage from "@/components/music/MusicHomepage";
 import SongsModal from "@/components/music/SongsModal";
-import MobileDeviceFrame from "@/components/music/MobileDeviceFrame";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@radix-ui/react-progress";
@@ -71,7 +70,7 @@ const SidebarSwipeable = ({
 const Music = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useIsMobile();
-  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [showSuggested, setShowSuggested] = useState(false);
   const [activeTab, setActiveTab] = useState("playlist");
@@ -674,15 +673,6 @@ const Music = () => {
             </Button>
           )}
 
-          {/* Mobile UI Preview Toggle */}
-          <Button
-            variant={showMobilePreview ? "default" : "outline"}
-            size="icon"
-            onClick={() => setShowMobilePreview(!showMobilePreview)}
-            title={showMobilePreview ? "Close Mobile Preview" : "Preview Mobile UI"}
-          >
-            <Smartphone className="h-4 w-4" />
-          </Button>
 
           {/* Action Menu */}
           <DropdownMenu>
@@ -1017,51 +1007,6 @@ const Music = () => {
         />
       )}
 
-      {/* Mobile Device Preview Frame */}
-      {showMobilePreview && (
-        <MobileDeviceFrame onClose={() => setShowMobilePreview(false)}>
-          <div className="h-full flex flex-col bg-gradient-to-b from-purple-900/20 to-blue-900/20">
-            {/* Simplified mobile content */}
-            <div className="flex-1 overflow-auto p-4">
-              <MusicHomepage
-                onPlaySong={playSong}
-                onNavigateToContent={handleNavigateToContent}
-                currentSong={currentSong}
-                onToggleLike={handleToggleLike}
-                likedSongs={likedSongs.map((song) => song.id)}
-                isPlaying={isPlaying}
-                setPlaylist={setPlaylist}
-              />
-            </div>
-            
-            {/* Mini Player in mobile frame */}
-            {currentSong && (
-              <div className="border-t bg-background p-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={currentSong.image?.[0]?.url}
-                    alt={currentSong.name}
-                    className="w-10 h-10 rounded object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium">{currentSong.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {currentSong.artists?.primary?.map((a) => a.name).join(", ")}
-                    </p>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={togglePlayPause}
-                  >
-                    {isPlaying ? "⏸" : "▶"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </MobileDeviceFrame>
-      )}
     </div>
   );
 };
