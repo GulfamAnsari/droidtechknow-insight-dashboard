@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Heart, MoreHorizontal, Download, Loader2, X, Star, Music, HardDrive, Radio } from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X, Music, HardDrive, Compass } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { weightedPages } from "@/services/constants";
-import RadioTab from "@/components/music/RadioTab";
+import ExploreTab from "@/components/music/ExploreTab";
 
 interface MusicHomepageProps {
   onPlaySong: (song: Song) => void;
@@ -28,15 +28,12 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
-  const [artistPage, setArtistPage] = useState(1);
   const [activeTab, setActiveTab] = useState<string>("recommended");
-  const [hasMoreSongs, setHasMoreSongs] = useState(true); // <-- new flag
+  const [hasMoreSongs, setHasMoreSongs] = useState(true);
 
   const isFetchingRelated = useRef(false);
-  const isFetchingArtists = useRef(false);
   const artistPageCache = useRef<Set<string>>(new Set());
   const [songSentinel, setSongSentinel] = useState<HTMLDivElement | null>(null);
-  const [artistSentinel, setArtistSentinel] = useState<HTMLDivElement | null>(null);
 
   const getCachedSearchResults = (): Song[] => {
     try { return JSON.parse(localStorage.getItem("musicSearchResults") || "[]"); }
@@ -253,18 +250,6 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
     return [...pool].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, pool.length));
   };
 
-  const loadMoreArtists = useCallback(async () => {
-    if (isFetchingArtists.current) return;
-    isFetchingArtists.current = true;
-    try {
-      const artists = await musicApi.getPopularArtists(artistPage + 1);
-      if (!artists?.length) return;
-      setArtistPage(p => p + 1);
-      setPopularArtists(prev => [...prev, ...artists]);
-    } catch (err) { console.error(err); }
-    finally { isFetchingArtists.current = false; }
-  }, [artistPage]);
-
   useEffect(() => {
     if (!songSentinel) return;
     const obs = new IntersectionObserver(entries => {
@@ -273,15 +258,6 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
     obs.observe(songSentinel);
     return () => obs.disconnect();
   }, [songSentinel, activeTab, loadRelatedSongs, hasMoreSongs]);
-
-  useEffect(() => {
-    if (!artistSentinel) return;
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && activeTab === "artists") loadMoreArtists();
-    }, { root: null, rootMargin: "300px", threshold: 0.1 });
-    obs.observe(artistSentinel);
-    return () => obs.disconnect();
-  }, [artistSentinel, activeTab, loadMoreArtists]);
 
   const handlePlaySong = (song: Song) => {
     if (activeTab === "recommended") setPlaylist([...relatedSongs]);
@@ -302,21 +278,18 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   return (
     <div className="space-y-4">
       <Tabs defaultValue={activeTab} onValueChange={(v) => setActiveTab(v)} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="recommended" className="flex flex-col items-center">
             <Music className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Recommended</span>
           </TabsTrigger>
-          <TabsTrigger value="radio" className="flex flex-col items-center">
-            <Radio className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Radio</span>
+          <TabsTrigger value="explore" className="flex flex-col items-center">
+            <Compass className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Explore</span>
           </TabsTrigger>
           <TabsTrigger value="likes" className="flex flex-col items-center">
             <Heart className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Likes</span>
           </TabsTrigger>
           <TabsTrigger value="offline" className="flex flex-col items-center">
             <HardDrive className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Offline</span>
-          </TabsTrigger>
-          <TabsTrigger value="artists" className="flex flex-col items-center">
-            <Star className="h-4 w-4 sm:hidden" /> <span className="hidden sm:inline">Popular Artists</span>
           </TabsTrigger>
         </TabsList>
 
@@ -432,11 +405,13 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
           </div>
         </TabsContent>
 
-        {/* Radio */}
-        <TabsContent value="radio" className="space-y-4">
-          <div className="mt-6">
-            <RadioTab onPlaySong={onPlaySong} setPlaylist={setPlaylist} />
-          </div>
+        {/* Explore */}
+        <TabsContent value="explore" className="space-y-4">
+          <ExploreTab 
+            onPlaySong={onPlaySong} 
+            onNavigateToContent={onNavigateToContent}
+            setPlaylist={setPlaylist} 
+          />
         </TabsContent>
 
         {/* Likes */}
@@ -617,39 +592,6 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
           </div>
         </TabsContent>
 
-        {/* Artists */}
-        <TabsContent value="artists" className="space-y-4">
-          <div className="mt-6">
-            <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-3">
-              {popularArtists.map((artist) => (
-                <Card
-                  key={artist.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow group"
-                  onClick={() => onNavigateToContent("artist", artist)}
-                >
-                  <CardContent className="p-2 text-center">
-                    <div className="relative mb-2">
-                      <LazyImage
-                        src={artist.image?.[1]?.url || artist.image?.[0]?.url}
-                        alt={artist.name}
-                        className="w-full aspect-square rounded-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Play className="h-4 w-4 text-white" />
-                      </div>
-                    </div>
-
-                    <h3 className="font-medium text-xs truncate mt-2">{artist.name}</h3>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div ref={setArtistSentinel} className="h-12 flex items-center justify-center mt-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
   );
