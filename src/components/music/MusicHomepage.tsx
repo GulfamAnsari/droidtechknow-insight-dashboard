@@ -30,6 +30,27 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const [usedSongIds, setUsedSongIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("recommended");
   const [hasMoreSongs, setHasMoreSongs] = useState(true);
+  const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+
+  // Load recently played from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("recentlyPlayedSongs");
+      if (saved) setRecentlyPlayed(JSON.parse(saved));
+    } catch (e) {
+      console.error("Failed to load recently played:", e);
+    }
+  }, []);
+
+  // Save recently played to localStorage and add song
+  const addToRecentlyPlayed = useCallback((song: Song) => {
+    setRecentlyPlayed(prev => {
+      const filtered = prev.filter(s => s.id !== song.id);
+      const updated = [song, ...filtered].slice(0, 30);
+      localStorage.setItem("recentlyPlayedSongs", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const isFetchingRelated = useRef(false);
   const artistPageCache = useRef<Set<string>>(new Set());
@@ -263,6 +284,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
     if (activeTab === "recommended") setPlaylist([...relatedSongs]);
     else if (activeTab === "likes") setPlaylist([...likedSongObjects]);
     else if (activeTab === "offline") setPlaylist([...offlineSongs]);
+    addToRecentlyPlayed(song);
     onPlaySong(song);
   };
 
@@ -408,9 +430,10 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
         {/* Explore */}
         <TabsContent value="explore" className="space-y-4">
           <ExploreTab 
-            onPlaySong={onPlaySong} 
+            onPlaySong={(song) => { addToRecentlyPlayed(song); onPlaySong(song); }} 
             onNavigateToContent={onNavigateToContent}
-            setPlaylist={setPlaylist} 
+            setPlaylist={setPlaylist}
+            recentlyPlayed={recentlyPlayed}
           />
         </TabsContent>
 
