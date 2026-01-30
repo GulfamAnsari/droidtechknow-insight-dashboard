@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Radio, Loader2, Users, ListMusic, TrendingUp, Sparkles, Clock, Heart, ChevronRight } from "lucide-react";
+import { Play, Radio, Loader2, Users, ListMusic, Clock, Heart, ChevronRight } from "lucide-react";
 import { musicApi, Song, Artist, Playlist } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -68,7 +68,6 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const [curatedSongs, setCuratedSongs] = useState<Record<string, Song[]>>({});
   const [loading, setLoading] = useState(true);
   const [artistPage, setArtistPage] = useState(1);
-  const [showAllRadio, setShowAllRadio] = useState(false);
   const [showAllArtists, setShowAllArtists] = useState(false);
   
   const isFetchingArtists = useRef(false);
@@ -211,7 +210,6 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
     }
   };
 
-  const displayedRadioCategories = showAllRadio ? RADIO_CATEGORIES : RADIO_CATEGORIES.slice(0, 8);
   const displayedArtists = showAllArtists ? popularArtists : popularArtists.slice(0, 12);
 
   if (loading) {
@@ -271,30 +269,33 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
           <h2 className="text-lg font-semibold">Mood & Vibes</h2>
         </div>
         
-        <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-10 gap-2">
-          {MOOD_PLAYLISTS.map((mood) => (
-            <Card
-              key={mood.id}
-              className="cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden"
-              onClick={() => playMoodPlaylist(mood)}
-            >
-              <CardContent className="p-0">
-                <div className={`bg-gradient-to-br ${mood.gradient} p-3 aspect-square flex flex-col items-center justify-center relative`}>
-                  <span className="text-2xl mb-1">{mood.emoji}</span>
-                  <span className="text-white font-semibold text-xs text-center drop-shadow-md">
-                    {mood.name}
-                  </span>
-                  
-                  {loadingMood === mood.id && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <Loader2 className="h-5 w-5 text-white animate-spin" />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-2 pb-4">
+            {MOOD_PLAYLISTS.map((mood) => (
+              <Card
+                key={mood.id}
+                className="cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden shrink-0 w-20"
+                onClick={() => playMoodPlaylist(mood)}
+              >
+                <CardContent className="p-0">
+                  <div className={`bg-gradient-to-br ${mood.gradient} p-3 aspect-square flex flex-col items-center justify-center relative`}>
+                    <span className="text-2xl mb-1">{mood.emoji}</span>
+                    <span className="text-white font-semibold text-[10px] text-center drop-shadow-md">
+                      {mood.name}
+                    </span>
+                    
+                    {loadingMood === mood.id && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-5 w-5 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </section>
 
       {/* Curated Sections */}
@@ -366,58 +367,50 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
 
       {/* Radio Stations */}
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Radio className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Radio Stations</h2>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowAllRadio(!showAllRadio)}
-            className="text-xs"
-          >
-            {showAllRadio ? "Show Less" : "See All"}
-            <ChevronRight className={`h-4 w-4 ml-1 transition-transform ${showAllRadio ? "rotate-90" : ""}`} />
-          </Button>
+        <div className="flex items-center gap-2 mb-4">
+          <Radio className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Radio Stations</h2>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2">
-          {displayedRadioCategories.map((category) => (
-            <Card
-              key={category.id}
-              className={`cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden ${
-                activeRadio === category.id ? "ring-2 ring-primary" : ""
-              }`}
-              onClick={() => playRadio(category)}
-            >
-              <CardContent className="p-0">
-                <div className={`bg-gradient-to-br ${category.gradient} p-3 aspect-square flex flex-col items-center justify-center relative`}>
-                  <span className="text-2xl mb-1">{category.emoji}</span>
-                  <span className="text-white font-semibold text-xs text-center drop-shadow-md line-clamp-2">
-                    {category.name}
-                  </span>
-                  
-                  {loadingCategory === category.id ? (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <Loader2 className="h-5 w-5 text-white animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="h-6 w-6 text-white fill-white" />
-                    </div>
-                  )}
-                  
-                  {activeRadio === category.id && loadingCategory !== category.id && (
-                    <div className="absolute top-1 right-1">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-2 pb-4">
+            {RADIO_CATEGORIES.map((category) => (
+              <Card
+                key={category.id}
+                className={`cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden shrink-0 w-20 ${
+                  activeRadio === category.id ? "ring-2 ring-primary" : ""
+                }`}
+                onClick={() => playRadio(category)}
+              >
+                <CardContent className="p-0">
+                  <div className={`bg-gradient-to-br ${category.gradient} p-3 aspect-square flex flex-col items-center justify-center relative`}>
+                    <span className="text-2xl mb-1">{category.emoji}</span>
+                    <span className="text-white font-semibold text-[10px] text-center drop-shadow-md line-clamp-2">
+                      {category.name}
+                    </span>
+                    
+                    {loadingCategory === category.id ? (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-5 w-5 text-white animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Play className="h-6 w-6 text-white fill-white" />
+                      </div>
+                    )}
+                    
+                    {activeRadio === category.id && loadingCategory !== category.id && (
+                      <div className="absolute top-1 right-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </section>
 
       {/* Popular Artists - At Bottom */}
