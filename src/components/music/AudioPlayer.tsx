@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -10,7 +10,10 @@ import {
   VolumeX,
   Repeat,
   Shuffle,
-  Maximize
+  Maximize,
+  Heart,
+  Minimize2,
+  Maximize2
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 
@@ -53,6 +56,8 @@ interface AudioPlayerProps {
   onToggleMute: () => void;
   isMuted: boolean;
   audioRef: any;
+  isLiked?: boolean;
+  onToggleLike?: () => void;
 }
 
 const AudioPlayer = ({
@@ -74,8 +79,11 @@ const AudioPlayer = ({
   onToggleFullscreen,
   onToggleMute,
   isMuted,
-  audioRef
+  audioRef,
+  isLiked = false,
+  onToggleLike
 }: AudioPlayerProps) => {
+  const [isFloating, setIsFloating] = useState(false);
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -181,8 +189,6 @@ const AudioPlayer = ({
     }
   };
 
-  if (!song) return null;
-
   useEffect(() => {
     if ("mediaSession" in navigator && audioRef.current && song) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -243,118 +249,127 @@ const AudioPlayer = ({
     }
   }, [song, isPlaying, onPlayPause, onNext, onPrevious]);
 
+  if (!song) return null;
+
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-40"
+      className={`fixed z-40 bg-background/95 backdrop-blur-md border shadow-lg transition-all duration-300 ${
+        isFloating 
+          ? "bottom-4 right-4 left-auto w-80 rounded-2xl" 
+          : "bottom-0 left-0 right-0 rounded-t-xl"
+      }`}
       style={{ zIndex: 99 }}
     >
-
-      {/* Progress bar */}
-      <div className="px-4 p-4">
-        <Slider
-          value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-          onValueChange={handleSeek}
-          max={100}
-          step={0.1}
-          className="w-full"
-        />
+      {/* Progress bar - thin line at top */}
+      <div className={`${isFloating ? 'px-3 pt-3' : 'px-4 pt-2'}`}>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span className="w-8 text-right">{formatTime(currentTime)}</span>
+          <Slider
+            value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
+            onValueChange={handleSeek}
+            max={100}
+            step={0.1}
+            className="flex-1"
+          />
+          <span className="w-8">{formatTime(duration)}</span>
+        </div>
       </div>
 
-      {/* Player controls */}
-      <div className="flex items-center gap-6 pt-2 pl-4 pr-4 pb-4">
-        {/* Song info - clickable on mobile */}
+      {/* Player controls - compact */}
+      <div className={`flex items-center gap-2 ${isFloating ? 'p-3 pt-2' : 'p-3'}`}>
+        {/* Song info */}
         <div
-          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer md:cursor-default"
+          className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
           onClick={handleMobilePlayerClick}
         >
           <LazyImage
             src={song.image?.[0]?.url}
             alt={song.name}
-            className="w-12 h-12 rounded object-cover"
+            className={`${isFloating ? 'w-10 h-10' : 'w-11 h-11'} rounded-lg object-cover shadow-md`}
           />
           <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">{song.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {song.artists?.primary?.map((a) => a.name).join(", ") ||
-                "Unknown Artist"}
+            <p className="truncate text-sm font-medium leading-tight">{song.name}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown"}
             </p>
           </div>
         </div>
 
-        {/* Mobile controls */}
-        <div className="flex items-center gap-2 md:hidden">
-          <Button size="sm" variant="ghost" onClick={onPrevious}>
+        {/* Controls */}
+        <div className="flex items-center gap-0.5">
+          {/* Like button */}
+          {onToggleLike && (
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={onToggleLike}
+              className={`h-8 w-8 ${isLiked ? 'text-red-500' : ''}`}
+            >
+              <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+            </Button>
+          )}
+
+          <Button size="icon" variant="ghost" onClick={onPrevious} className="h-8 w-8">
             <SkipBack className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={onPlayPause}>
-            {isPlaying ? (
-              <Pause className="h-4 w-4" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onNext}>
-            <SkipForward className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onToggleFullscreen}>
-            <Maximize className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Desktop controls */}
-        <div className="hidden md:flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onToggleShuffle}
-            className={isShuffle ? "text-primary" : ""}
+          
+          <Button 
+            size="icon" 
+            onClick={onPlayPause} 
+            className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Shuffle className="h-4 w-4" />
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
           </Button>
-
-          <Button size="sm" variant="ghost" onClick={onPrevious}>
-            <SkipBack className="h-4 w-4" />
-          </Button>
-
-          <Button size="sm" onClick={onPlayPause}>
-            {isPlaying ? (
-              <Pause className="h-4 w-4" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-          </Button>
-
-          <Button size="sm" variant="ghost" onClick={onNext}>
+          
+          <Button size="icon" variant="ghost" onClick={onNext} className="h-8 w-8">
             <SkipForward className="h-4 w-4" />
           </Button>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onToggleRepeat}
-            className={isRepeat ? "text-primary" : ""}
-          >
-            <Repeat className="h-4 w-4" />
-          </Button>
-        </div>
+          {/* Desktop-only controls */}
+          <div className="hidden md:flex items-center gap-0.5">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onToggleShuffle}
+              className={`h-8 w-8 ${isShuffle ? "text-primary" : ""}`}
+            >
+              <Shuffle className="h-3.5 w-3.5" />
+            </Button>
 
-        {/* Volume and fullscreen - Desktop only */}
-        <div className="hidden md:flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={onToggleMute}>
-            {isMuted ? (
-              <VolumeX className="h-4 w-4" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onToggleRepeat}
+              className={`h-8 w-8 ${isRepeat ? "text-primary" : ""}`}
+            >
+              <Repeat className="h-3.5 w-3.5" />
+            </Button>
+
+            <Button size="icon" variant="ghost" onClick={onToggleMute} className="h-8 w-8">
+              {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </Button>
+            
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              onValueChange={handleVolumeChange}
+              max={100}
+              step={1}
+              className="w-16"
+            />
+          </div>
+
+          {/* Floating toggle */}
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            onClick={() => setIsFloating(!isFloating)}
+            className="h-8 w-8 hidden md:flex"
+          >
+            {isFloating ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
           </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            onValueChange={handleVolumeChange}
-            max={100}
-            step={1}
-            className="w-20"
-          />
-          <Button size="sm" variant="ghost" onClick={onToggleFullscreen}>
+
+          {/* Fullscreen */}
+          <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-8 w-8">
             <Maximize className="h-4 w-4" />
           </Button>
         </div>
