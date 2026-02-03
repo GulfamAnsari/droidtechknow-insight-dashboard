@@ -331,20 +331,23 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
               <>
                 <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2 mt-2">
                   {relatedSongs.map((song) => (
-                    <Card key={song.id} className="cursor-pointer hover:shadow-lg transition-shadow group">
+                    <Card 
+                      key={song.id} 
+                      className="cursor-pointer hover:shadow-lg transition-shadow group"
+                      onClick={() => handlePlaySong(song)}
+                    >
                       <CardContent className="p-2">
                         <div className="relative mb-2">
                           <LazyImage
                             src={song.image?.[1]?.url || song.image?.[0]?.url}
                             alt={song.name}
                             className="w-full aspect-square rounded-lg object-cover"
-                            onClick={() => handlePlaySong(song)}
                           />
                           <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Play className="h-8 w-8 text-white" onClick={() => handlePlaySong(song)} />
+                            <Play className="h-8 w-8 text-white" />
                           </div>
 
-                          <div className="absolute top-2 right-2">
+                          <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -406,13 +409,11 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
                           </div>
                         </div>
 
-                        <div onClick={() => handlePlaySong(song)}>
-                          <h3 className="font-medium text-sm truncate">{song.name}</h3>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">{formatDuration(song.duration)}</p>
-                        </div>
+                        <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">{formatDuration(song.duration)}</p>
                       </CardContent>
                     </Card>
                   ))}
@@ -449,7 +450,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
               </Card>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2 mt-2">
-                {likedSongObjects.map((song) => (
+                {[...likedSongObjects].reverse().map((song) => (
                   <Card key={song.id} className="cursor-pointer hover:shadow-lg transition-shadow group">
                     <CardContent className="p-2">
                       <div className="relative mb-2">
