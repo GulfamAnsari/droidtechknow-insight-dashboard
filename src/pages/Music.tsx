@@ -39,7 +39,7 @@ import SearchSuggestions from "@/components/music/SearchSuggestions";
 import FavoriteArtistsModal from "@/components/music/FavoriteArtistsModal";
 import RecommendationSettingsModal from "@/components/music/RecommendationSettingsModal";
 
-// Swipeable sidebar component for Now Playing
+// Swipeable and resizable sidebar component for Now Playing
 const SidebarSwipeable = ({ 
   activeTab, 
   setActiveTab, 
@@ -53,6 +53,11 @@ const SidebarSwipeable = ({
   suggestedSongs: Song[];
   children: React.ReactNode;
 }) => {
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+  const minWidth = 280;
+  const maxWidth = 500;
+
   const handlers = useSwipeable({
     onSwipedLeft: () => setActiveTab("suggestions"),
     onSwipedRight: () => setActiveTab("playlist"),
@@ -60,8 +65,48 @@ const SidebarSwipeable = ({
     preventScrollOnSwipe: true,
   });
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = window.innerWidth - e.clientX;
+      setSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   return (
-    <div {...handlers} className="w-80 border-l bg-muted/30 flex flex-col mb-6">
+    <div 
+      {...handlers} 
+      className="border-l bg-muted/30 flex flex-col mb-6 relative"
+      style={{ width: sidebarWidth }}
+    >
+      {/* Resize handle */}
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary/50 transition-colors z-10 ${
+          isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/30'
+        }`}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 rounded-full bg-muted-foreground/30" />
+      </div>
       {children}
     </div>
   );
@@ -969,6 +1014,8 @@ const Music = () => {
           onToggleMute={toggleMute}
           isMuted={isMuted}
           audioRef={audioRef}
+          isLiked={likedSongs.some(s => s.id === currentSong.id)}
+          onToggleLike={() => toggleLike(currentSong)}
         />
       )}
       {/* Fullscreen Player */}
