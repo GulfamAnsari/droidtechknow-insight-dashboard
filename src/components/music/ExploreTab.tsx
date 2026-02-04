@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Radio, Loader2, Users, ListMusic, Clock, Heart, ChevronRight } from "lucide-react";
+import { Play, Radio, Loader2, Users, ListMusic, Clock, Heart, ChevronRight, TrendingUp, Music2, Sparkles } from "lucide-react";
 import { musicApi, Song, Artist, Playlist } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -30,21 +30,50 @@ const MOOD_PLAYLISTS = [
   { id: "rain", name: "Rain Vibes", emoji: "🌧️", gradient: "from-cyan-500 to-blue-600", queries: ["rain songs bollywood", "monsoon romantic"] },
 ];
 
-const CURATED_SECTIONS = [
-  { title: "New Releases", playlistIds: ["1134543265"], gradient: "from-purple-500 to-pink-500" },
-  { title: "Trending Now", playlistIds: ["1134543272", "1134770509"], gradient: "from-orange-500 to-red-500" },
-  { title: "Top Charts", playlistIds: ["1134543272"], gradient: "from-blue-500 to-indigo-500" },
-  { title: "Fresh Hits", playlistIds: ["1134543265", "1134770509"], gradient: "from-green-500 to-teal-500" },
-  { title: "Best of 2025", playlistIds: ["1134543265"], gradient: "from-pink-400 to-purple-500" },
-  { title: "Best of 2024", playlistIds: ["1134770509"], gradient: "from-violet-500 to-purple-600" },
-  { title: "Best of 90s", playlistIds: ["1134770516"], gradient: "from-purple-500 to-indigo-500" },
-  { title: "Best of 2000s", playlistIds: ["1134770509"], gradient: "from-blue-500 to-purple-500" },
-  { title: "Best of 80s", playlistIds: ["1134770523"], gradient: "from-teal-500 to-cyan-500" },
-  { title: "Top 50 Punjabi", playlistIds: ["1134543307", "1029579349"], gradient: "from-orange-400 to-yellow-500" },
-  { title: "Top 50 Hindi", playlistIds: ["1134543272"], gradient: "from-rose-500 to-pink-500" },
-  { title: "Bollywood Classics", playlistIds: ["1134770516", "1134770523"], gradient: "from-amber-500 to-orange-500" },
-  { title: "Indie Hits", playlistIds: ["1134684498"], gradient: "from-emerald-500 to-teal-500" },
-  { title: "Romantic Hits", playlistIds: ["1134543285", "74313682"], gradient: "from-pink-500 to-rose-500" },
+// Grouped curated sections for Spotify-like layout
+const PLAYLIST_ROWS = [
+  {
+    title: "Top Charts",
+    icon: TrendingUp,
+    playlists: [
+      { id: "1134543272", name: "Top 50 Hindi", gradient: "from-rose-500 to-pink-600" },
+      { id: "1134543307", name: "Top 50 Punjabi", gradient: "from-orange-400 to-yellow-500" },
+      { id: "1134543292", name: "Top 50 Tamil", gradient: "from-green-500 to-teal-500" },
+      { id: "1134543299", name: "Top 50 Telugu", gradient: "from-yellow-500 to-orange-500" },
+      { id: "1134770495", name: "Top 50 English", gradient: "from-blue-500 to-cyan-500" },
+    ]
+  },
+  {
+    title: "New Releases",
+    icon: Sparkles,
+    playlists: [
+      { id: "1134543265", name: "Fresh Hits", gradient: "from-purple-500 to-pink-500" },
+      { id: "1134770509", name: "Trending Now", gradient: "from-orange-500 to-red-500" },
+      { id: "1134543265", name: "New This Week", gradient: "from-green-500 to-teal-500" },
+      { id: "1134684498", name: "Indie Spotlight", gradient: "from-emerald-500 to-teal-500" },
+    ]
+  },
+  {
+    title: "Bollywood Essentials",
+    icon: Music2,
+    playlists: [
+      { id: "1134543285", name: "Romantic Hits", gradient: "from-pink-500 to-rose-500" },
+      { id: "1134543277", name: "Party Anthems", gradient: "from-red-500 to-orange-500" },
+      { id: "1134550498", name: "Heartbreak Songs", gradient: "from-slate-500 to-gray-600" },
+      { id: "1134684545", name: "Workout Mix", gradient: "from-green-500 to-emerald-500" },
+    ]
+  },
+  {
+    title: "Throwback Hits",
+    icon: Clock,
+    playlists: [
+      { id: "1134770516", name: "90s Gold", gradient: "from-purple-500 to-indigo-500" },
+      { id: "1134770523", name: "80s Classics", gradient: "from-teal-500 to-cyan-500" },
+      { id: "1134770509", name: "2000s Nostalgia", gradient: "from-blue-500 to-purple-500" },
+      { id: "1134543265", name: "Best of 2024", gradient: "from-violet-500 to-purple-600" },
+      { id: "1134543265", name: "Best of 2025", gradient: "from-pink-400 to-purple-500" },
+    ]
+  },
 ];
 
 const RADIO_CATEGORIES: RadioCategory[] = [
@@ -74,9 +103,10 @@ interface ExploreTabProps {
 const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlayed = [] }: ExploreTabProps) => {
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
   const [loadingMood, setLoadingMood] = useState<string | null>(null);
+  const [loadingPlaylist, setLoadingPlaylist] = useState<string | null>(null);
   const [activeRadio, setActiveRadio] = useState<string | null>(null);
   const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
-  const [curatedSongs, setCuratedSongs] = useState<Record<string, Song[]>>({});
+  const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [artistPage, setArtistPage] = useState(1);
   const [showAllArtists, setShowAllArtists] = useState(false);
@@ -91,21 +121,12 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const loadExploreData = async () => {
     setLoading(true);
     try {
-      const artists = await musicApi.getPopularArtists(1, 20);
+      const [artists, trending] = await Promise.all([
+        musicApi.getPopularArtists(1, 20),
+        musicApi.getPlaylistSongs("1134543272") // Top Hindi for trending
+      ]);
       setPopularArtists(artists || []);
-      
-      // Load first few curated sections
-      const sectionsToLoad = CURATED_SECTIONS.slice(0, 4);
-      const sectionPromises = sectionsToLoad.map(async (section) => {
-        const playlistId = section.playlistIds[0];
-        const songs = await musicApi.getPlaylistSongs(playlistId);
-        return { title: section.title, songs: songs.slice(0, 10) };
-      });
-      
-      const results = await Promise.all(sectionPromises);
-      const songsMap: Record<string, Song[]> = {};
-      results.forEach(r => { songsMap[r.title] = r.songs; });
-      setCuratedSongs(songsMap);
+      setTrendingSongs(trending?.slice(0, 15) || []);
     } catch (error) {
       console.error("Failed to load explore data:", error);
     } finally {
@@ -208,16 +229,20 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
     }
   };
 
-  const playCuratedSection = async (section: typeof CURATED_SECTIONS[0]) => {
+  const playPlaylistFromRow = async (playlistId: string, playlistName: string) => {
+    if (loadingPlaylist) return;
+    setLoadingPlaylist(playlistId + playlistName);
+    
     try {
-      const randomPlaylistId = section.playlistIds[Math.floor(Math.random() * section.playlistIds.length)];
-      const songs = await musicApi.getPlaylistSongs(randomPlaylistId);
+      const songs = await musicApi.getPlaylistSongs(playlistId);
       if (songs.length > 0) {
         setPlaylist(songs);
         onPlaySong(songs[0]);
       }
     } catch (error) {
-      console.error("Failed to play curated section:", error);
+      console.error("Failed to play playlist:", error);
+    } finally {
+      setLoadingPlaylist(null);
     }
   };
 
@@ -232,40 +257,40 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   }
 
   return (
-    <div className="space-y-6 mt-4">
-      {/* Recently Played */}
+    <div className="space-y-8 pb-32">
+      {/* Recently Played - Spotify style horizontal cards */}
       {recentlyPlayed.length > 0 && (
-        <section className="bg-gradient-to-r from-primary/5 to-transparent rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">Recently Played</h2>
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">Recently Played</h2>
           </div>
           
           <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-2 pb-2">
+            <div className="flex gap-3 pb-3">
               {recentlyPlayed.slice(0, 20).map((song) => (
-                <Card
+                <div
                   key={song.id}
-                  className="cursor-pointer hover:scale-105 transition-all duration-200 shrink-0 w-28 border-0 bg-background/50 backdrop-blur-sm"
+                  className="group cursor-pointer shrink-0 w-36"
                   onClick={() => onPlaySong(song)}
                 >
-                  <CardContent className="p-1.5">
-                    <div className="relative mb-1.5">
-                      <LazyImage
-                        src={song.image?.[1]?.url || song.image?.[0]?.url}
-                        alt={song.name}
-                        className="w-full aspect-square rounded-lg object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Play className="h-5 w-5 text-white fill-white" />
+                  <div className="relative mb-2">
+                    <LazyImage
+                      src={song.image?.[1]?.url || song.image?.[0]?.url}
+                      alt={song.name}
+                      className="w-full aspect-square rounded-lg object-cover shadow-lg"
+                    />
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                      <div className="bg-primary rounded-full p-3 shadow-xl">
+                        <Play className="h-5 w-5 text-primary-foreground fill-current" />
                       </div>
                     </div>
-                    <h3 className="font-medium text-[11px] truncate">{song.name}</h3>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {song.artists?.primary?.[0]?.name || "Unknown"}
-                    </p>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {song.artists?.primary?.[0]?.name || "Unknown"}
+                  </p>
+                </div>
               ))}
             </div>
             <ScrollBar orientation="horizontal" variant="music" />
@@ -273,198 +298,204 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
         </section>
       )}
 
-      {/* Mood & Vibes */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <Heart className="h-4 w-4 text-primary" />
-          <h2 className="text-base font-semibold">Mood & Vibes</h2>
-        </div>
-        
-        <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex gap-2 pb-2">
-            {MOOD_PLAYLISTS.map((mood) => (
-              <Card
-                key={mood.id}
-                className="cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden shrink-0 w-[72px] border-0 shadow-md"
-                onClick={() => playMoodPlaylist(mood)}
-              >
-                <CardContent className="p-0">
-                  <div className={`bg-gradient-to-br ${mood.gradient} p-2.5 aspect-square flex flex-col items-center justify-center relative`}>
-                    <span className="text-xl mb-0.5">{mood.emoji}</span>
-                    <span className="text-white font-semibold text-[9px] text-center drop-shadow-md leading-tight">
-                      {mood.name}
-                    </span>
-                    
-                    {loadingMood === mood.id && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="h-4 w-4 text-white animate-spin" />
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" variant="music" />
-        </ScrollArea>
-      </section>
-
-      {/* Curated Sections */}
-      {CURATED_SECTIONS.map((section) => (
-        <section key={section.title}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <ListMusic className="h-4 w-4 text-primary" />
-              <h2 className="text-base font-semibold">{section.title}</h2>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => playCuratedSection(section)}
-              className="text-xs h-7 px-2"
-            >
-              <Play className="h-3 w-3 mr-1 fill-current" />
-              Play
-            </Button>
+      {/* Trending Songs */}
+      {trendingSongs.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">Trending Now</h2>
           </div>
           
           <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-2 pb-2">
-              {curatedSongs[section.title]?.length > 0 ? (
-                curatedSongs[section.title].map((song) => (
-                  <Card
-                    key={song.id}
-                    className="cursor-pointer hover:scale-105 transition-all duration-200 shrink-0 w-28 border-0 bg-muted/30"
-                    onClick={() => onPlaySong(song)}
-                  >
-                    <CardContent className="p-1.5">
-                      <div className="relative mb-1.5">
-                        <LazyImage
-                          src={song.image?.[1]?.url || song.image?.[0]?.url}
-                          alt={song.name}
-                          className="w-full aspect-square rounded-lg object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="h-5 w-5 text-white fill-white" />
-                        </div>
-                      </div>
-                      <h3 className="font-medium text-[11px] truncate">{song.name}</h3>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {song.artists?.primary?.[0]?.name || "Unknown"}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <Card
-                  className={`cursor-pointer hover:scale-105 transition-all duration-200 shrink-0 w-28 border-0 shadow-md`}
-                  onClick={() => playCuratedSection(section)}
+            <div className="flex gap-3 pb-3">
+              {trendingSongs.map((song, index) => (
+                <div
+                  key={song.id}
+                  className="group cursor-pointer shrink-0 w-40 bg-card/50 rounded-lg p-3 hover:bg-card transition-colors"
+                  onClick={() => onPlaySong(song)}
                 >
-                  <CardContent className="p-0">
-                    <div className={`bg-gradient-to-br ${section.gradient} p-3 aspect-square flex flex-col items-center justify-center rounded-lg`}>
-                      <ListMusic className="h-6 w-6 text-white/90 mb-1" />
-                      <span className="text-white font-semibold text-[10px] text-center drop-shadow-md leading-tight">
-                        {section.title}
-                      </span>
+                  <div className="relative mb-2">
+                    <span className="absolute -top-1 -left-1 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-10">
+                      {index + 1}
+                    </span>
+                    <LazyImage
+                      src={song.image?.[1]?.url || song.image?.[0]?.url}
+                      alt={song.name}
+                      className="w-full aspect-square rounded-md object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Play className="h-8 w-8 text-white fill-white" />
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                  <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {song.artists?.primary?.[0]?.name || "Unknown"}
+                  </p>
+                </div>
+              ))}
             </div>
             <ScrollBar orientation="horizontal" variant="music" />
           </ScrollArea>
         </section>
-      ))}
+      )}
 
-      {/* Radio Stations */}
+      {/* Mood & Vibes - Compact circular cards */}
       <section>
-        <div className="flex items-center gap-2 mb-3">
-          <Radio className="h-4 w-4 text-primary" />
-          <h2 className="text-base font-semibold">Radio Stations</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Heart className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold">Mood & Vibes</h2>
         </div>
-
+        
         <ScrollArea className="w-full whitespace-nowrap">
-          <div className="flex gap-2 pb-2">
-            {RADIO_CATEGORIES.map((category) => (
-              <Card
-                key={category.id}
-                className={`cursor-pointer hover:scale-105 transition-all duration-200 overflow-hidden shrink-0 w-[72px] border-0 shadow-md ${
-                  activeRadio === category.id ? "ring-2 ring-primary" : ""
-                }`}
-                onClick={() => playRadio(category)}
+          <div className="flex gap-3 pb-3">
+            {MOOD_PLAYLISTS.map((mood) => (
+              <div
+                key={mood.id}
+                className="cursor-pointer group shrink-0"
+                onClick={() => playMoodPlaylist(mood)}
               >
-                <CardContent className="p-0">
-                  <div className={`bg-gradient-to-br ${category.gradient} p-2.5 aspect-square flex flex-col items-center justify-center relative`}>
-                    <span className="text-xl mb-0.5">{category.emoji}</span>
-                    <span className="text-white font-semibold text-[9px] text-center drop-shadow-md leading-tight">
-                      {category.name}
-                    </span>
-                    
-                    {loadingCategory === category.id && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="h-4 w-4 text-white animate-spin" />
-                      </div>
-                    )}
-                    
-                    {activeRadio === category.id && loadingCategory !== category.id && (
-                      <div className="absolute bottom-1 right-1">
-                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                <div className={`relative w-20 h-20 rounded-full bg-gradient-to-br ${mood.gradient} flex flex-col items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
+                  <span className="text-2xl">{mood.emoji}</span>
+                  {loadingMood === mood.id && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-center mt-2 font-medium">{mood.name}</p>
+              </div>
             ))}
           </div>
           <ScrollBar orientation="horizontal" variant="music" />
         </ScrollArea>
       </section>
 
-      {/* Popular Artists - At Bottom */}
+      {/* Playlist Rows - Spotify/Saavn style */}
+      {PLAYLIST_ROWS.map((row) => {
+        const IconComponent = row.icon;
+        return (
+          <section key={row.title}>
+            <div className="flex items-center gap-2 mb-4">
+              <IconComponent className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">{row.title}</h2>
+            </div>
+            
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex gap-3 pb-3">
+                {row.playlists.map((playlist, idx) => {
+                  const isLoading = loadingPlaylist === playlist.id + playlist.name;
+                  return (
+                    <div
+                      key={`${playlist.id}-${idx}`}
+                      className="group cursor-pointer shrink-0 w-40"
+                      onClick={() => playPlaylistFromRow(playlist.id, playlist.name)}
+                    >
+                      <div className={`relative aspect-square rounded-lg bg-gradient-to-br ${playlist.gradient} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all group-hover:scale-[1.02]`}>
+                        <ListMusic className="h-12 w-12 text-white/80" />
+                        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                          <div className="bg-white/90 rounded-full p-2 shadow-xl">
+                            {isLoading ? (
+                              <Loader2 className="h-5 w-5 text-black animate-spin" />
+                            ) : (
+                              <Play className="h-5 w-5 text-black fill-current" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-sm mt-2 truncate">{playlist.name}</h3>
+                    </div>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" variant="music" />
+            </ScrollArea>
+          </section>
+        );
+      })}
+
+      {/* Radio Stations - Compact grid */}
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 mb-4">
+          <Radio className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold">Radio Stations</h2>
+        </div>
+
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-3 pb-3">
+            {RADIO_CATEGORIES.map((category) => (
+              <div
+                key={category.id}
+                className={`group cursor-pointer shrink-0 ${activeRadio === category.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-xl" : ""}`}
+                onClick={() => playRadio(category)}
+              >
+                <div className={`relative w-24 h-24 rounded-xl bg-gradient-to-br ${category.gradient} flex flex-col items-center justify-center shadow-lg group-hover:scale-105 transition-transform`}>
+                  <span className="text-2xl mb-1">{category.emoji}</span>
+                  <span className="text-white font-semibold text-xs text-center px-2 drop-shadow-md">
+                    {category.name}
+                  </span>
+                  
+                  {loadingCategory === category.id && (
+                    <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    </div>
+                  )}
+                  
+                  {activeRadio === category.id && loadingCategory !== category.id && (
+                    <div className="absolute bottom-1 right-1">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" variant="music" />
+        </ScrollArea>
+      </section>
+
+      {/* Popular Artists - Grid layout */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">Popular Artists</h2>
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">Popular Artists</h2>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setShowAllArtists(!showAllArtists)}
-            className="text-xs h-7 px-2"
+            className="text-xs"
           >
             {showAllArtists ? "Show Less" : "See All"}
-            <ChevronRight className={`h-3 w-3 ml-1 transition-transform ${showAllArtists ? "rotate-90" : ""}`} />
+            <ChevronRight className={`h-4 w-4 ml-1 transition-transform ${showAllArtists ? "rotate-90" : ""}`} />
           </Button>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4">
           {displayedArtists.map((artist) => (
-            <Card
+            <div
               key={artist.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow group border-0 bg-muted/30"
+              className="group cursor-pointer text-center"
               onClick={() => onNavigateToContent("artist", artist)}
             >
-              <CardContent className="p-1.5 text-center">
-                <div className="relative mb-1">
-                  <LazyImage
-                    src={artist.image?.[1]?.url || artist.image?.[0]?.url}
-                    alt={artist.name}
-                    className="w-full aspect-square rounded-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="h-4 w-4 text-white fill-white" />
-                  </div>
+              <div className="relative mb-2">
+                <LazyImage
+                  src={artist.image?.[1]?.url || artist.image?.[0]?.url}
+                  alt={artist.name}
+                  className="w-full aspect-square rounded-full object-cover shadow-lg group-hover:shadow-xl transition-shadow"
+                />
+                <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Play className="h-6 w-6 text-white fill-white" />
                 </div>
-                <h3 className="font-medium text-[10px] truncate">{artist.name}</h3>
-              </CardContent>
-            </Card>
+              </div>
+              <h3 className="font-medium text-xs truncate">{artist.name}</h3>
+            </div>
           ))}
         </div>
 
         {showAllArtists && (
-          <div ref={artistSentinelRef} className="h-8 flex items-center justify-center mt-3">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <div ref={artistSentinelRef} className="h-8 flex items-center justify-center mt-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         )}
       </section>
