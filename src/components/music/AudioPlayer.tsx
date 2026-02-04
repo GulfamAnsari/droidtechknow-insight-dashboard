@@ -86,7 +86,10 @@ const AudioPlayer = ({
 }: AudioPlayerProps) => {
   const [isFloating, setIsFloating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDir, setResizeDir] = useState<'left' | 'top' | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState({ width: 320, height: 140 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const playerRef = useRef<HTMLDivElement>(null);
 
@@ -100,26 +103,54 @@ const AudioPlayer = ({
     });
   }, [isFloating]);
 
+  const handleResizeStart = useCallback((e: React.MouseEvent, dir: 'left' | 'top') => {
+    e.stopPropagation();
+    if (!isFloating) return;
+    setIsResizing(true);
+    setResizeDir(dir);
+  }, [isFloating]);
+
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging && !isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!playerRef.current) return;
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
       
-      // Constrain to viewport
-      const maxX = window.innerWidth - playerRef.current.offsetWidth;
-      const maxY = window.innerHeight - playerRef.current.offsetHeight;
+      if (isDragging) {
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        
+        const maxX = window.innerWidth - size.width;
+        const maxY = window.innerHeight - size.height;
+        
+        setPosition({
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
+        });
+      }
       
-      setPosition({
-        x: Math.max(0, Math.min(newX, maxX)),
-        y: Math.max(0, Math.min(newY, maxY))
-      });
+      if (isResizing && resizeDir) {
+        if (resizeDir === 'left') {
+          const newWidth = (position.x + size.width) - e.clientX;
+          const clampedWidth = Math.max(280, Math.min(450, newWidth));
+          const widthDiff = clampedWidth - size.width;
+          setSize(s => ({ ...s, width: clampedWidth }));
+          setPosition(p => ({ ...p, x: p.x - widthDiff }));
+        }
+        if (resizeDir === 'top') {
+          const newHeight = (position.y + size.height) - e.clientY;
+          const clampedHeight = Math.max(120, Math.min(200, newHeight));
+          const heightDiff = clampedHeight - size.height;
+          setSize(s => ({ ...s, height: clampedHeight }));
+          setPosition(p => ({ ...p, y: p.y - heightDiff }));
+        }
+      }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setIsResizing(false);
+      setResizeDir(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -128,17 +159,17 @@ const AudioPlayer = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset]);
+  }, [isDragging, isResizing, resizeDir, dragOffset, position, size]);
 
   // Reset position when toggling floating mode
   useEffect(() => {
     if (!isFloating) {
       setPosition({ x: 0, y: 0 });
+      setSize({ width: 320, height: 140 });
     } else {
-      // Set initial position to bottom-right
       setPosition({
-        x: window.innerWidth - 336, // w-80 = 320px + 16px margin
-        y: window.innerHeight - 120
+        x: window.innerWidth - 340,
+        y: window.innerHeight - 160
       });
     }
   }, [isFloating]);
@@ -312,9 +343,9 @@ const AudioPlayer = ({
   return (
     <div
       ref={playerRef}
-      className={`fixed z-40 bg-background/95 backdrop-blur-md border shadow-lg transition-all ${
+      className={`fixed z-40 bg-background/95 backdrop-blur-md border shadow-xl transition-all ${
         isFloating 
-          ? "w-80 rounded-2xl" 
+          ? "rounded-2xl" 
           : "bottom-0 left-0 right-0 rounded-t-xl"
       } ${isDragging ? 'cursor-grabbing' : ''}`}
       style={{ 
@@ -322,12 +353,40 @@ const AudioPlayer = ({
         ...(isFloating ? {
           left: position.x,
           top: position.y,
-          transition: isDragging ? 'none' : 'all 0.3s'
+          width: size.width,
+          minHeight: size.height,
+          transition: isDragging || isResizing ? 'none' : 'all 0.3s'
         } : {})
       }}
     >
-      {/* Progress bar - thin line at top */}
-      <div className={`${isFloating ? 'px-3 pt-3' : 'px-4 pt-2'}`}>
+      {/* Resize handles for floating mode */}
+      {isFloating && (
+        <>
+          {/* Left resize handle */}
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/20 rounded-l-2xl"
+            onMouseDown={(e) => handleResizeStart(e, 'left')}
+          />
+          {/* Top resize handle */}
+          <div 
+            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-t-2xl"
+            onMouseDown={(e) => handleResizeStart(e, 'top')}
+          />
+        </>
+      )}
+
+      {/* Drag handle for floating mode */}
+      {isFloating && (
+        <div 
+          className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1 cursor-grab active:cursor-grabbing rounded-full bg-muted/50 hover:bg-muted"
+          onMouseDown={handleMouseDown}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Progress bar */}
+      <div className={`${isFloating ? 'px-4 pt-8' : 'px-4 pt-2'}`}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="w-8 text-right">{formatTime(currentTime)}</span>
           <Slider
@@ -340,16 +399,6 @@ const AudioPlayer = ({
           <span className="w-8">{formatTime(duration)}</span>
         </div>
       </div>
-
-      {/* Drag handle for floating mode */}
-      {isFloating && (
-        <div 
-          className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing"
-          onMouseDown={handleMouseDown}
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
-      )}
 
       {/* Player controls - compact */}
       <div className={`flex items-center gap-2 ${isFloating ? 'p-3 pt-2' : 'p-3'}`}>
