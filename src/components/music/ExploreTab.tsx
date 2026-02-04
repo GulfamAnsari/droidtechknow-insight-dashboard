@@ -268,7 +268,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
                 </Card>
               ))}
             </div>
-            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="horizontal" variant="music" />
           </ScrollArea>
         </section>
       )}
@@ -305,7 +305,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
               </Card>
             ))}
           </div>
-          <ScrollBar orientation="horizontal" />
+          <ScrollBar orientation="horizontal" variant="music" />
         </ScrollArea>
       </section>
 
@@ -371,7 +371,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
                 </Card>
               )}
             </div>
-            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="horizontal" variant="music" />
           </ScrollArea>
         </section>
       ))}
@@ -416,7 +416,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
               </Card>
             ))}
           </div>
-          <ScrollBar orientation="horizontal" />
+          <ScrollBar orientation="horizontal" variant="music" />
         </ScrollArea>
       </section>
 

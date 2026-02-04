@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -13,7 +13,8 @@ import {
   Maximize,
   Heart,
   Minimize2,
-  Maximize2
+  Maximize2,
+  GripVertical
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 
@@ -84,6 +85,63 @@ const AudioPlayer = ({
   onToggleLike
 }: AudioPlayerProps) => {
   const [isFloating, setIsFloating] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const playerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isFloating || !playerRef.current) return;
+    setIsDragging(true);
+    const rect = playerRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  }, [isFloating]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!playerRef.current) return;
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Constrain to viewport
+      const maxX = window.innerWidth - playerRef.current.offsetWidth;
+      const maxY = window.innerHeight - playerRef.current.offsetHeight;
+      
+      setPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  // Reset position when toggling floating mode
+  useEffect(() => {
+    if (!isFloating) {
+      setPosition({ x: 0, y: 0 });
+    } else {
+      // Set initial position to bottom-right
+      setPosition({
+        x: window.innerWidth - 336, // w-80 = 320px + 16px margin
+        y: window.innerHeight - 120
+      });
+    }
+  }, [isFloating]);
 
   useEffect(() => {
     if (audioRef.current && song) {
@@ -253,12 +311,20 @@ const AudioPlayer = ({
 
   return (
     <div
-      className={`fixed z-40 bg-background/95 backdrop-blur-md border shadow-lg transition-all duration-300 ${
+      ref={playerRef}
+      className={`fixed z-40 bg-background/95 backdrop-blur-md border shadow-lg transition-all ${
         isFloating 
-          ? "bottom-4 right-4 left-auto w-80 rounded-2xl" 
+          ? "w-80 rounded-2xl" 
           : "bottom-0 left-0 right-0 rounded-t-xl"
-      }`}
-      style={{ zIndex: 99 }}
+      } ${isDragging ? 'cursor-grabbing' : ''}`}
+      style={{ 
+        zIndex: 99,
+        ...(isFloating ? {
+          left: position.x,
+          top: position.y,
+          transition: isDragging ? 'none' : 'all 0.3s'
+        } : {})
+      }}
     >
       {/* Progress bar - thin line at top */}
       <div className={`${isFloating ? 'px-3 pt-3' : 'px-4 pt-2'}`}>
@@ -274,6 +340,16 @@ const AudioPlayer = ({
           <span className="w-8">{formatTime(duration)}</span>
         </div>
       </div>
+
+      {/* Drag handle for floating mode */}
+      {isFloating && (
+        <div 
+          className="absolute top-0 left-0 right-0 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
 
       {/* Player controls - compact */}
       <div className={`flex items-center gap-2 ${isFloating ? 'p-3 pt-2' : 'p-3'}`}>
