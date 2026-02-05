@@ -231,9 +231,7 @@ export default function StockNews() {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
       const res = await fetch(
-        location.hostname == "localhost"
-          ? `http://localhost:3000/allnews?from=${from}&to=${to}`
-          : `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        `https://aquamarine-wallaby-801291.hostingersite.com/apis/news.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
 
@@ -327,14 +325,10 @@ export default function StockNews() {
     try {
       const from = format(fromDate, "dd-MM-yyyy");
       const to = format(toDate, "dd-MM-yyyy");
-      console.log("start api", new Date());
       const res = await fetch(
-        location.hostname == "localhost"
-          ? `http://localhost:3000/allnews?from=${from}&to=${to}`
-          : `https://droidtechknow.com/admin/api/stocks/news/save.php?from=${from}&to=${to}`,
+        `https://aquamarine-wallaby-801291.hostingersite.com/apis/news.php?from=${from}&to=${to}`,
         { cache: "no-store" }
       );
-      console.log("finsihed api", new Date());
 
       const json = await res.json();
       let all: any[] = [];
@@ -369,7 +363,6 @@ export default function StockNews() {
         return { ...item, __sentiment: "neutral", __confidence: 0.5, __pending: true };
       });
 
-      console.log("finish", new Date());
       setNews(base);
       newsByIdRef.current = new Map(base.map((i) => [i.postId, i]));
       newsIdsRef.current = new Set(base.map((i) => i.postId));
