@@ -926,7 +926,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           </TabsList>
 
           {/* Tab Content */}
-          <div className="mt-4 flex-1 overflow-y-auto">
+          <div className="mt-4 flex-1 overflow-y-auto music-scrollbar">
             <TabsContent value="playlist" className="space-y-4">
               {renderSongList(playlist, "Current Queue")}
             </TabsContent>

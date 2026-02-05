@@ -29,6 +29,7 @@ import StockNews from "./pages/StockNews";
 import StockAlerts from "./pages/StockAlerts";
 import VideoMeet from "./pages/VideoMeet";
 import PdfEditor from "./pages/PdfEditor";
+import GlobalFloatingPlayer from "./components/music/GlobalFloatingPlayer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +96,7 @@ const App = () => {
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <GlobalFloatingPlayer />
             </BrowserRouter>
           </TooltipProvider>
         </MusicProvider>

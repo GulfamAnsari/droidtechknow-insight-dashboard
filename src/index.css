@@ -135,3 +135,28 @@
   height: calc(100vh - 56px);
   scrollbar-width: none;
 }
+
+/* Music section custom scrollbars - green 1px */
+.music-scrollbar::-webkit-scrollbar {
+  width: 1px;
+  height: 1px;
+}
+
+.music-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.music-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--scrollbar-music));
+  border-radius: 1px;
+}
+
+.music-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--scrollbar-music));
+}
+
+/* Firefox support */
+.music-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--scrollbar-music)) transparent;
+}

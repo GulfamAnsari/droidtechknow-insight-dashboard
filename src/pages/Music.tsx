@@ -769,7 +769,7 @@ const Music = () => {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         <div
-          className={`bg-background flex-1 overflow-auto p-6 ${
+          className={`bg-background flex-1 overflow-auto music-scrollbar p-6 ${
             currentSong ? "pb-24" : "pb-6"
           }`}
         >
@@ -820,7 +820,7 @@ const Music = () => {
               </Tabs>
             </div>
 
-            <div className="flex-1 overflow-y-auto mb-16">
+            <div className="flex-1 overflow-y-auto music-scrollbar mb-16">
               {activeTab === "playlist" ? (
                 <div
                   className="p-2"

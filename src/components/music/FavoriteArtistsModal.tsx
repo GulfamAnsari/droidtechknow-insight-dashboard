@@ -125,7 +125,7 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
       {/* Popular Artists */}
       <div className="space-y-2">
         <h3 className="font-medium">Popular Artists</h3>
-        <div className={`grid gap-3 max-h-64 overflow-y-auto ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
+        <div className={`grid gap-3 max-h-64 overflow-y-auto music-scrollbar ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {popularArtists.map((artist) => (
             <div key={artist.id} className="flex flex-col items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
               <div className="relative">
@@ -166,7 +166,7 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
       {searchResults.length > 0 && (
         <div className="space-y-2">
           <h3 className="font-medium">Search Results</h3>
-          <div className={`grid gap-3 max-h-48 overflow-y-auto ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <div className={`grid gap-3 max-h-48 overflow-y-auto music-scrollbar ${isMobile ? 'grid-cols-2' : 'grid-cols-3'}`}>
             {searchResults.map((artist) => (
               <div key={artist.id} className="flex flex-col items-center p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="relative">
@@ -214,7 +214,7 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto music-scrollbar">
           <SheetHeader>
             <SheetTitle>Select Favorite Artists</SheetTitle>
           </SheetHeader>
@@ -228,7 +228,7 @@ const FavoriteArtistsModal = ({ open, onOpenChange }: FavoriteArtistsModalProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto music-scrollbar">
         <DialogHeader>
           <DialogTitle>Select Favorite Artists</DialogTitle>
         </DialogHeader>
