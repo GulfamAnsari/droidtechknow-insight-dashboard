@@ -89,7 +89,7 @@ const AudioPlayer = ({
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDir, setResizeDir] = useState<'left' | 'top' | 'right' | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [size, setSize] = useState({ width: 380, height: 140 });
+  const [size, setSize] = useState({ width: 392, height: 140 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const playerRef = useRef<HTMLDivElement>(null);
 
@@ -170,10 +170,10 @@ const AudioPlayer = ({
   useEffect(() => {
     if (!isFloating) {
       setPosition({ x: 0, y: 0 });
-      setSize({ width: 380, height: 140 });
+      setSize({ width: 392, height: 140 });
     } else {
       setPosition({
-        x: window.innerWidth - 400,
+        x: window.innerWidth - 412,
         y: window.innerHeight - 160
       });
     }

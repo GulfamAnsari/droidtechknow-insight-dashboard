@@ -193,7 +193,7 @@ const DownloadManager = ({ onClose, currentSong, playlist }: DownloadManagerProp
                 </Button>
               </div>
               
-              <div className="max-h-64 overflow-y-auto space-y-2">
+              <div className="max-h-64 overflow-y-auto music-scrollbar space-y-2">
                 {playlist.map((song, index) => (
                   <div key={song.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted/50">
                     <span className="text-sm text-muted-foreground w-6">{index + 1}</span>

@@ -41,6 +41,7 @@ const PLAYLIST_ROWS = [
       { id: "1134543292", name: "Top 50 Tamil", gradient: "from-green-500 to-teal-500" },
       { id: "1134543299", name: "Top 50 Telugu", gradient: "from-yellow-500 to-orange-500" },
       { id: "1134770495", name: "Top 50 English", gradient: "from-blue-500 to-cyan-500" },
+      { id: "1134543265", name: "Viral Hits", gradient: "from-fuchsia-500 to-pink-500" },
     ]
   },
   {
@@ -48,9 +49,10 @@ const PLAYLIST_ROWS = [
     icon: Sparkles,
     playlists: [
       { id: "1134543265", name: "Fresh Hits", gradient: "from-purple-500 to-pink-500" },
-      { id: "1134770509", name: "Trending Now", gradient: "from-orange-500 to-red-500" },
+      { id: "1134770509", name: "Hot Right Now", gradient: "from-orange-500 to-red-500" },
       { id: "1134543265", name: "New This Week", gradient: "from-green-500 to-teal-500" },
       { id: "1134684498", name: "Indie Spotlight", gradient: "from-emerald-500 to-teal-500" },
+      { id: "1134543272", name: "Latest Drops", gradient: "from-cyan-500 to-blue-500" },
     ]
   },
   {
@@ -61,6 +63,7 @@ const PLAYLIST_ROWS = [
       { id: "1134543277", name: "Party Anthems", gradient: "from-red-500 to-orange-500" },
       { id: "1134550498", name: "Heartbreak Songs", gradient: "from-slate-500 to-gray-600" },
       { id: "1134684545", name: "Workout Mix", gradient: "from-green-500 to-emerald-500" },
+      { id: "1134543285", name: "Dance Floor", gradient: "from-amber-500 to-orange-500" },
     ]
   },
   {
@@ -72,6 +75,28 @@ const PLAYLIST_ROWS = [
       { id: "1134770509", name: "2000s Nostalgia", gradient: "from-blue-500 to-purple-500" },
       { id: "1134543265", name: "Best of 2024", gradient: "from-violet-500 to-purple-600" },
       { id: "1134543265", name: "Best of 2025", gradient: "from-pink-400 to-purple-500" },
+      { id: "1134770523", name: "Evergreen Hits", gradient: "from-rose-400 to-red-500" },
+    ]
+  },
+  {
+    title: "Regional Vibes",
+    icon: Music2,
+    playlists: [
+      { id: "1134543307", name: "Punjabi Beats", gradient: "from-amber-500 to-yellow-500" },
+      { id: "1134543292", name: "Tamil Chartbusters", gradient: "from-green-500 to-emerald-500" },
+      { id: "1134543299", name: "Telugu Hits", gradient: "from-yellow-400 to-orange-500" },
+      { id: "1134543272", name: "Marathi Mix", gradient: "from-orange-500 to-red-500" },
+      { id: "1134543272", name: "Bengali Beats", gradient: "from-sky-500 to-blue-500" },
+    ]
+  },
+  {
+    title: "Chill & Acoustic",
+    icon: Heart,
+    playlists: [
+      { id: "1134684498", name: "Acoustic Covers", gradient: "from-amber-400 to-orange-400" },
+      { id: "1134550498", name: "Late Night Vibes", gradient: "from-indigo-500 to-purple-600" },
+      { id: "1134684498", name: "Unplugged", gradient: "from-stone-400 to-slate-500" },
+      { id: "1134550498", name: "Soft Melodies", gradient: "from-rose-400 to-pink-400" },
     ]
   },
 ];
