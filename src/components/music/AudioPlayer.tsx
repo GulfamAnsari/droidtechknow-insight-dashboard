@@ -87,9 +87,9 @@ const AudioPlayer = ({
   const [isFloating, setIsFloating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeDir, setResizeDir] = useState<'left' | 'top' | null>(null);
+  const [resizeDir, setResizeDir] = useState<'left' | 'top' | 'right' | null>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [size, setSize] = useState({ width: 320, height: 140 });
+  const [size, setSize] = useState({ width: 380, height: 140 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const playerRef = useRef<HTMLDivElement>(null);
 
@@ -103,7 +103,7 @@ const AudioPlayer = ({
     });
   }, [isFloating]);
 
-  const handleResizeStart = useCallback((e: React.MouseEvent, dir: 'left' | 'top') => {
+  const handleResizeStart = useCallback((e: React.MouseEvent, dir: 'left' | 'top' | 'right') => {
     e.stopPropagation();
     if (!isFloating) return;
     setIsResizing(true);
@@ -132,10 +132,15 @@ const AudioPlayer = ({
       if (isResizing && resizeDir) {
         if (resizeDir === 'left') {
           const newWidth = (position.x + size.width) - e.clientX;
-          const clampedWidth = Math.max(280, Math.min(450, newWidth));
+          const clampedWidth = Math.max(320, Math.min(500, newWidth));
           const widthDiff = clampedWidth - size.width;
           setSize(s => ({ ...s, width: clampedWidth }));
           setPosition(p => ({ ...p, x: p.x - widthDiff }));
+        }
+        if (resizeDir === 'right') {
+          const newWidth = e.clientX - position.x;
+          const clampedWidth = Math.max(320, Math.min(500, newWidth));
+          setSize(s => ({ ...s, width: clampedWidth }));
         }
         if (resizeDir === 'top') {
           const newHeight = (position.y + size.height) - e.clientY;
@@ -165,10 +170,10 @@ const AudioPlayer = ({
   useEffect(() => {
     if (!isFloating) {
       setPosition({ x: 0, y: 0 });
-      setSize({ width: 320, height: 140 });
+      setSize({ width: 380, height: 140 });
     } else {
       setPosition({
-        x: window.innerWidth - 340,
+        x: window.innerWidth - 400,
         y: window.innerHeight - 160
       });
     }
@@ -366,6 +371,11 @@ const AudioPlayer = ({
           <div 
             className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/20 rounded-l-2xl"
             onMouseDown={(e) => handleResizeStart(e, 'left')}
+          />
+          {/* Right resize handle */}
+          <div 
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-primary/20 rounded-r-2xl"
+            onMouseDown={(e) => handleResizeStart(e, 'right')}
           />
           {/* Top resize handle */}
           <div 
