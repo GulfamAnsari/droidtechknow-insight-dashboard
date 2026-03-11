@@ -800,7 +800,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Shuffle + Repeat
   function renderSecondaryControls() {
     return (
-      <div className="flex items-center justify-between w-full max-w-md">
+      <div className="flex items-center justify-between w-full max-w-md flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
