@@ -669,7 +669,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Main player view
   function renderMainView() {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6 space-y-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 space-y-4 sm:space-y-8 overflow-hidden">
         {renderAlbumArt()}
         {renderSongInfo()}
         {renderProgressBar()}
