@@ -702,19 +702,27 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
   // Song info
   function renderSongInfo() {
+    const artistText = song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist";
     return (
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="text-center space-y-2"
+        className="text-center w-full max-w-md flex-shrink-0"
       >
-        <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
-          {song.name}
-        </h1>
-        <p className="text-lg md:text-xl text-white/80 drop-shadow-md">
-          {song.artists?.primary?.map((a) => a.name).join(", ") ||
-            "Unknown Artist"}
-        </p>
+        {/* Single line on mobile, multi-line on desktop */}
+        <div className="sm:hidden">
+          <p className="text-base font-bold text-white drop-shadow-lg truncate px-2">
+            {song.name} <span className="font-normal text-white/70">— {artistText}</span>
+          </p>
+        </div>
+        <div className="hidden sm:block space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg truncate">
+            {song.name}
+          </h1>
+          <p className="text-lg md:text-xl text-white/80 drop-shadow-md truncate">
+            {artistText}
+          </p>
+        </div>
       </div>
     );
   }
