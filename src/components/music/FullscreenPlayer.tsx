@@ -828,7 +828,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Volume + Like + Download
   function renderVolumeAndActions() {
     return (
-      <div className="flex items-center justify-between w-full max-w-md space-x-4">
+      <div className="flex items-center justify-between w-full max-w-md space-x-4 flex-shrink-0">
         <div className="flex items-center space-x-3 flex-1">
           <Button
             variant="ghost"
