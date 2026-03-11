@@ -686,7 +686,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative w-72 h-72 max-w-[90vw] max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-56 h-56 sm:w-72 sm:h-72 max-w-[80vw] max-h-[30vh] sm:max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl flex-shrink-0"
       >
         <LazyImage
           src={
