@@ -669,7 +669,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Main player view
   function renderMainView() {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6 space-y-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 space-y-4 sm:space-y-8 overflow-hidden">
         {renderAlbumArt()}
         {renderSongInfo()}
         {renderProgressBar()}
@@ -686,7 +686,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative w-72 h-72 max-w-[90vw] max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-56 h-56 sm:w-72 sm:h-72 max-w-[80vw] max-h-[30vh] sm:max-h-[40vh] rounded-2xl overflow-hidden shadow-2xl flex-shrink-0"
       >
         <LazyImage
           src={
@@ -702,19 +702,27 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
   // Song info
   function renderSongInfo() {
+    const artistText = song.artists?.primary?.map((a) => a.name).join(", ") || "Unknown Artist";
     return (
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="text-center space-y-2"
+        className="text-center w-full max-w-md flex-shrink-0"
       >
-        <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg">
-          {song.name}
-        </h1>
-        <p className="text-lg md:text-xl text-white/80 drop-shadow-md">
-          {song.artists?.primary?.map((a) => a.name).join(", ") ||
-            "Unknown Artist"}
-        </p>
+        {/* Single line on mobile, multi-line on desktop */}
+        <div className="sm:hidden">
+          <p className="text-base font-bold text-white drop-shadow-lg truncate px-2">
+            {song.name} <span className="font-normal text-white/70">— {artistText}</span>
+          </p>
+        </div>
+        <div className="hidden sm:block space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg truncate">
+            {song.name}
+          </h1>
+          <p className="text-lg md:text-xl text-white/80 drop-shadow-md truncate">
+            {artistText}
+          </p>
+        </div>
       </div>
     );
   }
@@ -740,7 +748,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Main controls
   function renderMainControls() {
     return (
-      <div className="flex items-center justify-center space-x-6">
+      <div className="flex items-center justify-center space-x-3 sm:space-x-6 flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -792,7 +800,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Shuffle + Repeat
   function renderSecondaryControls() {
     return (
-      <div className="flex items-center justify-between w-full max-w-md">
+      <div className="flex items-center justify-between w-full max-w-md flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
@@ -820,7 +828,7 @@ const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Volume + Like + Download
   function renderVolumeAndActions() {
     return (
-      <div className="flex items-center justify-between w-full max-w-md space-x-4">
+      <div className="flex items-center justify-between w-full max-w-md space-x-4 flex-shrink-0">
         <div className="flex items-center space-x-3 flex-1">
           <Button
             variant="ghost"
