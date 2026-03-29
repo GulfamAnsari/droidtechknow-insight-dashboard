@@ -31,6 +31,7 @@ const SongsModal = () => {
     setPlaylist,
     toggleLike,
     addToOffline,
+    removeFromOffline,
     setDownloadProgress,
     playAllSongs,
     downloadAllSongs,
@@ -329,6 +330,25 @@ const SongsModal = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleDeleteOfflineSong = (songId: string) => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(["songs"], "readwrite");
+      const store = transaction.objectStore("songs");
+      store.delete(songId);
+      transaction.oncomplete = () => {
+        removeFromOffline(songId);
+        setSongs(prev => prev.filter(s => s.id !== songId));
+        toast({
+          title: "Removed",
+          description: "Song removed from offline",
+          variant: "success"
+        });
+      };
+    };
   };
 
   const handleDownloadAll = async () => {
