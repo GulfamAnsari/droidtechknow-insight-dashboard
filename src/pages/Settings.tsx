@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,10 +46,35 @@ const Settings = () => {
     }
   };
 
+  const [storageSize, setStorageSize] = useState("0 MB");
+
+  useEffect(() => {
+    calculateStorageSize();
+  }, [offlineSongs]);
+
   const calculateStorageSize = () => {
-    // Rough estimate: each song ~5MB
-    const estimatedSize = offlineSongs.length * 5;
-    return estimatedSize > 1024 ? `${(estimatedSize / 1024).toFixed(1)} GB` : `${estimatedSize} MB`;
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains("songs")) {
+        setStorageSize("0 MB");
+        return;
+      }
+      const transaction = db.transaction(["songs"], "readonly");
+      const store = transaction.objectStore("songs");
+      const getAllRequest = store.getAll();
+      getAllRequest.onsuccess = () => {
+        const data = getAllRequest.result || [];
+        let totalBytes = 0;
+        data.forEach((song: any) => {
+          if (song.audioBlob) totalBytes += song.audioBlob.size || 0;
+          if (song.imageBlob) totalBytes += song.imageBlob.size || 0;
+        });
+        const mb = totalBytes / (1024 * 1024);
+        setStorageSize(mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`);
+      };
+    };
+    request.onerror = () => setStorageSize("0 MB");
   };
 
   return (
