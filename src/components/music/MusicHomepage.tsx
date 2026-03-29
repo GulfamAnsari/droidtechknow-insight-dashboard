@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Heart, MoreHorizontal, Download, Loader2, X, Music, HardDrive, Compass } from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X, Music, HardDrive, Compass, Trash2, Database } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
@@ -22,7 +22,7 @@ interface MusicHomepageProps {
 }
 
 const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylist }: MusicHomepageProps) => {
-  const { likedSongs: likedSongObjects, offlineSongs, downloadProgress, setDownloadProgress, addToOffline, toggleLike, loadLikedSongs } = useMusicContext();
+  const { likedSongs: likedSongObjects, offlineSongs, downloadProgress, setDownloadProgress, addToOffline, removeFromOffline, toggleLike, loadLikedSongs } = useMusicContext();
 
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
@@ -31,6 +31,8 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const [activeTab, setActiveTab] = useState<string>("recommended");
   const [hasMoreSongs, setHasMoreSongs] = useState(true);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+  const [offlineSongsWithBlobs, setOfflineSongsWithBlobs] = useState<Song[]>([]);
+  const [storageSize, setStorageSize] = useState<string>("0 MB");
 
   // Load recently played from localStorage
   useEffect(() => {
