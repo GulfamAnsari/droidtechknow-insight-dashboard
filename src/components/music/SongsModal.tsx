@@ -515,7 +515,19 @@ const SongsModal = () => {
                         />
                       </Button>
 
-                      {songsModalData.type !== "offline" && (
+                      {songsModalData.type === "offline" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOfflineSong(song.id);
+                          }}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
                         <Button
                           size="sm"
                           variant="ghost"
