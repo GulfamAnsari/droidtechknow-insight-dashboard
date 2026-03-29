@@ -195,7 +195,7 @@ const Settings = () => {
               <div className="space-y-0.5">
                 <Label>Offline Songs</Label>
                 <p className="text-sm text-muted-foreground">
-                  {offlineSongs.length} songs ({calculateStorageSize()})
+                  {offlineSongs.length} songs ({storageSize})
                 </p>
               </div>
               <Button
