@@ -603,8 +603,18 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
 
         {/* Offline */}
         <TabsContent value="offline" className="space-y-4">
-          <div className="mt-6">
-            {(!offlineSongs || offlineSongs.length === 0) ? (
+          <div className="mt-4">
+            {/* Storage info */}
+            {offlineSongsWithBlobs.length > 0 && (
+              <div className="flex items-center justify-between mb-4 px-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Database className="h-4 w-4" />
+                  <span>{offlineSongsWithBlobs.length} songs • {storageSize} used</span>
+                </div>
+              </div>
+            )}
+
+            {offlineSongsWithBlobs.length === 0 ? (
               <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
                 <CardContent className="p-6 text-center">
                   <h3 className="text-lg font-medium mb-2">No offline songs</h3>
@@ -613,7 +623,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
               </Card>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2 mt-2">
-                {offlineSongs.map((song) => (
+                {offlineSongsWithBlobs.map((song) => (
                   <Card key={song.id} className="cursor-pointer hover:shadow-lg transition-shadow group">
                     <CardContent className="p-2">
                       <div className="relative mb-2">
@@ -659,8 +669,14 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
                                 />
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center">
-                                <Download className="h-4 w-4 text-green-500" />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteOfflineSong(song.id);
+                                }}
+                                className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center text-red-500"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
