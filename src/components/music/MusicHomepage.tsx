@@ -171,12 +171,76 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
     }
   };
 
-  
+  // Load offline songs from IndexedDB with blob URLs
+  const loadOfflineSongsFromDB = useCallback(() => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains("songs")) {
+        db.createObjectStore("songs", { keyPath: "id" });
+      }
+    };
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains("songs")) {
+        setOfflineSongsWithBlobs([]);
+        setStorageSize("0 MB");
+        return;
+      }
+      const transaction = db.transaction(["songs"], "readonly");
+      const store = transaction.objectStore("songs");
+      const getAllRequest = store.getAll();
+      getAllRequest.onsuccess = () => {
+        const data = getAllRequest.result || [];
+        let totalBytes = 0;
+        const songsWithUrls = data.map((song: any) => {
+          if (song.audioBlob) totalBytes += song.audioBlob.size || 0;
+          if (song.imageBlob) totalBytes += song.imageBlob.size || 0;
+          return {
+            ...song,
+            downloadUrl: song.audioBlob
+              ? [{ quality: "320kbps", url: URL.createObjectURL(song.audioBlob) }]
+              : song.downloadUrl,
+            image: song.imageBlob
+              ? [{ quality: "500x500", url: URL.createObjectURL(song.imageBlob) }]
+              : song.image,
+          };
+        });
+        setOfflineSongsWithBlobs(songsWithUrls);
+        const mb = totalBytes / (1024 * 1024);
+        setStorageSize(mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`);
+      };
+    };
+  }, []);
+
+  // Load offline songs when tab switches to offline or offlineSongs changes
+  useEffect(() => {
+    if (activeTab === "offline") {
+      loadOfflineSongsFromDB();
+    }
+  }, [activeTab, offlineSongs, loadOfflineSongsFromDB]);
+
+  const deleteOfflineSong = useCallback((songId: string) => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      const transaction = db.transaction(["songs"], "readwrite");
+      const store = transaction.objectStore("songs");
+      store.delete(songId);
+      transaction.oncomplete = () => {
+        removeFromOffline(songId);
+        setOfflineSongsWithBlobs(prev => prev.filter(s => s.id !== songId));
+        toast.success("Song removed from offline");
+        loadOfflineSongsFromDB();
+      };
+    };
+  }, [removeFromOffline, loadOfflineSongsFromDB]);
+
   useEffect(() => {
     if (activeTab === "recommended") setPlaylist(relatedSongs);
     else if (activeTab === "likes") setPlaylist(likedSongObjects || []);
-    else if (activeTab === "offline") setPlaylist(offlineSongs || []);
-  }, [activeTab, relatedSongs, likedSongObjects, offlineSongs]);
+    else if (activeTab === "offline") setPlaylist(offlineSongsWithBlobs || []);
+  }, [activeTab, relatedSongs, likedSongObjects, offlineSongsWithBlobs]);
 
   const loadHomepageData = async () => {
     try {
