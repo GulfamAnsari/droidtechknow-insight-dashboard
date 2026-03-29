@@ -349,7 +349,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const handlePlaySong = (song: Song) => {
     if (activeTab === "recommended") setPlaylist([...relatedSongs]);
     else if (activeTab === "likes") setPlaylist([...likedSongObjects]);
-    else if (activeTab === "offline") setPlaylist([...offlineSongs]);
+    else if (activeTab === "offline") setPlaylist([...offlineSongsWithBlobs]);
     addToRecentlyPlayed(song);
     onPlaySong(song);
   };
