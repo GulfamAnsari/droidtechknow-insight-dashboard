@@ -31,6 +31,7 @@ const SongsModal = () => {
     setPlaylist,
     toggleLike,
     addToOffline,
+    removeFromOffline,
     setDownloadProgress,
     playAllSongs,
     downloadAllSongs,
@@ -331,6 +332,25 @@ const SongsModal = () => {
     }
   };
 
+  const handleDeleteOfflineSong = (songId: string) => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(["songs"], "readwrite");
+      const store = transaction.objectStore("songs");
+      store.delete(songId);
+      transaction.oncomplete = () => {
+        removeFromOffline(songId);
+        setSongs(prev => prev.filter(s => s.id !== songId));
+        toast({
+          title: "Removed",
+          description: "Song removed from offline",
+          variant: "success"
+        });
+      };
+    };
+  };
+
   const handleDownloadAll = async () => {
     if (songs.length > 0) {
       await downloadAllSongs(songs);
@@ -495,7 +515,19 @@ const SongsModal = () => {
                         />
                       </Button>
 
-                      {songsModalData.type !== "offline" && (
+                      {songsModalData.type === "offline" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOfflineSong(song.id);
+                          }}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
                         <Button
                           size="sm"
                           variant="ghost"

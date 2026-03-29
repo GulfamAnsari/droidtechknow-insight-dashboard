@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Heart, MoreHorizontal, Download, Loader2, X, Music, HardDrive, Compass } from "lucide-react";
+import { Play, Heart, MoreHorizontal, Download, Loader2, X, Music, HardDrive, Compass, Trash2, Database } from "lucide-react";
 import { musicApi, Song } from "@/services/musicApi";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
@@ -22,7 +22,7 @@ interface MusicHomepageProps {
 }
 
 const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylist }: MusicHomepageProps) => {
-  const { likedSongs: likedSongObjects, offlineSongs, downloadProgress, setDownloadProgress, addToOffline, toggleLike, loadLikedSongs } = useMusicContext();
+  const { likedSongs: likedSongObjects, offlineSongs, downloadProgress, setDownloadProgress, addToOffline, removeFromOffline, toggleLike, loadLikedSongs } = useMusicContext();
 
   const [relatedSongs, setRelatedSongs] = useState<Song[]>([]);
   const [popularArtists, setPopularArtists] = useState<any[]>([]);
@@ -31,6 +31,8 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const [activeTab, setActiveTab] = useState<string>("recommended");
   const [hasMoreSongs, setHasMoreSongs] = useState(true);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Song[]>([]);
+  const [offlineSongsWithBlobs, setOfflineSongsWithBlobs] = useState<Song[]>([]);
+  const [storageSize, setStorageSize] = useState<string>("0 MB");
 
   // Load recently played from localStorage
   useEffect(() => {
@@ -169,12 +171,76 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
     }
   };
 
-  
+  // Load offline songs from IndexedDB with blob URLs
+  const loadOfflineSongsFromDB = useCallback(() => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains("songs")) {
+        db.createObjectStore("songs", { keyPath: "id" });
+      }
+    };
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains("songs")) {
+        setOfflineSongsWithBlobs([]);
+        setStorageSize("0 MB");
+        return;
+      }
+      const transaction = db.transaction(["songs"], "readonly");
+      const store = transaction.objectStore("songs");
+      const getAllRequest = store.getAll();
+      getAllRequest.onsuccess = () => {
+        const data = getAllRequest.result || [];
+        let totalBytes = 0;
+        const songsWithUrls = data.map((song: any) => {
+          if (song.audioBlob) totalBytes += song.audioBlob.size || 0;
+          if (song.imageBlob) totalBytes += song.imageBlob.size || 0;
+          return {
+            ...song,
+            downloadUrl: song.audioBlob
+              ? [{ quality: "320kbps", url: URL.createObjectURL(song.audioBlob) }]
+              : song.downloadUrl,
+            image: song.imageBlob
+              ? [{ quality: "500x500", url: URL.createObjectURL(song.imageBlob) }]
+              : song.image,
+          };
+        });
+        setOfflineSongsWithBlobs(songsWithUrls);
+        const mb = totalBytes / (1024 * 1024);
+        setStorageSize(mb > 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(1)} MB`);
+      };
+    };
+  }, []);
+
+  // Load offline songs when tab switches to offline or offlineSongs changes
+  useEffect(() => {
+    if (activeTab === "offline") {
+      loadOfflineSongsFromDB();
+    }
+  }, [activeTab, offlineSongs, loadOfflineSongsFromDB]);
+
+  const deleteOfflineSong = useCallback((songId: string) => {
+    const request = indexedDB.open("OfflineMusicDB", 1);
+    request.onsuccess = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      const transaction = db.transaction(["songs"], "readwrite");
+      const store = transaction.objectStore("songs");
+      store.delete(songId);
+      transaction.oncomplete = () => {
+        removeFromOffline(songId);
+        setOfflineSongsWithBlobs(prev => prev.filter(s => s.id !== songId));
+        toast.success("Song removed from offline");
+        loadOfflineSongsFromDB();
+      };
+    };
+  }, [removeFromOffline, loadOfflineSongsFromDB]);
+
   useEffect(() => {
     if (activeTab === "recommended") setPlaylist(relatedSongs);
     else if (activeTab === "likes") setPlaylist(likedSongObjects || []);
-    else if (activeTab === "offline") setPlaylist(offlineSongs || []);
-  }, [activeTab, relatedSongs, likedSongObjects, offlineSongs]);
+    else if (activeTab === "offline") setPlaylist(offlineSongsWithBlobs || []);
+  }, [activeTab, relatedSongs, likedSongObjects, offlineSongsWithBlobs]);
 
   const loadHomepageData = async () => {
     try {
@@ -283,7 +349,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
   const handlePlaySong = (song: Song) => {
     if (activeTab === "recommended") setPlaylist([...relatedSongs]);
     else if (activeTab === "likes") setPlaylist([...likedSongObjects]);
-    else if (activeTab === "offline") setPlaylist([...offlineSongs]);
+    else if (activeTab === "offline") setPlaylist([...offlineSongsWithBlobs]);
     addToRecentlyPlayed(song);
     onPlaySong(song);
   };
@@ -537,8 +603,18 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
 
         {/* Offline */}
         <TabsContent value="offline" className="space-y-4">
-          <div className="mt-6">
-            {(!offlineSongs || offlineSongs.length === 0) ? (
+          <div className="mt-4">
+            {/* Storage info */}
+            {offlineSongsWithBlobs.length > 0 && (
+              <div className="flex items-center justify-between mb-4 px-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Database className="h-4 w-4" />
+                  <span>{offlineSongsWithBlobs.length} songs • {storageSize} used</span>
+                </div>
+              </div>
+            )}
+
+            {offlineSongsWithBlobs.length === 0 ? (
               <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
                 <CardContent className="p-6 text-center">
                   <h3 className="text-lg font-medium mb-2">No offline songs</h3>
@@ -547,7 +623,7 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
               </Card>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-2 mt-2">
-                {offlineSongs.map((song) => (
+                {offlineSongsWithBlobs.map((song) => (
                   <Card key={song.id} className="cursor-pointer hover:shadow-lg transition-shadow group">
                     <CardContent className="p-2">
                       <div className="relative mb-2">
@@ -593,8 +669,14 @@ const MusicHomepage = ({ onPlaySong, onNavigateToContent, likedSongs, setPlaylis
                                 />
                               </DropdownMenuItem>
 
-                              <DropdownMenuItem className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center">
-                                <Download className="h-4 w-4 text-green-500" />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteOfflineSong(song.id);
+                                }}
+                                className="h-8 w-8 p-1 rounded hover:bg-black/60 flex items-center justify-center text-red-500"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
