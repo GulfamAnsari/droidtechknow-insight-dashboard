@@ -42,6 +42,8 @@ const PLAYLIST_ROWS = [
       { id: "1134543299", name: "Top 50 Telugu", gradient: "from-yellow-500 to-orange-500" },
       { id: "1134770495", name: "Top 50 English", gradient: "from-blue-500 to-cyan-500" },
       { id: "1134543265", name: "Viral Hits", gradient: "from-fuchsia-500 to-pink-500" },
+      { id: "1134543292", name: "Top 50 Kannada", gradient: "from-purple-500 to-violet-500" },
+      { id: "1134543272", name: "Most Streamed", gradient: "from-emerald-500 to-green-600" },
     ]
   },
   {
@@ -53,6 +55,9 @@ const PLAYLIST_ROWS = [
       { id: "1134543265", name: "New This Week", gradient: "from-green-500 to-teal-500" },
       { id: "1134684498", name: "Indie Spotlight", gradient: "from-emerald-500 to-teal-500" },
       { id: "1134543272", name: "Latest Drops", gradient: "from-cyan-500 to-blue-500" },
+      { id: "1134543307", name: "New Punjabi", gradient: "from-amber-400 to-yellow-500" },
+      { id: "1134543299", name: "New Telugu", gradient: "from-yellow-500 to-orange-400" },
+      { id: "1134770509", name: "Just Released", gradient: "from-rose-400 to-pink-500" },
     ]
   },
   {
@@ -64,6 +69,8 @@ const PLAYLIST_ROWS = [
       { id: "1134550498", name: "Heartbreak Songs", gradient: "from-slate-500 to-gray-600" },
       { id: "1134684545", name: "Workout Mix", gradient: "from-green-500 to-emerald-500" },
       { id: "1134543285", name: "Dance Floor", gradient: "from-amber-500 to-orange-500" },
+      { id: "1134543272", name: "Bollywood Classics", gradient: "from-yellow-600 to-amber-600" },
+      { id: "1134770509", name: "Item Numbers", gradient: "from-red-400 to-pink-500" },
     ]
   },
   {
@@ -76,17 +83,47 @@ const PLAYLIST_ROWS = [
       { id: "1134543265", name: "Best of 2024", gradient: "from-violet-500 to-purple-600" },
       { id: "1134543265", name: "Best of 2025", gradient: "from-pink-400 to-purple-500" },
       { id: "1134770523", name: "Evergreen Hits", gradient: "from-rose-400 to-red-500" },
+      { id: "1134770516", name: "70s Retro", gradient: "from-amber-600 to-orange-600" },
+      { id: "1134543272", name: "Old is Gold", gradient: "from-yellow-500 to-amber-500" },
+    ]
+  },
+  {
+    title: "Punjabi Corner",
+    icon: Music2,
+    playlists: [
+      { id: "1134543307", name: "Punjabi Beats", gradient: "from-amber-500 to-yellow-500" },
+      { id: "1029579349", name: "Punjabi Party", gradient: "from-red-500 to-orange-500" },
+      { id: "1134543307", name: "Punjabi Romance", gradient: "from-pink-500 to-rose-400" },
+      { id: "1134543307", name: "Punjabi Sad", gradient: "from-slate-500 to-gray-500" },
+      { id: "1029579349", name: "Bhangra Hits", gradient: "from-orange-500 to-yellow-400" },
+      { id: "1134543307", name: "Sidhu Moose Wala", gradient: "from-gray-700 to-gray-900" },
     ]
   },
   {
     title: "Regional Vibes",
     icon: Music2,
     playlists: [
-      { id: "1134543307", name: "Punjabi Beats", gradient: "from-amber-500 to-yellow-500" },
       { id: "1134543292", name: "Tamil Chartbusters", gradient: "from-green-500 to-emerald-500" },
       { id: "1134543299", name: "Telugu Hits", gradient: "from-yellow-400 to-orange-500" },
       { id: "1134543272", name: "Marathi Mix", gradient: "from-orange-500 to-red-500" },
       { id: "1134543272", name: "Bengali Beats", gradient: "from-sky-500 to-blue-500" },
+      { id: "1134543292", name: "Malayalam Melodies", gradient: "from-emerald-500 to-green-500" },
+      { id: "1134543292", name: "Kannada Hits", gradient: "from-purple-500 to-violet-500" },
+      { id: "1134543299", name: "Rajasthani Folk", gradient: "from-amber-600 to-red-500" },
+    ]
+  },
+  {
+    title: "Artist Specials",
+    icon: Users,
+    playlists: [
+      { id: "1134543285", name: "Best of Arijit", gradient: "from-red-500 to-rose-600" },
+      { id: "1134543272", name: "Best of Atif", gradient: "from-blue-500 to-indigo-500" },
+      { id: "1134543285", name: "Shreya Ghoshal", gradient: "from-pink-400 to-rose-500" },
+      { id: "1134543277", name: "Badshah Hits", gradient: "from-yellow-500 to-amber-500" },
+      { id: "1134684498", name: "Prateek Kuhad", gradient: "from-teal-400 to-cyan-400" },
+      { id: "1134543272", name: "Lata Mangeshkar", gradient: "from-amber-400 to-yellow-400" },
+      { id: "1134770509", name: "A.R. Rahman Best", gradient: "from-emerald-500 to-teal-500" },
+      { id: "1134543307", name: "Diljit Dosanjh", gradient: "from-orange-400 to-yellow-400" },
     ]
   },
   {
@@ -97,6 +134,23 @@ const PLAYLIST_ROWS = [
       { id: "1134550498", name: "Late Night Vibes", gradient: "from-indigo-500 to-purple-600" },
       { id: "1134684498", name: "Unplugged", gradient: "from-stone-400 to-slate-500" },
       { id: "1134550498", name: "Soft Melodies", gradient: "from-rose-400 to-pink-400" },
+      { id: "1134684498", name: "Coffee & Music", gradient: "from-amber-700 to-yellow-800" },
+      { id: "1134550498", name: "Rainy Day", gradient: "from-cyan-500 to-blue-600" },
+      { id: "1134684498", name: "Sunday Morning", gradient: "from-yellow-300 to-amber-400" },
+    ]
+  },
+  {
+    title: "Genres & Discover",
+    icon: Sparkles,
+    playlists: [
+      { id: "1134770495", name: "Pop International", gradient: "from-blue-400 to-cyan-400" },
+      { id: "1134770495", name: "Hip Hop", gradient: "from-gray-700 to-gray-900" },
+      { id: "1134684498", name: "Lo-Fi Beats", gradient: "from-violet-500 to-purple-600" },
+      { id: "1134770495", name: "EDM Party", gradient: "from-cyan-400 to-blue-500" },
+      { id: "1134543272", name: "Sufi Collection", gradient: "from-rose-600 to-pink-500" },
+      { id: "1134543272", name: "Ghazals", gradient: "from-amber-500 to-rose-500" },
+      { id: "1134543272", name: "Devotional", gradient: "from-orange-500 to-amber-500" },
+      { id: "1134770495", name: "K-Pop Hits", gradient: "from-pink-400 to-purple-400" },
     ]
   },
 ];
