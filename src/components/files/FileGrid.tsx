@@ -180,96 +180,131 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
 
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
-          <DialogTitle className="sr-only">File Preview</DialogTitle>
+        <DialogContent
+          className="max-w-none w-screen h-[100dvh] sm:h-[95dvh] sm:w-[95vw] sm:max-w-6xl p-0 overflow-hidden border-0 sm:border bg-black sm:bg-background gap-0 rounded-none sm:rounded-lg [&>button]:hidden"
+        >
+          <DialogTitle className="sr-only">{selectedFile?.title || 'File Preview'}</DialogTitle>
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">{selectedFile?.title}</h3>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => selectedFile && handleDelete(selectedFile.id)}>
+            {/* Header */}
+            <div
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-white/10 sm:border-border bg-black/80 sm:bg-background text-white sm:text-foreground shrink-0"
+              style={{ paddingTop: 'calc(0.5rem + env(safe-area-inset-top))' }}
+            >
+              <h3 className="text-sm sm:text-lg font-semibold truncate flex-1 min-w-0">{selectedFile?.title}</h3>
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 sm:hidden text-white hover:bg-white/10"
+                  onClick={() => selectedFile && handleDelete(selectedFile.id)}
+                  aria-label="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 sm:hidden text-white hover:bg-white/10"
+                  onClick={() => selectedFile && downloadFile(selectedFile)}
+                  aria-label="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 sm:hidden text-white hover:bg-white/10"
+                  onClick={() => setIsPreviewOpen(false)}
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => selectedFile && handleDelete(selectedFile.id)}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => selectedFile && downloadFile(selectedFile)}>
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => selectedFile && downloadFile(selectedFile)}>
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </Button>
               </div>
             </div>
-            
-            <div className="relative flex-1 bg-black/5 overflow-hidden flex items-center justify-center" {...swipeHandlers}>
-              {/* Fixed position navigation buttons */}
-              <button 
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
+
+            {/* Preview area */}
+            <div
+              className="relative flex-1 min-h-0 bg-black sm:bg-black/5 overflow-hidden flex items-center justify-center"
+              {...swipeHandlers}
+            >
+              <button
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full z-10 hover:bg-black/60 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center"
                 onClick={() => navigateFiles('prev')}
                 aria-label="Previous file"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              
-              {/* File preview container with fixed max dimensions */}
-              <div className="w-full h-full flex items-center justify-center">
+
+              <div className="w-full h-full flex items-center justify-center p-2 sm:p-4">
                 {selectedFile?.fileType === 'photo' ? (
-                  <img 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} 
-                    alt={selectedFile?.title} 
-                    className="max-h-full max-w-full object-contain"
-                    style={{ maxHeight: 'calc(90vh - 140px)' }} // Ensure image fits within the container
+                  <img
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}
+                    alt={selectedFile?.title}
+                    className="max-h-full max-w-full w-auto h-auto object-contain select-none"
+                    draggable={false}
                   />
                 ) : selectedFile?.fileType === 'video' ? (
-                  <video 
-                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} 
-                    controls 
-                    className="max-h-full max-w-full" 
+                  <video
+                    src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}
+                    controls
+                    playsInline
+                    className="max-h-full max-w-full w-auto h-auto"
                   />
                 ) : selectedFile?.fileType === 'audio' ? (
-                  <div className="p-8 w-full">
+                  <div className="p-4 sm:p-8 w-full max-w-xl">
                     <audio src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`} controls className="w-full" />
-                    <div className="mt-4 flex justify-center">
+                    <div className="mt-4 flex justify-center text-white">
                       {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
                     </div>
                   </div>
                 ) : selectedFile?.fileType === 'document' && selectedFile?.metadata?.format === 'application/pdf' ? (
-                  <iframe 
-                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}#toolbar=0`} 
-                    className="w-full h-full" 
+                  <iframe
+                    src={`${selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}#toolbar=0`}
+                    className="w-full h-full bg-white"
                     title={selectedFile?.title}
                   />
                 ) : (
-                  <div className="text-center p-8">
+                  <div className="text-center p-8 text-white sm:text-foreground">
                     <div className="flex justify-center mb-4">
                       {selectedFile && getFileIcon(selectedFile.fileType, selectedFile.metadata?.format || '')}
                     </div>
                     <p>Preview not available for this file type</p>
-                    <p className="text-sm text-muted-foreground mt-2">
+                    <p className="text-sm opacity-70 mt-2">
                       {selectedFile && getFileTypeLabel(selectedFile.fileType)} - {selectedFile && formatFileSize(selectedFile.metadata.size || 0)}
                     </p>
                   </div>
                 )}
               </div>
-              
-              <button 
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 text-white p-2 rounded-full z-10 hover:bg-black/50 w-10 h-10 flex items-center justify-center"
+
+              <button
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/40 text-white p-2 rounded-full z-10 hover:bg-black/60 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center"
                 onClick={() => navigateFiles('next')}
                 aria-label="Next file"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
-
-              {/* Mobile swipe hint - only shown on mobile */}
-              {isMobile && (
-                <div className="absolute bottom-4 left-0 right-0 text-center text-white text-sm bg-black/30 py-1">
-                  Swipe left or right to navigate
-                </div>
-              )}
             </div>
-            
-            <div className="p-4 text-sm bg-background border-t">
-              <p><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</p>
-              <p><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</p>
-              <p><span className="font-medium">Modified:</span> {selectedFile && new Date(parseInt(selectedFile.lastModified)).toLocaleDateString()}</p>
+
+            {/* Footer / metadata */}
+            <div
+              className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm bg-black/80 sm:bg-background text-white/80 sm:text-foreground border-t border-white/10 sm:border-border shrink-0"
+              style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+            >
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span><span className="font-medium">Type:</span> {selectedFile && getFileTypeLabel(selectedFile.fileType)}</span>
+                <span><span className="font-medium">Size:</span> {selectedFile && formatFileSize(selectedFile.metadata?.size || 0)}</span>
+                <span className="hidden sm:inline"><span className="font-medium">Modified:</span> {selectedFile && new Date(parseInt(selectedFile.lastModified)).toLocaleDateString()}</span>
+              </div>
               {selectedFile?.description && (
-                <p><span className="font-medium">Description:</span> {selectedFile.description}</p>
+                <p className="mt-1 truncate"><span className="font-medium">Description:</span> {selectedFile.description}</p>
               )}
             </div>
           </div>
