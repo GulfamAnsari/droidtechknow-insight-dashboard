@@ -168,13 +168,16 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
   };
   
   return (
-    <div className="p-4 space-y-6">
-      <h2 className="text-xl font-semibold">Upload Files</h2>
-      
-      <Card className={`border-2 border-dashed p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
+    <div className="flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden">
+      <div className="shrink-0 px-4 pt-4 pb-2">
+        <h2 className="text-xl font-semibold">Upload Files</h2>
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+      <Card className={`border-2 border-dashed p-4 sm:p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
           {...getRootProps()}
-          className="h-40 flex flex-col items-center justify-center cursor-pointer"
+          className="h-32 sm:h-40 flex flex-col items-center justify-center cursor-pointer"
         >
           <input {...getInputProps()} />
           <Upload size={40} className={isDragActive ? "text-primary" : "text-muted-foreground"} />
@@ -204,7 +207,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
               </Button>
             </div>
             
-            <div className="max-h-64 overflow-y-auto space-y-2">
+            <div className="max-h-[34dvh] overflow-y-auto space-y-2 pr-1">
               {files.map((file, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                   <div className="flex items-center space-x-3">
@@ -238,24 +241,28 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
               ))}
             </div>
             
-            <div className="mt-4">
-              <Button 
-                onClick={uploadFiles} 
-                disabled={uploading || files.length === 0} 
-                className="w-full"
-              >
-                {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
-              </Button>
-            </div>
-            
-            {uploading && (
-              <div className="mt-4 space-y-2">
-                <Progress value={progress} />
-                <p className="text-sm text-center">{progress}% Complete</p>
-              </div>
-            )}
           </CardContent>
         </Card>
+      )}
+      </div>
+
+      {files.length > 0 && (
+        <div className="shrink-0 border-t bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <Button
+            onClick={uploadFiles}
+            disabled={uploading || files.length === 0}
+            className="w-full"
+          >
+            {uploading ? "Uploading..." : `Upload ${files.length} ${files.length === 1 ? 'File' : 'Files'}`}
+          </Button>
+
+          {uploading && (
+            <div className="mt-4 space-y-2">
+              <Progress value={progress} />
+              <p className="text-sm text-center">{progress}% Complete</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
