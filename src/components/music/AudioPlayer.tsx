@@ -496,12 +496,12 @@ const AudioPlayer = ({
               size="icon"
               variant="ghost"
               onClick={onToggleShuffle}
-              className={`h-10 w-10 ${isShuffle ? "text-primary" : ""}`}
+              className={`h-12 w-12 ${isShuffle ? "text-primary" : ""}`}
             >
-              <Shuffle className="h-5 w-5" />
+              <Shuffle className="h-6 w-6" />
             </Button>
-            <Button size="icon" variant="ghost" onClick={onPrevious} className="h-10 w-10">
-              <SkipBack className="h-5 w-5" />
+            <Button size="icon" variant="ghost" onClick={onPrevious} className="h-12 w-12">
+              <SkipBack className="h-6 w-6" />
             </Button>
             <Button
               size="icon"
@@ -511,17 +511,17 @@ const AudioPlayer = ({
                   audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
                 }
               }}
-              className="h-10 w-10"
+              className="h-12 w-12"
               title="Rewind 10s"
             >
-              <Rewind className="h-5 w-5" />
+              <Rewind className="h-6 w-6" />
             </Button>
             <Button
               size="icon"
               onClick={onPlayPause}
-              className="h-12 w-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-14 w-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
+              {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 ml-0.5" />}
             </Button>
             <Button
               size="icon"
@@ -534,21 +534,21 @@ const AudioPlayer = ({
                   );
                 }
               }}
-              className="h-10 w-10"
+              className="h-12 w-12"
               title="Fast forward 10s"
             >
-              <FastForward className="h-5 w-5" />
+              <FastForward className="h-6 w-6" />
             </Button>
-            <Button size="icon" variant="ghost" onClick={onNext} className="h-10 w-10">
-              <SkipForward className="h-5 w-5" />
+            <Button size="icon" variant="ghost" onClick={onNext} className="h-12 w-12">
+              <SkipForward className="h-6 w-6" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               onClick={onToggleRepeat}
-              className={`h-10 w-10 ${isRepeat ? "text-primary" : ""}`}
+              className={`h-12 w-12 ${isRepeat ? "text-primary" : ""}`}
             >
-              <Repeat className="h-5 w-5" />
+              <Repeat className="h-6 w-6" />
             </Button>
           </div>
 
