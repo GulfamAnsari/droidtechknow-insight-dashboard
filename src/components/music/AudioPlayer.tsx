@@ -14,7 +14,10 @@ import {
   Heart,
   Minimize2,
   Maximize2,
-  GripVertical
+  GripVertical,
+  Rewind,
+  FastForward
+
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 
