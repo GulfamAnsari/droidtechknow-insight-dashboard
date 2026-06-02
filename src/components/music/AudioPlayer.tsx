@@ -415,8 +415,8 @@ const AudioPlayer = ({
 
       {/* Player controls */}
       <div className={`${isFloating ? 'p-3 pt-2' : 'p-3'}`}>
-        {/* Mobile layout */}
-        <div className="flex md:hidden items-center gap-2">
+        {/* Compact layout (mobile always, desktop when floating) */}
+        <div className={`${isFloating ? 'flex' : 'flex md:hidden'} items-center gap-2`}>
           <div
             className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
             onClick={handleMobilePlayerClick}
@@ -433,7 +433,7 @@ const AudioPlayer = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 shrink-0">
             {onToggleLike && (
               <Button
                 size="icon"
@@ -457,14 +457,26 @@ const AudioPlayer = ({
             <Button size="icon" variant="ghost" onClick={onNext} className="h-8 w-8">
               <SkipForward className="h-4 w-4" />
             </Button>
+            {isFloating && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setIsFloating(false)}
+                className="h-8 w-8"
+                title="Dock player"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-8 w-8">
               <Maximize className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Desktop layout: 3-column with centered controls */}
-        <div className="hidden md:grid grid-cols-3 items-center gap-3">
+        {/* Desktop layout: 3-column with centered controls (docked only) */}
+        <div className={`${isFloating ? 'hidden' : 'hidden md:grid'} grid-cols-3 items-center gap-3`}>
+
           {/* Left: Song info */}
           <div className="flex items-center gap-3 min-w-0">
             <LazyImage
