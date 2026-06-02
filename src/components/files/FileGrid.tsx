@@ -181,7 +181,7 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
       {/* Full-screen File Preview Dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent
-          className="max-w-none w-screen h-[100dvh] sm:h-[95dvh] sm:w-[95vw] sm:max-w-6xl p-0 overflow-hidden border-0 sm:border bg-black sm:bg-background gap-0 rounded-none sm:rounded-lg [&>button]:hidden"
+          className="max-w-none w-screen h-[100dvh] sm:h-[95dvh] sm:w-[95vw] sm:max-w-6xl p-0 overflow-hidden border-0 sm:border bg-black sm:bg-background gap-0 rounded-none sm:rounded-lg [&>button]:hidden left-0 top-0 translate-x-0 translate-y-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]"
         >
           <DialogTitle className="sr-only">{selectedFile?.title || 'File Preview'}</DialogTitle>
           <div className="flex flex-col h-full">
