@@ -201,7 +201,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const [loadingPlaylist, setLoadingPlaylist] = useState<string | null>(null);
   const [activeRadio, setActiveRadio] = useState<string | null>(null);
   const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
-  const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
+  const [songSections, setSongSections] = useState<Record<string, Song[]>>({});
   const [loading, setLoading] = useState(true);
   const [artistPage, setArtistPage] = useState(1);
   const [showAllArtists, setShowAllArtists] = useState(false);
@@ -216,15 +216,27 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const loadExploreData = async () => {
     setLoading(true);
     try {
-      const [artists, trending] = await Promise.all([
+      // Load artists + first song section quickly, then lazy load remaining sections
+      const [artists, firstSection] = await Promise.all([
         musicApi.getPopularArtists(1, 20),
-        musicApi.getPlaylistSongs("1134543272") // Top Hindi for trending
+        musicApi.getPlaylistSongs(SONG_LIST_SECTIONS[0].id),
       ]);
       setPopularArtists(artists || []);
-      setTrendingSongs(trending?.slice(0, 15) || []);
+      setSongSections({ [SONG_LIST_SECTIONS[0].id]: firstSection || [] });
+      setLoading(false);
+
+      // Background load the rest in parallel
+      const rest = SONG_LIST_SECTIONS.slice(1);
+      const results = await Promise.all(
+        rest.map(s => musicApi.getPlaylistSongs(s.id).catch(() => []))
+      );
+      setSongSections(prev => {
+        const next = { ...prev };
+        rest.forEach((s, i) => { next[s.id] = results[i] || []; });
+        return next;
+      });
     } catch (error) {
       console.error("Failed to load explore data:", error);
-    } finally {
       setLoading(false);
     }
   };
