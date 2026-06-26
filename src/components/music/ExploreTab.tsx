@@ -155,6 +155,22 @@ const PLAYLIST_ROWS = [
   },
 ];
 
+// Curated song-list sections — each fetches a full playlist and shows all songs horizontally
+const SONG_LIST_SECTIONS = [
+  { id: "1134543272", title: "Trending Now", icon: TrendingUp },
+  { id: "1134543307", title: "Punjabi Top 50", icon: Music2 },
+  { id: "1134770523", title: "Evergreen Hits", icon: Clock },
+  { id: "1134770516", title: "90s Gold", icon: Clock },
+  { id: "1134770495", title: "English Top Hits", icon: Sparkles },
+  { id: "1134543292", title: "Tamil Chartbusters", icon: Music2 },
+  { id: "1134543299", title: "Telugu Hits", icon: Music2 },
+  { id: "1134543285", title: "Romantic Bollywood", icon: Heart },
+  { id: "1134543277", title: "Party Anthems", icon: Sparkles },
+  { id: "1134684545", title: "Workout Mix", icon: TrendingUp },
+  { id: "1134684498", title: "Lo-Fi & Chill", icon: Heart },
+  { id: "1134550498", title: "Late Night Vibes", icon: Clock },
+];
+
 const RADIO_CATEGORIES: RadioCategory[] = [
   { id: "bollywood-hits", name: "Bollywood", queries: ["bollywood top 50", "hindi chartbusters"], playlistIds: ["1134543272", "1134770509"], gradient: "from-orange-500 to-red-500", emoji: "🎬" },
   { id: "punjabi", name: "Punjabi", queries: ["punjabi top hits", "latest punjabi songs 2024"], playlistIds: ["1134543307", "1029579349"], gradient: "from-orange-400 to-yellow-500", emoji: "🦁" },
@@ -185,7 +201,7 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const [loadingPlaylist, setLoadingPlaylist] = useState<string | null>(null);
   const [activeRadio, setActiveRadio] = useState<string | null>(null);
   const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
-  const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
+  const [songSections, setSongSections] = useState<Record<string, Song[]>>({});
   const [loading, setLoading] = useState(true);
   const [artistPage, setArtistPage] = useState(1);
   const [showAllArtists, setShowAllArtists] = useState(false);
@@ -200,15 +216,27 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
   const loadExploreData = async () => {
     setLoading(true);
     try {
-      const [artists, trending] = await Promise.all([
+      // Load artists + first song section quickly, then lazy load remaining sections
+      const [artists, firstSection] = await Promise.all([
         musicApi.getPopularArtists(1, 20),
-        musicApi.getPlaylistSongs("1134543272") // Top Hindi for trending
+        musicApi.getPlaylistSongs(SONG_LIST_SECTIONS[0].id),
       ]);
       setPopularArtists(artists || []);
-      setTrendingSongs(trending?.slice(0, 15) || []);
+      setSongSections({ [SONG_LIST_SECTIONS[0].id]: firstSection || [] });
+      setLoading(false);
+
+      // Background load the rest in parallel
+      const rest = SONG_LIST_SECTIONS.slice(1);
+      const results = await Promise.all(
+        rest.map(s => musicApi.getPlaylistSongs(s.id).catch(() => []))
+      );
+      setSongSections(prev => {
+        const next = { ...prev };
+        rest.forEach((s, i) => { next[s.id] = results[i] || []; });
+        return next;
+      });
     } catch (error) {
       console.error("Failed to load explore data:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -377,46 +405,68 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
         </section>
       )}
 
-      {/* Trending Songs */}
-      {trendingSongs.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Trending Now</h2>
-          </div>
-          
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-3 pb-3">
-              {trendingSongs.map((song, index) => (
-                <div
-                  key={song.id}
-                  className="group cursor-pointer shrink-0 w-40 bg-card/50 rounded-lg p-3 hover:bg-card transition-colors"
-                  onClick={() => onPlaySong(song)}
-                >
-                  <div className="relative mb-2">
-                    <span className="absolute -top-1 -left-1 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-10">
-                      {index + 1}
-                    </span>
-                    <LazyImage
-                      src={song.image?.[1]?.url || song.image?.[0]?.url}
-                      alt={song.name}
-                      className="w-full aspect-square rounded-md object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="h-8 w-8 text-white fill-white" />
-                    </div>
-                  </div>
-                  <h3 className="font-medium text-sm truncate">{song.name}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {song.artists?.primary?.[0]?.name || "Unknown"}
-                  </p>
-                </div>
-              ))}
+      {/* Curated Song Lists - one row per playlist, showing all songs */}
+      {SONG_LIST_SECTIONS.map((section) => {
+        const songs = songSections[section.id];
+        if (!songs || songs.length === 0) return null;
+        const SectionIcon = section.icon;
+        return (
+          <section key={section.id + section.title}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <SectionIcon className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">{section.title}</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs"
+                onClick={() => {
+                  setPlaylist(songs);
+                  onPlaySong(songs[0]);
+                }}
+              >
+                Play All
+                <Play className="h-3 w-3 ml-1 fill-current" />
+              </Button>
             </div>
-            <ScrollBar orientation="horizontal" variant="music" />
-          </ScrollArea>
-        </section>
-      )}
+
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex gap-3 pb-3">
+                {songs.map((song, index) => (
+                  <div
+                    key={`${section.id}-${song.id}-${index}`}
+                    className="group cursor-pointer shrink-0 w-40 bg-card/50 rounded-lg p-3 hover:bg-card transition-colors"
+                    onClick={() => {
+                      setPlaylist(songs);
+                      onPlaySong(song);
+                    }}
+                  >
+                    <div className="relative mb-2">
+                      <span className="absolute -top-1 -left-1 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-10">
+                        {index + 1}
+                      </span>
+                      <LazyImage
+                        src={song.image?.[1]?.url || song.image?.[0]?.url}
+                        alt={song.name}
+                        className="w-full aspect-square rounded-md object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Play className="h-8 w-8 text-white fill-white" />
+                      </div>
+                    </div>
+                    <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {song.artists?.primary?.[0]?.name || "Unknown"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" variant="music" />
+            </ScrollArea>
+          </section>
+        );
+      })}
 
       {/* Mood & Vibes - Compact circular cards */}
       <section>
