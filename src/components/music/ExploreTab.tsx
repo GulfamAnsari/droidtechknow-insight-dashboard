@@ -405,46 +405,68 @@ const ExploreTab = ({ onPlaySong, onNavigateToContent, setPlaylist, recentlyPlay
         </section>
       )}
 
-      {/* Trending Songs */}
-      {trendingSongs.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">Trending Now</h2>
-          </div>
-          
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-3 pb-3">
-              {trendingSongs.map((song, index) => (
-                <div
-                  key={song.id}
-                  className="group cursor-pointer shrink-0 w-40 bg-card/50 rounded-lg p-3 hover:bg-card transition-colors"
-                  onClick={() => onPlaySong(song)}
-                >
-                  <div className="relative mb-2">
-                    <span className="absolute -top-1 -left-1 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-10">
-                      {index + 1}
-                    </span>
-                    <LazyImage
-                      src={song.image?.[1]?.url || song.image?.[0]?.url}
-                      alt={song.name}
-                      className="w-full aspect-square rounded-md object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="h-8 w-8 text-white fill-white" />
-                    </div>
-                  </div>
-                  <h3 className="font-medium text-sm truncate">{song.name}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {song.artists?.primary?.[0]?.name || "Unknown"}
-                  </p>
-                </div>
-              ))}
+      {/* Curated Song Lists - one row per playlist, showing all songs */}
+      {SONG_LIST_SECTIONS.map((section) => {
+        const songs = songSections[section.id];
+        if (!songs || songs.length === 0) return null;
+        const SectionIcon = section.icon;
+        return (
+          <section key={section.id + section.title}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <SectionIcon className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-bold">{section.title}</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs"
+                onClick={() => {
+                  setPlaylist(songs);
+                  onPlaySong(songs[0]);
+                }}
+              >
+                Play All
+                <Play className="h-3 w-3 ml-1 fill-current" />
+              </Button>
             </div>
-            <ScrollBar orientation="horizontal" variant="music" />
-          </ScrollArea>
-        </section>
-      )}
+
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex gap-3 pb-3">
+                {songs.map((song, index) => (
+                  <div
+                    key={`${section.id}-${song.id}-${index}`}
+                    className="group cursor-pointer shrink-0 w-40 bg-card/50 rounded-lg p-3 hover:bg-card transition-colors"
+                    onClick={() => {
+                      setPlaylist(songs);
+                      onPlaySong(song);
+                    }}
+                  >
+                    <div className="relative mb-2">
+                      <span className="absolute -top-1 -left-1 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center z-10">
+                        {index + 1}
+                      </span>
+                      <LazyImage
+                        src={song.image?.[1]?.url || song.image?.[0]?.url}
+                        alt={song.name}
+                        className="w-full aspect-square rounded-md object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Play className="h-8 w-8 text-white fill-white" />
+                      </div>
+                    </div>
+                    <h3 className="font-medium text-sm truncate">{song.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {song.artists?.primary?.[0]?.name || "Unknown"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" variant="music" />
+            </ScrollArea>
+          </section>
+        );
+      })}
 
       {/* Mood & Vibes - Compact circular cards */}
       <section>
