@@ -155,6 +155,22 @@ const PLAYLIST_ROWS = [
   },
 ];
 
+// Curated song-list sections — each fetches a full playlist and shows all songs horizontally
+const SONG_LIST_SECTIONS = [
+  { id: "1134543272", title: "Trending Now", icon: TrendingUp },
+  { id: "1134543307", title: "Punjabi Top 50", icon: Music2 },
+  { id: "1134770523", title: "Evergreen Hits", icon: Clock },
+  { id: "1134770516", title: "90s Gold", icon: Clock },
+  { id: "1134770495", title: "English Top Hits", icon: Sparkles },
+  { id: "1134543292", title: "Tamil Chartbusters", icon: Music2 },
+  { id: "1134543299", title: "Telugu Hits", icon: Music2 },
+  { id: "1134543285", title: "Romantic Bollywood", icon: Heart },
+  { id: "1134543277", title: "Party Anthems", icon: Sparkles },
+  { id: "1134684545", title: "Workout Mix", icon: TrendingUp },
+  { id: "1134684498", title: "Lo-Fi & Chill", icon: Heart },
+  { id: "1134550498", title: "Late Night Vibes", icon: Clock },
+];
+
 const RADIO_CATEGORIES: RadioCategory[] = [
   { id: "bollywood-hits", name: "Bollywood", queries: ["bollywood top 50", "hindi chartbusters"], playlistIds: ["1134543272", "1134770509"], gradient: "from-orange-500 to-red-500", emoji: "🎬" },
   { id: "punjabi", name: "Punjabi", queries: ["punjabi top hits", "latest punjabi songs 2024"], playlistIds: ["1134543307", "1029579349"], gradient: "from-orange-400 to-yellow-500", emoji: "🦁" },
