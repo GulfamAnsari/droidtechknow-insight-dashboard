@@ -478,6 +478,7 @@ const AudioPlayer = ({
                 <Maximize2 className="h-4 w-4" />
               </Button>
             )}
+            <CastButton compact size="icon" className="h-8 w-8" />
             <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-8 w-8">
               <Maximize className="h-4 w-4" />
             </Button>
@@ -594,6 +595,7 @@ const AudioPlayer = ({
             >
               {isFloating ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </Button>
+            <CastButton size="icon" className="h-9 w-9" />
             <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-9 w-9">
               <Maximize className="h-5 w-5" />
             </Button>
