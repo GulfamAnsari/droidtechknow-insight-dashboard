@@ -20,6 +20,8 @@ import {
 
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
+import { useCast } from "@/contexts/CastContext";
+import CastButton from "@/components/music/CastButton";
 
 interface Song {
   id: string;
@@ -87,6 +89,7 @@ const AudioPlayer = ({
   isLiked = false,
   onToggleLike
 }: AudioPlayerProps) => {
+  const { isCasting, seekRemote } = useCast();
   const [isFloating, setIsFloating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -214,19 +217,21 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (audioRef.current) {
-      if (isPlaying) {
+      if (isCasting) {
+        audioRef.current.pause();
+      } else if (isPlaying) {
         audioRef.current.play();
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, isCasting]);
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume / 100;
+      audioRef.current.volume = isCasting || isMuted ? 0 : volume / 100;
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, isCasting]);
 
   // Sync current time from context but avoid setting if close to current
   useEffect(() => {
@@ -251,10 +256,15 @@ const AudioPlayer = ({
   };
 
   const handleSeek = (value: number[]) => {
-    if (audioRef.current && duration > 0) {
+    if (duration > 0) {
       const newTime = (value[0] / 100) * duration;
-      audioRef.current.currentTime = newTime;
-      onTimeUpdate(newTime);
+      if (isCasting) {
+        onTimeUpdate(newTime);
+        seekRemote(newTime);
+      } else if (audioRef.current) {
+        audioRef.current.currentTime = newTime;
+        onTimeUpdate(newTime);
+      }
     }
   };
 
@@ -468,6 +478,7 @@ const AudioPlayer = ({
                 <Maximize2 className="h-4 w-4" />
               </Button>
             )}
+            <CastButton compact size="icon" className="h-8 w-8" />
             <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-8 w-8">
               <Maximize className="h-4 w-4" />
             </Button>
@@ -584,6 +595,7 @@ const AudioPlayer = ({
             >
               {isFloating ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </Button>
+            <CastButton size="icon" className="h-9 w-9" />
             <Button size="icon" variant="ghost" onClick={onToggleFullscreen} className="h-9 w-9">
               <Maximize className="h-5 w-5" />
             </Button>

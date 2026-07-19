@@ -14,7 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      music_cast_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_name: string
+          id: string
+          last_seen: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_name: string
+          id?: string
+          last_seen?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_name?: string
+          id?: string
+          last_seen?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      music_cast_state: {
+        Row: {
+          command: string | null
+          command_seq: number | null
+          controller_device_id: string | null
+          current_index: number | null
+          is_playing: boolean | null
+          playlist: Json | null
+          position: number | null
+          seek_seq: number | null
+          song: Json | null
+          target_device_id: string | null
+          updated_at: string
+          user_id: string
+          volume: number | null
+        }
+        Insert: {
+          command?: string | null
+          command_seq?: number | null
+          controller_device_id?: string | null
+          current_index?: number | null
+          is_playing?: boolean | null
+          playlist?: Json | null
+          position?: number | null
+          seek_seq?: number | null
+          song?: Json | null
+          target_device_id?: string | null
+          updated_at?: string
+          user_id: string
+          volume?: number | null
+        }
+        Update: {
+          command?: string | null
+          command_seq?: number | null
+          controller_device_id?: string | null
+          current_index?: number | null
+          is_playing?: boolean | null
+          playlist?: Json | null
+          position?: number | null
+          seek_seq?: number | null
+          song?: Json | null
+          target_device_id?: string | null
+          updated_at?: string
+          user_id?: string
+          volume?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
