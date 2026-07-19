@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import LazyImage from "@/components/ui/lazy-image";
 import { useMusicContext } from "@/contexts/MusicContext";
+import { useCast } from "@/contexts/CastContext";
+import CastButton from "@/components/music/CastButton";
 
 const GlobalFloatingPlayer = () => {
   const location = useLocation();
@@ -35,6 +37,7 @@ const GlobalFloatingPlayer = () => {
     playPrevious,
     setCurrentSong
   } = useMusicContext();
+  const { isCasting, seekRemote } = useCast();
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 392, height: 140 });
@@ -81,18 +84,20 @@ const GlobalFloatingPlayer = () => {
 
   useEffect(() => {
     if (!audioRef.current) return;
-    if (isPlaying) {
+    if (isCasting) {
+      audioRef.current.pause();
+    } else if (isPlaying) {
       audioRef.current.play().catch(console.error);
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying, currentSong]);
+  }, [isPlaying, currentSong, isCasting]);
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume / 100;
+      audioRef.current.volume = isCasting || isMuted ? 0 : volume / 100;
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, isCasting]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!playerRef.current) return;
@@ -166,8 +171,12 @@ const GlobalFloatingPlayer = () => {
   };
 
   const handleSeek = (value: number[]) => {
-    if (audioRef.current && duration) {
-      const newTime = (value[0] / 100) * duration;
+    if (!duration) return;
+    const newTime = (value[0] / 100) * duration;
+    if (isCasting) {
+      setCurrentTime(newTime);
+      seekRemote(newTime);
+    } else if (audioRef.current) {
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
     }
@@ -294,6 +303,7 @@ const GlobalFloatingPlayer = () => {
                 max={100}
                 className="w-16"
               />
+              <CastButton compact size="icon" className="h-7 w-7" />
             </div>
           </div>
         </div>
