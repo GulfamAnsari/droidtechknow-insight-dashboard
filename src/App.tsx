@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { MusicProvider } from "@/contexts/MusicContext";
+import { CastProvider } from "@/contexts/CastContext";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
@@ -63,6 +64,7 @@ const App = () => {
     <ThemeProvider defaultTheme="system" storageKey="ui-theme">
       <AuthProvider>
         <MusicProvider>
+         <CastProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -99,6 +101,7 @@ const App = () => {
               <GlobalFloatingPlayer />
             </BrowserRouter>
           </TooltipProvider>
+         </CastProvider>
         </MusicProvider>
       </AuthProvider>
     </ThemeProvider>
