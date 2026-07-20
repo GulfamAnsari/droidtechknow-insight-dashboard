@@ -1,22 +1,19 @@
-import { pipeline } from "@huggingface/transformers";
-
 let sentimentPipeline: any = null;
 let loadingPromise: Promise<any> | null = null;
 
 /**
- * Load FinBERT only once
+ * Load FinBERT only once (dynamic import so heavy ML lib doesn't block initial bundle).
  */
 async function loadPipeline() {
   if (sentimentPipeline) return sentimentPipeline;
 
   if (!loadingPromise) {
-    loadingPromise = pipeline(
-      "sentiment-analysis",
-      "Xenova/finbert"
-    ).then((pipe) => {
-      sentimentPipeline = pipe;
-      return pipe;
-    });
+    loadingPromise = import("@huggingface/transformers").then(({ pipeline }) =>
+      pipeline("sentiment-analysis", "Xenova/finbert").then((pipe: any) => {
+        sentimentPipeline = pipe;
+        return pipe;
+      })
+    );
   }
 
   return loadingPromise;
@@ -34,7 +31,7 @@ export async function getSentimentLocal(text: string) {
   }
 
   const pipe = await loadPipeline();
-  const result = await pipe(text.slice(0, 512)); // FinBERT max length
+  const result = await pipe(text.slice(0, 512));
 
   return {
     label: result[0]?.label?.toLowerCase() ?? "neutral",
