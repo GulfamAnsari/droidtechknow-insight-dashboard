@@ -1,1 +1,4 @@
 project_id = "fbclwopynglwsrjgepij"
+
+[functions.music-cast]
+verify_jwt = false
