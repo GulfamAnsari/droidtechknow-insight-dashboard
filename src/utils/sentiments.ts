@@ -1,4 +1,4 @@
-import { pipeline } from "@xenova/transformers";
+import { pipeline } from "@huggingface/transformers";
 
 let sentimentPipeline: any = null;
 let loadingPromise: Promise<any> | null = null;
