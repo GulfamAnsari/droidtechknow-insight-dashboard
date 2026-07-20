@@ -21,15 +21,24 @@ async function verifyUser(req: Request): Promise<string | null> {
   try {
     const res = await fetch(
       "https://droidtechknow.com/admin/api/auth/google-auth.php?route=check-auth",
-      { headers: { Cookie: `Cookie=${token}; userId=${claimedId}` } },
+      {
+        headers: {
+          "X-Auth-Token": token,
+          "Id": claimedId,
+        },
+      },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn("check-auth non-ok", res.status);
+      return null;
+    }
     const data = await res.json();
     if (data?.authenticated && String(data?.data?.id) === String(claimedId)) {
       return String(claimedId);
     }
-  } catch (_) {
-    // fall through
+    console.warn("check-auth mismatch", { authenticated: data?.authenticated, id: data?.data?.id, claimedId });
+  } catch (e) {
+    console.warn("check-auth error", e);
   }
   return null;
 }
