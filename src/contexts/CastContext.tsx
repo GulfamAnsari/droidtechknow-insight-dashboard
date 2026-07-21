@@ -138,65 +138,75 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!userId) return;
     refreshDevices();
-    const poll = setInterval(refreshDevices, 10000);
-    return () => clearInterval(poll);
   }, [userId, refreshDevices]);
 
-  // === Subscribe (poll) cast state ===
+  // === Apply remote state helper ===
+  const applyRemote = useCallback((s: any) => {
+    if (!s) return;
+    if (s.target_device_id === deviceId && s.controller_device_id !== deviceId) {
+      isApplyingRemote.current = true;
+      try {
+        setIsReceiver(true);
+        const ctrl = devices.find((d) => d.device_id === s.controller_device_id);
+        setControllerDeviceName(ctrl?.device_name || "Another device");
+
+        const m = musicRef.current;
+        if (s.playlist && Array.isArray(s.playlist) && s.playlist.length) {
+          m.setPlaylist(s.playlist);
+        }
+        if (s.song && (!m.currentSong || m.currentSong.id !== s.song.id)) {
+          m.setCurrentSong(s.song);
+          m.setCurrentIndex(s.current_index ?? 0);
+          m.setCurrentTime(s.position || 0);
+        } else if (typeof s.current_index === "number" && s.current_index !== m.currentIndex) {
+          m.setCurrentIndex(s.current_index);
+        }
+        if (typeof s.volume === "number") m.setVolume(s.volume);
+        if (typeof s.is_playing === "boolean") m.setIsPlaying(s.is_playing);
+        if (typeof s.seek_seq === "number" && s.seek_seq !== lastAppliedSeekSeq.current) {
+          lastAppliedSeekSeq.current = s.seek_seq;
+          m.setCurrentTime(s.position || 0);
+        }
+        if (typeof s.command_seq === "number" && s.command_seq !== lastAppliedCommandSeq.current) {
+          lastAppliedCommandSeq.current = s.command_seq;
+          if (s.command === "next") m.playNext();
+          else if (s.command === "previous") m.playPrevious();
+        }
+      } finally {
+        setTimeout(() => { isApplyingRemote.current = false; }, 50);
+      }
+    } else if (isReceiver && s.target_device_id !== deviceId) {
+      setIsReceiver(false);
+      setControllerDeviceName(null);
+      musicRef.current.setIsPlaying(false);
+    }
+  }, [deviceId, devices, isReceiver]);
+
+  // === Realtime subscription (WebSocket via Supabase broadcast) ===
   useEffect(() => {
     if (!userId) return;
 
-    const applyRemote = (s: any) => {
-      if (!s) return;
-      if (s.target_device_id === deviceId && s.controller_device_id !== deviceId) {
-        isApplyingRemote.current = true;
-        try {
-          setIsReceiver(true);
-          const ctrl = devices.find((d) => d.device_id === s.controller_device_id);
-          setControllerDeviceName(ctrl?.device_name || "Another device");
-
-          const m = musicRef.current;
-          if (s.playlist && Array.isArray(s.playlist) && s.playlist.length) {
-            m.setPlaylist(s.playlist);
-          }
-          if (s.song && (!m.currentSong || m.currentSong.id !== s.song.id)) {
-            m.setCurrentSong(s.song);
-            m.setCurrentIndex(s.current_index ?? 0);
-            m.setCurrentTime(s.position || 0);
-          } else if (typeof s.current_index === "number" && s.current_index !== m.currentIndex) {
-            m.setCurrentIndex(s.current_index);
-          }
-          if (typeof s.volume === "number") m.setVolume(s.volume);
-          if (typeof s.is_playing === "boolean") m.setIsPlaying(s.is_playing);
-          if (typeof s.seek_seq === "number" && s.seek_seq !== lastAppliedSeekSeq.current) {
-            lastAppliedSeekSeq.current = s.seek_seq;
-            m.setCurrentTime(s.position || 0);
-          }
-          if (typeof s.command_seq === "number" && s.command_seq !== lastAppliedCommandSeq.current) {
-            lastAppliedCommandSeq.current = s.command_seq;
-            if (s.command === "next") m.playNext();
-            else if (s.command === "previous") m.playPrevious();
-          }
-        } finally {
-          setTimeout(() => { isApplyingRemote.current = false; }, 50);
-        }
-      } else if (isReceiver && s.target_device_id !== deviceId) {
-        setIsReceiver(false);
-        setControllerDeviceName(null);
-        musicRef.current.setIsPlaying(false);
-      }
-    };
-
-    const fetchState = async () => {
+    // Initial fetch
+    (async () => {
       const { data } = await callCast("get_state");
       if (data) applyRemote(data);
-    };
+    })();
 
-    fetchState();
-    const poll = setInterval(fetchState, 2000);
-    return () => clearInterval(poll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, deviceId, isReceiver]);
+    const channel = supabase
+      .channel(`cast:${userId}`, { config: { broadcast: { self: false } } })
+      .on("broadcast", { event: "state" }, ({ payload }) => {
+        applyRemote(payload);
+      })
+      .on("broadcast", { event: "devices" }, () => {
+        refreshDevices();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, applyRemote, refreshDevices]);
+
 
   // === Mirror local state to remote when I'm the controller ===
   useEffect(() => {
