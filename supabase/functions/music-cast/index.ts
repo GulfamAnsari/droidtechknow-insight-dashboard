@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
           { onConflict: "user_id,device_id" },
         );
         if (error) throw error;
+        broadcast(userId, "devices", { kind: "upsert", device_id });
         result = { ok: true };
         break;
       }
@@ -108,6 +109,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
           .eq("device_id", device_id);
         if (error) throw error;
+        broadcast(userId, "devices", { kind: "delete", device_id });
         result = { ok: true };
         break;
       }
@@ -123,20 +125,26 @@ Deno.serve(async (req) => {
       }
       case "upsert_state": {
         const patch = { ...(payload ?? {}), user_id: userId, updated_at: new Date().toISOString() };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("music_cast_state")
-          .upsert(patch, { onConflict: "user_id" });
+          .upsert(patch, { onConflict: "user_id" })
+          .select("*")
+          .maybeSingle();
         if (error) throw error;
+        broadcast(userId, "state", data ?? patch);
         result = { ok: true };
         break;
       }
       case "update_state": {
         const patch = { ...(payload ?? {}), updated_at: new Date().toISOString() };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("music_cast_state")
           .update(patch)
-          .eq("user_id", userId);
+          .eq("user_id", userId)
+          .select("*")
+          .maybeSingle();
         if (error) throw error;
+        broadcast(userId, "state", data ?? patch);
         result = { ok: true };
         break;
       }
