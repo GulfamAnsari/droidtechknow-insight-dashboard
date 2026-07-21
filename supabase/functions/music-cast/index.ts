@@ -28,6 +28,33 @@ async function verifyUser(req: Request): Promise<string | null> {
   return trimmed;
 }
 
+async function broadcast(userId: string, event: "state" | "devices", payload: unknown) {
+  try {
+    const url = `${Deno.env.get("SUPABASE_URL")}/realtime/v1/api/broadcast`;
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            topic: `cast:${userId}`,
+            event,
+            payload: payload ?? {},
+            private: false,
+          },
+        ],
+      }),
+    });
+  } catch (e) {
+    console.warn("broadcast failed", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
