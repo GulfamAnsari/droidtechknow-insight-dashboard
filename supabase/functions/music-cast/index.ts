@@ -28,6 +28,33 @@ async function verifyUser(req: Request): Promise<string | null> {
   return trimmed;
 }
 
+async function broadcast(userId: string, event: "state" | "devices", payload: unknown) {
+  try {
+    const url = `${Deno.env.get("SUPABASE_URL")}/realtime/v1/api/broadcast`;
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            topic: `cast:${userId}`,
+            event,
+            payload: payload ?? {},
+            private: false,
+          },
+        ],
+      }),
+    });
+  } catch (e) {
+    console.warn("broadcast failed", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -69,6 +96,7 @@ Deno.serve(async (req) => {
           { onConflict: "user_id,device_id" },
         );
         if (error) throw error;
+        broadcast(userId, "devices", { kind: "upsert", device_id });
         result = { ok: true };
         break;
       }
@@ -81,6 +109,7 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
           .eq("device_id", device_id);
         if (error) throw error;
+        broadcast(userId, "devices", { kind: "delete", device_id });
         result = { ok: true };
         break;
       }
@@ -96,20 +125,26 @@ Deno.serve(async (req) => {
       }
       case "upsert_state": {
         const patch = { ...(payload ?? {}), user_id: userId, updated_at: new Date().toISOString() };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("music_cast_state")
-          .upsert(patch, { onConflict: "user_id" });
+          .upsert(patch, { onConflict: "user_id" })
+          .select("*")
+          .maybeSingle();
         if (error) throw error;
+        broadcast(userId, "state", data ?? patch);
         result = { ok: true };
         break;
       }
       case "update_state": {
         const patch = { ...(payload ?? {}), updated_at: new Date().toISOString() };
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("music_cast_state")
           .update(patch)
-          .eq("user_id", userId);
+          .eq("user_id", userId)
+          .select("*")
+          .maybeSingle();
         if (error) throw error;
+        broadcast(userId, "state", data ?? patch);
         result = { ok: true };
         break;
       }
