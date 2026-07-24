@@ -185,6 +185,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
+        currentControllerIdRef.current = s.controller_device_id;
         const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
         setControllerDeviceName(ctrl?.device_name || "Another device");
 
@@ -215,6 +216,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       }
     } else if (isReceiverRef.current && s.target_device_id !== deviceId) {
       setIsReceiver(false);
+      currentControllerIdRef.current = null;
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
@@ -337,6 +339,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     const controllerId = currentControllerIdRef.current;
     if (controllerId) addBlocked(controllerId);
     setIsReceiver(false);
+    currentControllerIdRef.current = null;
     setControllerDeviceName(null);
     musicRef.current.setIsPlaying(false);
     if (controllerId) {
