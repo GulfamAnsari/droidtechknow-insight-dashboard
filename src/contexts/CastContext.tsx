@@ -23,6 +23,7 @@ interface CastContextType {
   refreshDevices: () => Promise<void>;
   startCast: (targetDeviceId: string) => Promise<void>;
   stopCast: () => Promise<void>;
+  disconnectReceiver: () => Promise<void>;
   seekRemote: (time: number) => Promise<void>;
 }
 
@@ -140,10 +141,34 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     refreshDevices();
   }, [userId, refreshDevices]);
 
+  // Persisted block list of controller device IDs the user disconnected from.
+  // While a controller is blocked, this device will NOT auto-become a receiver
+  // for its broadcasts until the user opts back in (by starting a new cast to
+  // this device from that controller — handled below when the block is cleared
+  // via UI, or by clearing storage).
+  const blockedKey = `music_cast_blocked_${userId ?? "anon"}`;
+  const isBlocked = useCallback((controllerId?: string | null) => {
+    if (!controllerId) return false;
+    try {
+      const raw = localStorage.getItem(blockedKey);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      return list.includes(controllerId);
+    } catch { return false; }
+  }, [blockedKey]);
+  const addBlocked = useCallback((controllerId: string) => {
+    try {
+      const raw = localStorage.getItem(blockedKey);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(controllerId)) list.push(controllerId);
+      localStorage.setItem(blockedKey, JSON.stringify(list));
+    } catch { /* ignore */ }
+  }, [blockedKey]);
+
   // === Apply remote state helper ===
   const applyRemote = useCallback((s: any) => {
     if (!s) return;
     if (s.target_device_id === deviceId && s.controller_device_id !== deviceId) {
+      if (isBlocked(s.controller_device_id)) return; // user opted out
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
@@ -180,7 +205,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, devices, isReceiver]);
+  }, [deviceId, devices, isReceiver, isBlocked]);
 
   // === Realtime subscription (WebSocket via Supabase broadcast) ===
   useEffect(() => {
@@ -268,6 +293,22 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [userId, castTargetId, deviceId]);
 
+  // Receiver disconnects itself and blocks the current controller from being
+  // able to auto-take over this device again (until user explicitly reconnects).
+  const disconnectReceiver = useCallback(async () => {
+    const s = await callCast("get_state");
+    const controllerId = (s.data as any)?.controller_device_id;
+    if (controllerId) addBlocked(controllerId);
+    setIsReceiver(false);
+    setControllerDeviceName(null);
+    musicRef.current.setIsPlaying(false);
+    // If controller currently targets us, clear its target so it stops mirroring.
+    if ((s.data as any)?.target_device_id === deviceId) {
+      await callCast("update_state", { target_device_id: null, is_playing: false });
+    }
+    toast.info("Disconnected. This device won't auto-connect again.");
+  }, [addBlocked, deviceId]);
+
   const value: CastContextType = {
     deviceId,
     deviceName,
@@ -279,6 +320,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     refreshDevices,
     startCast,
     stopCast,
+    disconnectReceiver,
     seekRemote,
   };
 
