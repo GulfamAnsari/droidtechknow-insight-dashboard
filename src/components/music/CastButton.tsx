@@ -13,7 +13,7 @@ interface CastButtonProps {
 
 const CastButton = ({ className = "", size = "icon", compact = false }: CastButtonProps) => {
   const { user } = useAuth();
-  const { devices, isCasting, castTargetId, startCast, stopCast, refreshDevices, isReceiver, controllerDeviceName } = useCast();
+  const { devices, isCasting, castTargetId, startCast, stopCast, disconnectReceiver, refreshDevices, isReceiver, controllerDeviceName } = useCast();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
