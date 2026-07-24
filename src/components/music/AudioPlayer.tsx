@@ -208,7 +208,7 @@ const AudioPlayer = ({
         audioRef.current.volume = volume / 100;
         audioRef.current.currentTime = currentTime;
 
-        if (wasPlaying || isPlaying) {
+        if (!isCasting && (wasPlaying || isPlaying)) {
           audioRef.current.play();
         }
       }
