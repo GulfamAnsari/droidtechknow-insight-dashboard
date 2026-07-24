@@ -49,14 +49,24 @@ const CastButton = ({ className = "", size = "icon", compact = false }: CastButt
           </DialogHeader>
 
           {isReceiver && (
-            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-center gap-2">
-              <Radio className="h-4 w-4 text-primary animate-pulse" />
-              <div className="text-sm">
-                <div className="font-medium">This device is receiving audio</div>
-                <div className="text-xs text-muted-foreground">
-                  Controlled by {controllerDeviceName || "another device"}
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Radio className="h-4 w-4 text-primary animate-pulse" />
+                <div className="text-sm">
+                  <div className="font-medium">This device is receiving audio</div>
+                  <div className="text-xs text-muted-foreground">
+                    Controlled by {controllerDeviceName || "another device"}
+                  </div>
                 </div>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={async () => { await disconnectReceiver(); setOpen(false); }}
+              >
+                <StopCircle className="h-4 w-4 mr-2" /> Disconnect & don't auto-connect
+              </Button>
             </div>
           )}
 
