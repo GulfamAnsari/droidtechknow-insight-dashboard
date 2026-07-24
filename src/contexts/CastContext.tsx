@@ -97,49 +97,79 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { musicRef.current = music; }, [music]);
   const castTargetRef = useRef(castTargetId);
   useEffect(() => { castTargetRef.current = castTargetId; }, [castTargetId]);
+  const devicesRef = useRef<CastDevice[]>([]);
+  useEffect(() => { devicesRef.current = devices; }, [devices]);
+  const isReceiverRef = useRef(isReceiver);
+  useEffect(() => { isReceiverRef.current = isReceiver; }, [isReceiver]);
   const lastAppliedSeekSeq = useRef<number>(-1);
   const lastAppliedCommandSeq = useRef<number>(-1);
   const seekSeqCounter = useRef<number>(0);
   const isApplyingRemote = useRef(false);
 
-  // === Register this device + heartbeat ===
-  useEffect(() => {
-    if (!userId) return;
+  // === Device discovery over WebSocket presence ===
+  const refreshDevices = useCallback(async () => {
+    // Devices are kept live by Realtime presence; this stays as a stable public API
+    // for the cast dialog without making any polling/API request.
+    setDevices([...devicesRef.current]);
+  }, []);
 
-    const upsertDevice = () =>
-      callCast("upsert_device", {
-        device_id: deviceId,
-        device_name: deviceName,
-        user_agent: navigator.userAgent,
+  const syncPresenceDevices = useCallback((presenceState: Record<string, unknown>) => {
+    const next = new Map<string, CastDevice>();
+
+    Object.values(presenceState).forEach((presences) => {
+      if (!Array.isArray(presences)) return;
+
+      presences.forEach((presence) => {
+        const p = presence as Partial<CastDevice> & { online_at?: string };
+        if (!p.device_id || p.device_id === deviceId) return;
+
+        next.set(p.device_id, {
+          device_id: p.device_id,
+          device_name: p.device_name || "Device",
+          user_agent: p.user_agent ?? null,
+          last_seen: p.last_seen || p.online_at || new Date().toISOString(),
+        });
+      });
+    });
+
+    const list = Array.from(next.values()).sort((a, b) => a.device_name.localeCompare(b.device_name));
+    devicesRef.current = list;
+    setDevices(list);
+  }, [deviceId]);
+
+  useEffect(() => {
+    if (!userId) {
+      devicesRef.current = [];
+      setDevices([]);
+      return;
+    }
+
+    const channel = supabase.channel(`cast-presence:${userId}`, {
+      config: { presence: { key: deviceId } },
+    });
+
+    const sync = () => syncPresenceDevices(channel.presenceState() as Record<string, unknown>);
+
+    channel
+      .on("presence", { event: "sync" }, sync)
+      .on("presence", { event: "join" }, sync)
+      .on("presence", { event: "leave" }, sync)
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+
+        await channel.track({
+          device_id: deviceId,
+          device_name: deviceName,
+          user_agent: navigator.userAgent,
+          last_seen: new Date().toISOString(),
+        });
+        sync();
       });
 
-    upsertDevice();
-    const heartbeat = setInterval(upsertDevice, 20000);
-
-    const cleanup = () => callCast("delete_device", { device_id: deviceId });
-    const onUnload = () => { cleanup(); };
-    window.addEventListener("beforeunload", onUnload);
-
     return () => {
-      clearInterval(heartbeat);
-      window.removeEventListener("beforeunload", onUnload);
-      cleanup();
+      supabase.removeChannel(channel);
     };
-  }, [userId, deviceId, deviceName]);
-
-  // === Load other devices (polling) ===
-  const refreshDevices = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await callCast("list_devices");
-    if (Array.isArray(data)) {
-      setDevices((data as CastDevice[]).filter((d) => d.device_id !== deviceId));
-    }
-  }, [userId, deviceId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    refreshDevices();
-  }, [userId, refreshDevices]);
+  }, [userId, deviceId, deviceName, syncPresenceDevices]);
 
   // Persisted block list of controller device IDs the user disconnected from.
   // While a controller is blocked, this device will NOT auto-become a receiver
@@ -172,7 +202,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
-        const ctrl = devices.find((d) => d.device_id === s.controller_device_id);
+        const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
         setControllerDeviceName(ctrl?.device_name || "Another device");
 
         const m = musicRef.current;
@@ -200,14 +230,14 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         setTimeout(() => { isApplyingRemote.current = false; }, 50);
       }
-    } else if (isReceiver && s.target_device_id !== deviceId) {
+    } else if (isReceiverRef.current && s.target_device_id !== deviceId) {
       setIsReceiver(false);
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, devices, isReceiver, isBlocked]);
+  }, [deviceId, isBlocked]);
 
-  // === Realtime subscription (WebSocket via Supabase broadcast) ===
+  // === Playback control over WebSocket broadcast ===
   useEffect(() => {
     if (!userId) return;
 
@@ -222,15 +252,12 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       .on("broadcast", { event: "state" }, ({ payload }) => {
         applyRemote(payload);
       })
-      .on("broadcast", { event: "devices" }, () => {
-        refreshDevices();
-      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, applyRemote, refreshDevices]);
+  }, [userId, applyRemote]);
 
 
   // === Mirror local state to remote when I'm the controller ===
