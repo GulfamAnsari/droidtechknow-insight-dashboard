@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMusicContext } from "@/contexts/MusicContext";
 import { toast } from "sonner";
-import Cookies from "js-cookie";
 
 export interface CastDevice {
   device_id: string;
@@ -61,24 +60,6 @@ const getOrCreateDeviceId = () => {
   return id;
 };
 
-async function callCast(action: string, payload?: unknown) {
-  const token = Cookies.get("Cookie");
-  const userId = Cookies.get("userId");
-  if (!token || !userId) return { data: null, error: "no-auth" };
-  const { data, error } = await supabase.functions.invoke("music-cast", {
-    body: { action, payload },
-    headers: {
-      "x-app-auth-token": token,
-      "x-app-user-id": userId,
-    },
-  });
-  if (error) {
-    console.warn(`cast ${action} failed`, error);
-    return { data: null, error };
-  }
-  return { data: (data as any)?.data ?? null, error: null };
-}
-
 export const CastProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const music = useMusicContext();
@@ -97,49 +78,81 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { musicRef.current = music; }, [music]);
   const castTargetRef = useRef(castTargetId);
   useEffect(() => { castTargetRef.current = castTargetId; }, [castTargetId]);
+  const devicesRef = useRef<CastDevice[]>([]);
+  useEffect(() => { devicesRef.current = devices; }, [devices]);
+  const isReceiverRef = useRef(isReceiver);
+  useEffect(() => { isReceiverRef.current = isReceiver; }, [isReceiver]);
   const lastAppliedSeekSeq = useRef<number>(-1);
   const lastAppliedCommandSeq = useRef<number>(-1);
   const seekSeqCounter = useRef<number>(0);
   const isApplyingRemote = useRef(false);
+  const castChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const currentControllerIdRef = useRef<string | null>(null);
 
-  // === Register this device + heartbeat ===
+  // === Device discovery over WebSocket presence ===
+  const refreshDevices = useCallback(async () => {
+    // Devices are kept live by Realtime presence; this stays as a stable public API
+    // for the cast dialog without making any polling/API request.
+    setDevices([...devicesRef.current]);
+  }, []);
+
+  const syncPresenceDevices = useCallback((presenceState: Record<string, unknown>) => {
+    const next = new Map<string, CastDevice>();
+
+    Object.values(presenceState).forEach((presences) => {
+      if (!Array.isArray(presences)) return;
+
+      presences.forEach((presence) => {
+        const p = presence as Partial<CastDevice> & { online_at?: string };
+        if (!p.device_id || p.device_id === deviceId) return;
+
+        next.set(p.device_id, {
+          device_id: p.device_id,
+          device_name: p.device_name || "Device",
+          user_agent: p.user_agent ?? null,
+          last_seen: p.last_seen || p.online_at || new Date().toISOString(),
+        });
+      });
+    });
+
+    const list = Array.from(next.values()).sort((a, b) => a.device_name.localeCompare(b.device_name));
+    devicesRef.current = list;
+    setDevices(list);
+  }, [deviceId]);
+
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      devicesRef.current = [];
+      setDevices([]);
+      return;
+    }
 
-    const upsertDevice = () =>
-      callCast("upsert_device", {
-        device_id: deviceId,
-        device_name: deviceName,
-        user_agent: navigator.userAgent,
+    const channel = supabase.channel(`cast-presence:${userId}`, {
+      config: { presence: { key: deviceId } },
+    });
+
+    const sync = () => syncPresenceDevices(channel.presenceState() as Record<string, unknown>);
+
+    channel
+      .on("presence", { event: "sync" }, sync)
+      .on("presence", { event: "join" }, sync)
+      .on("presence", { event: "leave" }, sync)
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED") return;
+
+        await channel.track({
+          device_id: deviceId,
+          device_name: deviceName,
+          user_agent: navigator.userAgent,
+          last_seen: new Date().toISOString(),
+        });
+        sync();
       });
 
-    upsertDevice();
-    const heartbeat = setInterval(upsertDevice, 20000);
-
-    const cleanup = () => callCast("delete_device", { device_id: deviceId });
-    const onUnload = () => { cleanup(); };
-    window.addEventListener("beforeunload", onUnload);
-
     return () => {
-      clearInterval(heartbeat);
-      window.removeEventListener("beforeunload", onUnload);
-      cleanup();
+      supabase.removeChannel(channel);
     };
-  }, [userId, deviceId, deviceName]);
-
-  // === Load other devices (polling) ===
-  const refreshDevices = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await callCast("list_devices");
-    if (Array.isArray(data)) {
-      setDevices((data as CastDevice[]).filter((d) => d.device_id !== deviceId));
-    }
-  }, [userId, deviceId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    refreshDevices();
-  }, [userId, refreshDevices]);
+  }, [userId, deviceId, deviceName, syncPresenceDevices]);
 
   // Persisted block list of controller device IDs the user disconnected from.
   // While a controller is blocked, this device will NOT auto-become a receiver
@@ -172,7 +185,8 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
-        const ctrl = devices.find((d) => d.device_id === s.controller_device_id);
+        currentControllerIdRef.current = s.controller_device_id;
+        const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
         setControllerDeviceName(ctrl?.device_name || "Another device");
 
         const m = musicRef.current;
@@ -200,44 +214,63 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         setTimeout(() => { isApplyingRemote.current = false; }, 50);
       }
-    } else if (isReceiver && s.target_device_id !== deviceId) {
+    } else if (isReceiverRef.current && s.target_device_id !== deviceId) {
       setIsReceiver(false);
+      currentControllerIdRef.current = null;
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, devices, isReceiver, isBlocked]);
+  }, [deviceId, isBlocked]);
 
-  // === Realtime subscription (WebSocket via Supabase broadcast) ===
+  const broadcastState = useCallback(async (payload: Record<string, unknown>) => {
+    const channel = castChannelRef.current;
+    if (!channel) return;
+
+    await channel.send({
+      type: "broadcast",
+      event: "state",
+      payload: {
+        ...payload,
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }, []);
+
+  // === Playback control over WebSocket broadcast ===
   useEffect(() => {
-    if (!userId) return;
-
-    // Initial fetch
-    (async () => {
-      const { data } = await callCast("get_state");
-      if (data) applyRemote(data);
-    })();
+    if (!userId) {
+      castChannelRef.current = null;
+      return;
+    }
 
     const channel = supabase
       .channel(`cast:${userId}`, { config: { broadcast: { self: false } } })
       .on("broadcast", { event: "state" }, ({ payload }) => {
         applyRemote(payload);
       })
-      .on("broadcast", { event: "devices" }, () => {
-        refreshDevices();
+      .on("broadcast", { event: "receiver-disconnect" }, ({ payload }) => {
+        const p = payload as { controller_device_id?: string; target_device_id?: string };
+        if (p.controller_device_id === deviceId && p.target_device_id === castTargetRef.current) {
+          setCastTargetId(null);
+          toast.info("Receiver disconnected");
+        }
       })
       .subscribe();
 
+    castChannelRef.current = channel;
+
     return () => {
+      if (castChannelRef.current === channel) castChannelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [userId, applyRemote, refreshDevices]);
+  }, [userId, deviceId, applyRemote]);
 
 
   // === Mirror local state to remote when I'm the controller ===
   useEffect(() => {
     if (!userId || !castTargetId) return;
     if (isApplyingRemote.current) return;
-    callCast("upsert_state", {
+    broadcastState({
       target_device_id: castTargetId,
       controller_device_id: deviceId,
       song: music.currentSong,
@@ -254,13 +287,14 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     music.isMuted,
     music.currentIndex,
     music.playlist,
+    broadcastState,
   ]);
 
   const startCast = useCallback(async (targetDeviceId: string) => {
     if (!userId) return;
     setCastTargetId(targetDeviceId);
     seekSeqCounter.current += 1;
-    await callCast("upsert_state", {
+    await broadcastState({
       target_device_id: targetDeviceId,
       controller_device_id: deviceId,
       song: music.currentSong,
@@ -273,38 +307,50 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     });
     const target = devices.find((d) => d.device_id === targetDeviceId);
     toast.success(`Casting to ${target?.device_name || "device"}`);
-  }, [userId, deviceId, music, devices]);
+  }, [userId, deviceId, music, devices, broadcastState]);
 
   const stopCast = useCallback(async () => {
     if (!userId) return;
+    const previousTargetId = castTargetRef.current;
     setCastTargetId(null);
-    await callCast("update_state", { target_device_id: null, is_playing: false });
+    await broadcastState({
+      target_device_id: null,
+      previous_target_device_id: previousTargetId,
+      controller_device_id: deviceId,
+      is_playing: false,
+    });
     toast.info("Stopped casting");
-  }, [userId]);
+  }, [userId, deviceId, broadcastState]);
 
   const seekRemote = useCallback(async (time: number) => {
     if (!userId || !castTargetId) return;
     seekSeqCounter.current += 1;
-    await callCast("upsert_state", {
+    await broadcastState({
       target_device_id: castTargetId,
       controller_device_id: deviceId,
       position: time,
       seek_seq: seekSeqCounter.current,
     });
-  }, [userId, castTargetId, deviceId]);
+  }, [userId, castTargetId, deviceId, broadcastState]);
 
   // Receiver disconnects itself and blocks the current controller from being
   // able to auto-take over this device again (until user explicitly reconnects).
   const disconnectReceiver = useCallback(async () => {
-    const s = await callCast("get_state");
-    const controllerId = (s.data as any)?.controller_device_id;
+    const controllerId = currentControllerIdRef.current;
     if (controllerId) addBlocked(controllerId);
     setIsReceiver(false);
+    currentControllerIdRef.current = null;
     setControllerDeviceName(null);
     musicRef.current.setIsPlaying(false);
-    // If controller currently targets us, clear its target so it stops mirroring.
-    if ((s.data as any)?.target_device_id === deviceId) {
-      await callCast("update_state", { target_device_id: null, is_playing: false });
+    if (controllerId) {
+      await castChannelRef.current?.send({
+        type: "broadcast",
+        event: "receiver-disconnect",
+        payload: {
+          target_device_id: deviceId,
+          controller_device_id: controllerId,
+        },
+      });
     }
     toast.info("Disconnected. This device won't auto-connect again.");
   }, [addBlocked, deviceId]);

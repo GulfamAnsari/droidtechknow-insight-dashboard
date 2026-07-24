@@ -49,21 +49,51 @@ const GlobalFloatingPlayer = () => {
   const playerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const getSafeSize = useCallback(() => {
+    const safeWidth = Math.max(280, Math.min(392, window.innerWidth - 16));
+    return { width: safeWidth, height: 140 };
+  }, []);
+
+  const getSafePosition = useCallback((nextSize: { width: number; height: number }) => ({
+    x: Math.max(8, window.innerWidth - nextSize.width - 8),
+    y: Math.max(8, window.innerHeight - nextSize.height - 8),
+  }), []);
+
   // Show floating player when on non-music pages and there's a song playing
   const isMusicPage = location.pathname === "/music" || location.pathname.startsWith("/music/");
   const shouldShow = currentSong && !isMusicPage;
 
   useEffect(() => {
     if (shouldShow && !isVisible) {
+      const nextSize = getSafeSize();
+      setSize(nextSize);
       setIsVisible(true);
-      setPosition({
-        x: window.innerWidth - 412,
-        y: window.innerHeight - 160
-      });
+      setPosition(getSafePosition(nextSize));
     } else if (!shouldShow) {
       setIsVisible(false);
     }
-  }, [shouldShow, isVisible]);
+  }, [shouldShow, isVisible, getSafeSize, getSafePosition]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const clampToViewport = () => {
+      setSize((currentSize) => {
+        const safeWidth = Math.max(280, Math.min(currentSize.width, window.innerWidth - 16));
+        const nextSize = { ...currentSize, width: safeWidth };
+        setPosition((currentPosition) => ({
+          x: Math.max(8, Math.min(currentPosition.x, window.innerWidth - nextSize.width - 8)),
+          y: Math.max(8, Math.min(currentPosition.y, window.innerHeight - nextSize.height - 8)),
+        }));
+        return nextSize;
+      });
+    };
+
+    window.addEventListener("resize", clampToViewport);
+    clampToViewport();
+
+    return () => window.removeEventListener("resize", clampToViewport);
+  }, [isVisible]);
 
   // Audio playback
   useEffect(() => {
@@ -208,7 +238,8 @@ const GlobalFloatingPlayer = () => {
           left: position.x,
           top: position.y,
           width: size.width,
-          height: size.height
+          height: size.height,
+          maxWidth: "calc(100vw - 1rem)",
         }}
       >
         {/* Resize handles */}

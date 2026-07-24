@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Cast, MonitorSmartphone, RefreshCw, StopCircle, Radio } from "lucide-react";
+import { Cast, MonitorSmartphone, StopCircle, Radio } from "lucide-react";
 import { useCast } from "@/contexts/CastContext";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -13,16 +13,15 @@ interface CastButtonProps {
 
 const CastButton = ({ className = "", size = "icon", compact = false }: CastButtonProps) => {
   const { user } = useAuth();
-  const { devices, isCasting, castTargetId, startCast, stopCast, disconnectReceiver, refreshDevices, isReceiver, controllerDeviceName } = useCast();
+  const { devices, isCasting, castTargetId, startCast, stopCast, disconnectReceiver, isReceiver, controllerDeviceName } = useCast();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
 
   const activeTarget = devices.find((d) => d.device_id === castTargetId);
 
-  const handleOpen = async (v: boolean) => {
+  const handleOpen = (v: boolean) => {
     setOpen(v);
-    if (v) await refreshDevices();
   };
 
   return (
@@ -72,9 +71,7 @@ const CastButton = ({ className = "", size = "icon", compact = false }: CastButt
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Available devices</span>
-            <Button variant="ghost" size="sm" onClick={refreshDevices} className="h-7">
-              <RefreshCw className="h-3 w-3 mr-1" /> Refresh
-            </Button>
+            <span>{devices.length} online</span>
           </div>
 
           <div className="space-y-2 max-h-72 overflow-y-auto">
