@@ -141,10 +141,34 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     refreshDevices();
   }, [userId, refreshDevices]);
 
+  // Persisted block list of controller device IDs the user disconnected from.
+  // While a controller is blocked, this device will NOT auto-become a receiver
+  // for its broadcasts until the user opts back in (by starting a new cast to
+  // this device from that controller — handled below when the block is cleared
+  // via UI, or by clearing storage).
+  const blockedKey = `music_cast_blocked_${userId ?? "anon"}`;
+  const isBlocked = useCallback((controllerId?: string | null) => {
+    if (!controllerId) return false;
+    try {
+      const raw = localStorage.getItem(blockedKey);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      return list.includes(controllerId);
+    } catch { return false; }
+  }, [blockedKey]);
+  const addBlocked = useCallback((controllerId: string) => {
+    try {
+      const raw = localStorage.getItem(blockedKey);
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(controllerId)) list.push(controllerId);
+      localStorage.setItem(blockedKey, JSON.stringify(list));
+    } catch { /* ignore */ }
+  }, [blockedKey]);
+
   // === Apply remote state helper ===
   const applyRemote = useCallback((s: any) => {
     if (!s) return;
     if (s.target_device_id === deviceId && s.controller_device_id !== deviceId) {
+      if (isBlocked(s.controller_device_id)) return; // user opted out
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
@@ -181,7 +205,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, devices, isReceiver]);
+  }, [deviceId, devices, isReceiver, isBlocked]);
 
   // === Realtime subscription (WebSocket via Supabase broadcast) ===
   useEffect(() => {
