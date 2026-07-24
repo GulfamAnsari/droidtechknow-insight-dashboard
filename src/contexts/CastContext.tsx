@@ -293,6 +293,22 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [userId, castTargetId, deviceId]);
 
+  // Receiver disconnects itself and blocks the current controller from being
+  // able to auto-take over this device again (until user explicitly reconnects).
+  const disconnectReceiver = useCallback(async () => {
+    const s = await callCast("get_state");
+    const controllerId = (s.data as any)?.controller_device_id;
+    if (controllerId) addBlocked(controllerId);
+    setIsReceiver(false);
+    setControllerDeviceName(null);
+    musicRef.current.setIsPlaying(false);
+    // If controller currently targets us, clear its target so it stops mirroring.
+    if ((s.data as any)?.target_device_id === deviceId) {
+      await callCast("update_state", { target_device_id: null, is_playing: false });
+    }
+    toast.info("Disconnected. This device won't auto-connect again.");
+  }, [addBlocked, deviceId]);
+
   const value: CastContextType = {
     deviceId,
     deviceName,
@@ -304,6 +320,7 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     refreshDevices,
     startCast,
     stopCast,
+    disconnectReceiver,
     seekRemote,
   };
 
