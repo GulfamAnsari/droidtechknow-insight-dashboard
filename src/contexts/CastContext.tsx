@@ -23,6 +23,7 @@ interface CastContextType {
   refreshDevices: () => Promise<void>;
   startCast: (targetDeviceId: string) => Promise<void>;
   stopCast: () => Promise<void>;
+  disconnectReceiver: () => Promise<void>;
   seekRemote: (time: number) => Promise<void>;
 }
 
