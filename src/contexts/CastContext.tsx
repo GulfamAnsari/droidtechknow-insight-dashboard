@@ -180,8 +180,11 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   // === Apply remote state helper ===
   const applyRemote = useCallback((s: any) => {
     if (!s) return;
-    if (s.target_device_id === deviceId && s.controller_device_id !== deviceId) {
-      if (isBlocked(s.controller_device_id)) return; // user opted out
+    // Any broadcast from another device is played here: this device is simply a
+    // receiver of whatever is being broadcast (no target matching required).
+    const isBroadcastFromOther = !!s.controller_device_id && s.controller_device_id !== deviceId;
+    const isStopSignal = s.target_device_id === null;
+    if (isBroadcastFromOther && !isStopSignal) {
       isApplyingRemote.current = true;
       try {
         setIsReceiver(true);
@@ -214,13 +217,13 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         setTimeout(() => { isApplyingRemote.current = false; }, 50);
       }
-    } else if (isReceiverRef.current && s.target_device_id !== deviceId) {
+    } else if (isReceiverRef.current && isStopSignal) {
       setIsReceiver(false);
       currentControllerIdRef.current = null;
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, isBlocked]);
+  }, [deviceId]);
 
   const broadcastState = useCallback(async (payload: Record<string, unknown>) => {
     const channel = castChannelRef.current;
