@@ -187,10 +187,15 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     if (isBroadcastFromOther && !isStopSignal) {
       isApplyingRemote.current = true;
       try {
-        setIsReceiver(true);
-        currentControllerIdRef.current = s.controller_device_id;
-        const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
-        setControllerDeviceName(ctrl?.device_name || "Another device");
+        // If I'm the one casting, I stay the controller (and stay muted) — I just
+        // mirror whatever the target device changed. Otherwise I'm a receiver.
+        if (!castTargetRef.current) {
+          setIsReceiver(true);
+          currentControllerIdRef.current = s.controller_device_id;
+          const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
+          setControllerDeviceName(ctrl?.device_name || "Another device");
+        }
+
 
         const m = musicRef.current;
         if (s.playlist && Array.isArray(s.playlist) && s.playlist.length) {
