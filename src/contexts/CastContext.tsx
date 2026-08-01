@@ -355,10 +355,11 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   }, [userId, deviceId, broadcastState]);
 
   const seekRemote = useCallback(async (time: number) => {
-    if (!userId || !castTargetId) return;
+    const peerId = castTargetId || currentControllerIdRef.current;
+    if (!userId || !peerId) return;
     seekSeqCounter.current += 1;
     await broadcastState({
-      target_device_id: castTargetId,
+      target_device_id: peerId,
       controller_device_id: deviceId,
       position: time,
       seek_seq: seekSeqCounter.current,
