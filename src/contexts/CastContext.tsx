@@ -28,11 +28,24 @@ interface CastContextType {
 
 const CastContext = createContext<CastContextType | undefined>(undefined);
 
-export const useCast = () => {
-  const ctx = useContext(CastContext);
-  if (!ctx) throw new Error("useCast must be used within CastProvider");
-  return ctx;
+const noop = async () => {};
+
+const fallbackCast: CastContextType = {
+  deviceId: "",
+  deviceName: "",
+  devices: [],
+  castTargetId: null,
+  isCasting: false,
+  isReceiver: false,
+  controllerDeviceName: null,
+  refreshDevices: noop,
+  startCast: noop,
+  stopCast: noop,
+  disconnectReceiver: noop,
+  seekRemote: noop,
 };
+
+export const useCast = () => useContext(CastContext) ?? fallbackCast;
 
 const detectDeviceName = () => {
   const ua = navigator.userAgent;
