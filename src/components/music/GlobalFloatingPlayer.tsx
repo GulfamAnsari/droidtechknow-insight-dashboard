@@ -125,9 +125,31 @@ const GlobalFloatingPlayer = () => {
 
   useEffect(() => {
     if (audioRef.current) {
+      audioRef.current.muted = isCasting || isMuted;
       audioRef.current.volume = isCasting || isMuted ? 0 : volume / 100;
     }
   }, [volume, isMuted, isCasting]);
+
+  // Hard guard: source device stays silent while casting.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el || !isCasting) return;
+
+    el.muted = true;
+    el.pause();
+
+    const stop = () => {
+      el.muted = true;
+      el.pause();
+    };
+    el.addEventListener("play", stop);
+    el.addEventListener("playing", stop);
+    return () => {
+      el.removeEventListener("play", stop);
+      el.removeEventListener("playing", stop);
+      el.muted = isMuted;
+    };
+  }, [isCasting]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!playerRef.current) return;

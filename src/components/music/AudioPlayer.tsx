@@ -229,9 +229,33 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (audioRef.current) {
+      audioRef.current.muted = isCasting || isMuted;
       audioRef.current.volume = isCasting || isMuted ? 0 : volume / 100;
     }
   }, [volume, isMuted, isCasting]);
+
+  // Hard guard: while casting, this device must stay silent no matter what
+  // triggers playback (src change, media keys, browser autoplay resume).
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (!isCasting) return;
+
+    el.muted = true;
+    el.pause();
+
+    const stop = () => {
+      el.muted = true;
+      el.pause();
+    };
+    el.addEventListener("play", stop);
+    el.addEventListener("playing", stop);
+    return () => {
+      el.removeEventListener("play", stop);
+      el.removeEventListener("playing", stop);
+      el.muted = isMuted;
+    };
+  }, [isCasting]);
 
   // Sync current time from context but avoid setting if close to current
   useEffect(() => {
