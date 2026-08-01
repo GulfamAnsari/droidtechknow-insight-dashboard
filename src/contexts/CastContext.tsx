@@ -298,6 +298,30 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     broadcastState,
   ]);
 
+  // === Mirror local state back when I'm the receiver (two-way sync) ===
+  useEffect(() => {
+    if (!userId || castTargetId) return;
+    if (!isReceiver) return;
+    if (isApplyingRemote.current) return;
+    broadcastState({
+      target_device_id: currentControllerIdRef.current,
+      controller_device_id: deviceId,
+      song: music.currentSong,
+      playlist: music.playlist,
+      current_index: music.currentIndex,
+      is_playing: music.isPlaying,
+    });
+  }, [
+    userId, castTargetId, isReceiver, deviceId,
+    music.currentSong?.id,
+    music.isPlaying,
+    music.currentIndex,
+    music.playlist,
+    broadcastState,
+  ]);
+
+
+
   const startCast = useCallback(async (targetDeviceId: string) => {
     if (!userId) return;
     setCastTargetId(targetDeviceId);
