@@ -187,10 +187,15 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     if (isBroadcastFromOther && !isStopSignal) {
       isApplyingRemote.current = true;
       try {
-        setIsReceiver(true);
-        currentControllerIdRef.current = s.controller_device_id;
-        const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
-        setControllerDeviceName(ctrl?.device_name || "Another device");
+        // If I'm the one casting, I stay the controller (and stay muted) — I just
+        // mirror whatever the target device changed. Otherwise I'm a receiver.
+        if (!castTargetRef.current) {
+          setIsReceiver(true);
+          currentControllerIdRef.current = s.controller_device_id;
+          const ctrl = devicesRef.current.find((d) => d.device_id === s.controller_device_id);
+          setControllerDeviceName(ctrl?.device_name || "Another device");
+        }
+
 
         const m = musicRef.current;
         if (s.playlist && Array.isArray(s.playlist) && s.playlist.length) {
@@ -293,6 +298,30 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
     broadcastState,
   ]);
 
+  // === Mirror local state back when I'm the receiver (two-way sync) ===
+  useEffect(() => {
+    if (!userId || castTargetId) return;
+    if (!isReceiver) return;
+    if (isApplyingRemote.current) return;
+    broadcastState({
+      target_device_id: currentControllerIdRef.current,
+      controller_device_id: deviceId,
+      song: music.currentSong,
+      playlist: music.playlist,
+      current_index: music.currentIndex,
+      is_playing: music.isPlaying,
+    });
+  }, [
+    userId, castTargetId, isReceiver, deviceId,
+    music.currentSong?.id,
+    music.isPlaying,
+    music.currentIndex,
+    music.playlist,
+    broadcastState,
+  ]);
+
+
+
   const startCast = useCallback(async (targetDeviceId: string) => {
     if (!userId) return;
     setCastTargetId(targetDeviceId);
@@ -326,10 +355,11 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
   }, [userId, deviceId, broadcastState]);
 
   const seekRemote = useCallback(async (time: number) => {
-    if (!userId || !castTargetId) return;
+    const peerId = castTargetId || currentControllerIdRef.current;
+    if (!userId || !peerId) return;
     seekSeqCounter.current += 1;
     await broadcastState({
-      target_device_id: castTargetId,
+      target_device_id: peerId,
       controller_device_id: deviceId,
       position: time,
       seek_seq: seekSeqCounter.current,
