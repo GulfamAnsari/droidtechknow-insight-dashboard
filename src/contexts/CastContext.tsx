@@ -217,13 +217,13 @@ export const CastProvider = ({ children }: { children: ReactNode }) => {
       } finally {
         setTimeout(() => { isApplyingRemote.current = false; }, 50);
       }
-    } else if (isReceiverRef.current && s.target_device_id !== deviceId) {
+    } else if (isReceiverRef.current && isStopSignal) {
       setIsReceiver(false);
       currentControllerIdRef.current = null;
       setControllerDeviceName(null);
       musicRef.current.setIsPlaying(false);
     }
-  }, [deviceId, isBlocked]);
+  }, [deviceId]);
 
   const broadcastState = useCallback(async (payload: Record<string, unknown>) => {
     const channel = castChannelRef.current;
