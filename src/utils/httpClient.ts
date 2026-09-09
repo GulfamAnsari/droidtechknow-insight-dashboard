@@ -121,13 +121,15 @@ const httpClient = {
     
     // Handle common response processing
     if (!response.ok) {
-      // Handle error responses
+      // Handle error responses — surface the exact API error message
+      let apiMessage = `Request failed with status: ${response.status}`;
       try {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Request failed');
-      } catch (error) {
-        throw new Error(`Request failed with status: ${response.status}`);
+        apiMessage = errorData.message || errorData.error || apiMessage;
+      } catch {
+        // response body wasn't JSON; keep status-based message
       }
+      throw new Error(apiMessage);
     }
     
     // For successful responses, try to parse JSON or return response based on content type
