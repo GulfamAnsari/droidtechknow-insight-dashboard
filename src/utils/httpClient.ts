@@ -108,37 +108,78 @@ const httpClient = {
     return apiUrl.toString();
   }
 
-    const response = await fetch(noCache(url), {
-      ...fetchOptions,
-      cache: 'no-store', // <-- explicitly disable HTTP cache
-    });
-    
-
-    // Send the request
-    // const separator = url.includes('?') ? '&' : '?';
-    // const noCacheUrl = `${url}${separator}nocache=${Date.now()}`;
-    // const response = await fetch(noCache(url), fetchOptions);
-    
-    // Handle common response processing
-    if (!response.ok) {
-      // Handle error responses — surface the exact API error message
-      let apiMessage = `Request failed with status: ${response.status}`;
+    // Fetch with timeout + retry for flaky / slow connections (e.g. tablets on mobile data)
+    const attemptFetch = async (): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
       try {
-        const errorData = await response.json();
-        apiMessage = errorData.message || errorData.error || apiMessage;
-      } catch {
-        // response body wasn't JSON; keep status-based message
+        return await fetch(noCache(url), {
+          ...fetchOptions,
+          cache: 'no-store', // <-- explicitly disable HTTP cache
+          signal: fetchOptions.signal ?? controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
       }
+    };
+
+    let response: Response;
+    try {
+      response = await attemptFetch();
+    } catch (err: any) {
+      if (err?.name === 'AbortError' && !fetchOptions.signal) {
+        throw new Error('The server took too long to respond. Please check your connection and try again.');
+      }
+      // One silent retry for transient network failures
+      try {
+        response = await attemptFetch();
+      } catch (err2: any) {
+        if (err2?.name === 'AbortError') {
+          throw new Error('The server took too long to respond. Please check your connection and try again.');
+        }
+        throw new Error(
+          navigator.onLine
+            ? 'Could not reach the server. Please try again.'
+            : 'You appear to be offline. Please check your internet connection.'
+        );
+      }
+    }
+
+    // Read the body once as text, then try to parse it as JSON regardless of content-type
+    // (the auth API sometimes replies with text/html or text/plain)
+    const rawText = await response.text();
+    let parsed: any = null;
+    if (rawText) {
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        // Some PHP endpoints prefix output (warnings) before the JSON payload
+        const start = rawText.indexOf('{');
+        const end = rawText.lastIndexOf('}');
+        if (start !== -1 && end > start) {
+          try {
+            parsed = JSON.parse(rawText.slice(start, end + 1));
+          } catch {
+            parsed = null;
+          }
+        }
+      }
+    }
+
+    if (!response.ok) {
+      const apiMessage =
+        parsed?.message ||
+        parsed?.error ||
+        (rawText && rawText.length < 300 ? rawText.trim() : '') ||
+        `Request failed with status: ${response.status}`;
       throw new Error(apiMessage);
     }
-    
-    // For successful responses, try to parse JSON or return response based on content type
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return response.json();
+
+    if (parsed !== null) {
+      return parsed;
     }
-    
-    return response;
+
+    return rawText;
   }
 };
 
