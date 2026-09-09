@@ -110,10 +110,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { auth_token, data, success, message } = response;
       
       if (success === "success" || success === true) {
-        // Store the token in cookies
-        Cookies.set('Cookie', auth_token, { expires: 7 }); // 7 days expiry
-        // Store the user ID in cookies
-        Cookies.set('userId', data.id, { expires: 7 }); // 7 days expiry
+        // Store the token in cookies (valid for 1 year)
+        Cookies.set('Cookie', auth_token, { expires: 365 });
+        Cookies.set('userId', data.id, { expires: 365 });
         
         // Store the user data in localStorage
         localStorage.setItem('user', JSON.stringify(data));
@@ -122,17 +121,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success(message || 'Successfully logged in!');
         return true;
       } else {
-        toast.error(message || 'Login failed. Please check your credentials.');
+        // Show the exact error message returned by the API
+        toast.error(message || response.error || `Login failed: ${JSON.stringify(response)}`);
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       // For Google OAuth, if login fails with email, it means user doesn't exist
       if (username.includes('@') && password === "google_oauth_temp") {
         console.log('User not found for Google OAuth, will redirect to signup');
         return false;
       }
-      toast.error('An error occurred during login. Please try again.');
+      // Surface the exact API error (message or server response) to the user
+      const apiMessage = error?.response?.data?.message
+        || error?.response?.data?.error
+        || (typeof error?.response?.data === 'string' ? error.response.data : null)
+        || error?.message
+        || 'An error occurred during login. Please try again.';
+      toast.error(apiMessage);
       return false;
     } finally {
       setIsLoading(false);
