@@ -31,6 +31,7 @@ import {
   Plus,
   FolderOpen,
   Share2,
+  UserX,
   Users,
   X,
   Grid2X2,
@@ -72,6 +73,7 @@ import httpClient from "@/utils/httpClient";
 import { ShareDialog } from "@/components/files/ShareDialog";
 import { shareApi, ShareItem } from "@/services/shareApi";
 import SharedAlbumView from "@/components/files/SharedAlbumView";
+import { ManageSharesDialog } from "@/components/files/ManageSharesDialog";
 
 interface FileMetadata {
   format?: string;
@@ -128,6 +130,8 @@ const MyFiles = () => {
   const [newAlbumName, setNewAlbumName] = useState("");
   const [newAlbumDescription, setNewAlbumDescription] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isManageSharesOpen, setIsManageSharesOpen] = useState(false);
+  const [isUnsharing, setIsUnsharing] = useState(false);
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
@@ -459,6 +463,88 @@ const MyFiles = () => {
     setIsSelectionMode(false);
   };
 
+  const handleUnshareSelected = async () => {
+    const raw = sharedByMeContent?.raw || [];
+    if (!user || raw.length === 0 || selectedFiles.length === 0) return;
+    if (
+      !window.confirm(
+        `Remove sharing for ${selectedFiles.length} selected item(s)?`
+      )
+    )
+      return;
+    setIsUnsharing(true);
+    try {
+      // Map each selected file/album back to the recipients it was shared with
+      const targets = new Map<
+        string,
+        { albums: Set<string>; photos: Set<string> }
+      >();
+      const entryFor = (recipientId: string) => {
+        const key = String(recipientId);
+        let entry = targets.get(key);
+        if (!entry) {
+          entry = { albums: new Set(), photos: new Set() };
+          targets.set(key, entry);
+        }
+        return entry;
+      };
+
+      for (const share of raw) {
+        const recipientId = String(share.toUserId ?? share.fromUserId ?? "");
+        if (!recipientId) continue;
+        const entry = entryFor(recipientId);
+
+        for (const photo of [
+          ...(share.allPhotos || []),
+          ...(share.albumPhotos || [])
+        ]) {
+          const id = photo?.id ?? photo?.fileId;
+          if (id != null && selectedFiles.includes(String(id))) {
+            entry.photos.add(String(id));
+          }
+          if (photo?.album && selectedAlbums.includes(photo.album)) {
+            entry.albums.add(photo.album);
+          }
+        }
+
+        // Shared album cards use composite ids: shared-by-me-<recipient>-<album>
+        for (const album of sharedByMeContent?.sharedAlbums || []) {
+          if (selectedFiles.includes(album.id)) {
+            entry.albums.add(album.name);
+          }
+        }
+      }
+
+      let removed = 0;
+      for (const [recipientId, entry] of targets) {
+        if (entry.albums.size === 0 && entry.photos.size === 0) continue;
+        await shareApi.unshareContent({
+          currentUserId: recipientId,
+          fromUserId: user.id,
+          albums: entry.albums.size > 0 ? Array.from(entry.albums) : undefined,
+          photos: entry.photos.size > 0 ? Array.from(entry.photos) : undefined
+        });
+        removed++;
+      }
+
+      if (removed > 0) {
+        toast.success("Sharing removed");
+        queryClient.invalidateQueries({ queryKey: ["shared-by-me", user?.id] });
+        setSelectedFiles([]);
+        setSelectedAlbums([]);
+        setSelectAll(false);
+        setIsSelectionMode(false);
+      } else {
+        toast.error("Nothing to remove for the selected items");
+      }
+    } catch (error) {
+      console.error("Failed to remove sharing:", error);
+      toast.error("Couldn't remove sharing. Please try again.");
+    } finally {
+      setIsUnsharing(false);
+    }
+  };
+
   const toggleAlbumSelection = (albumName: string) => {
     setSelectedAlbums((prev) => {
       if (prev.includes(albumName)) {
@@ -507,13 +593,14 @@ const MyFiles = () => {
   const { data: sharedByMeContent } = useQuery({
     queryKey: ["shared-by-me", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
+      if (!user?.id)
+        return { albums: [], photos: [], sharedAlbums: [], raw: [] };
 
       try {
         const shareData: any = await shareApi.getSharedContent(user.id);
         const sharedByMe: ShareItem[] = shareData?.sharedByMe;
         if (!sharedByMe || sharedByMe.length === 0) {
-          return { albums: [], photos: [], sharedAlbums: [] };
+          return { albums: [], photos: [], sharedAlbums: [], raw: [] };
         }
 
         let allSharedPhotos = [];
@@ -557,11 +644,12 @@ const MyFiles = () => {
         return {
           albums: allSharedAlbums,
           photos: allSharedPhotos,
-          sharedAlbums: sharedAlbumsList
+          sharedAlbums: sharedAlbumsList,
+          raw: sharedByMe
         };
       } catch (error) {
         console.error("Error fetching content shared by user:", error);
-        return { albums: [], photos: [], sharedAlbums: [] };
+        return { albums: [], photos: [], sharedAlbums: [], raw: [] };
       }
     },
     staleTime: 0,
@@ -1476,10 +1564,32 @@ const MyFiles = () => {
                       <Share2 className="h-4 w-4" />
                       Share ({selectedFiles.length + selectedAlbums.length})
                     </Button>
+                    {selectedCategory === "shared-by-me" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnshareSelected}
+                        disabled={isUnsharing}
+                        className="gap-2 text-destructive hover:text-destructive"
+                      >
+                        <UserX className="h-4 w-4" />
+                        Unshare
+                      </Button>
+                    )}
                   </>
                 )}
               </>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsManageSharesOpen(true)}
+              className="gap-2"
+            >
+              <UserX className="h-4 w-4" />
+              Manage sharing
+            </Button>
 
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
@@ -2224,6 +2334,18 @@ const MyFiles = () => {
         selectedFiles={selectedFiles}
         selectedAlbums={selectedAlbums}
         onShareComplete={handleShareComplete}
+      />
+
+      {/* Manage / remove existing shares */}
+      <ManageSharesDialog
+        open={isManageSharesOpen}
+        onOpenChange={setIsManageSharesOpen}
+        shares={sharedByMeContent?.raw || []}
+        onChanged={() =>
+          queryClient.invalidateQueries({
+            queryKey: ["shared-by-me", user?.id]
+          })
+        }
       />
     </div>
   );
