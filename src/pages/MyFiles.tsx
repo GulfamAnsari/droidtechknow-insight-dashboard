@@ -131,6 +131,7 @@ const MyFiles = () => {
   const [newAlbumDescription, setNewAlbumDescription] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isManageSharesOpen, setIsManageSharesOpen] = useState(false);
+  const [isUnsharing, setIsUnsharing] = useState(false);
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
@@ -460,6 +461,88 @@ const MyFiles = () => {
     setSelectedFiles([]);
     setSelectedAlbums([]);
     setIsSelectionMode(false);
+  };
+
+  const handleUnshareSelected = async () => {
+    const raw = sharedByMeContent?.raw || [];
+    if (raw.length === 0 || selectedFiles.length === 0) return;
+    if (
+      !window.confirm(
+        `Remove sharing for ${selectedFiles.length} selected item(s)?`
+      )
+    )
+      return;
+    setIsUnsharing(true);
+    try {
+      // Map each selected file/album back to the recipients it was shared with
+      const targets = new Map<
+        string,
+        { albums: Set<string>; photos: Set<string> }
+      >();
+      const entryFor = (recipientId: string) => {
+        const key = String(recipientId);
+        let entry = targets.get(key);
+        if (!entry) {
+          entry = { albums: new Set(), photos: new Set() };
+          targets.set(key, entry);
+        }
+        return entry;
+      };
+
+      for (const share of raw) {
+        const recipientId = String(share.toUserId ?? share.fromUserId ?? "");
+        if (!recipientId) continue;
+        const entry = entryFor(recipientId);
+
+        for (const photo of [
+          ...(share.allPhotos || []),
+          ...(share.albumPhotos || [])
+        ]) {
+          const id = photo?.id ?? photo?.fileId;
+          if (id != null && selectedFiles.includes(String(id))) {
+            entry.photos.add(String(id));
+          }
+          if (photo?.album && selectedAlbums.includes(photo.album)) {
+            entry.albums.add(photo.album);
+          }
+        }
+
+        // Shared album cards use composite ids: shared-by-me-<recipient>-<album>
+        for (const album of sharedByMeContent?.sharedAlbums || []) {
+          if (selectedFiles.includes(album.id)) {
+            entry.albums.add(album.name);
+          }
+        }
+      }
+
+      let removed = 0;
+      for (const [recipientId, entry] of targets) {
+        if (entry.albums.size === 0 && entry.photos.size === 0) continue;
+        await shareApi.unshareContent({
+          currentUserId: recipientId,
+          fromUserId: user.id,
+          albums: entry.albums.size > 0 ? Array.from(entry.albums) : undefined,
+          photos: entry.photos.size > 0 ? Array.from(entry.photos) : undefined
+        });
+        removed++;
+      }
+
+      if (removed > 0) {
+        toast.success("Sharing removed");
+        queryClient.invalidateQueries({ queryKey: ["shared-by-me", user?.id] });
+        setSelectedFiles([]);
+        setSelectedAlbums([]);
+        setSelectAll(false);
+        setIsSelectionMode(false);
+      } else {
+        toast.error("Nothing to remove for the selected items");
+      }
+    } catch (error) {
+      console.error("Failed to remove sharing:", error);
+      toast.error("Couldn't remove sharing. Please try again.");
+    } finally {
+      setIsUnsharing(false);
+    }
   };
 
   const toggleAlbumSelection = (albumName: string) => {
@@ -1481,6 +1564,18 @@ const MyFiles = () => {
                       <Share2 className="h-4 w-4" />
                       Share ({selectedFiles.length + selectedAlbums.length})
                     </Button>
+                    {selectedCategory === "shared-by-me" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnshareSelected}
+                        disabled={isUnsharing}
+                        className="gap-2 text-destructive hover:text-destructive"
+                      >
+                        <UserX className="h-4 w-4" />
+                        Unshare
+                      </Button>
+                    )}
                   </>
                 )}
               </>
