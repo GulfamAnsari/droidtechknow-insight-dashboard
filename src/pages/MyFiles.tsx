@@ -31,6 +31,7 @@ import {
   Plus,
   FolderOpen,
   Share2,
+  UserX,
   Users,
   X,
   Grid2X2,
@@ -72,6 +73,7 @@ import httpClient from "@/utils/httpClient";
 import { ShareDialog } from "@/components/files/ShareDialog";
 import { shareApi, ShareItem } from "@/services/shareApi";
 import SharedAlbumView from "@/components/files/SharedAlbumView";
+import { ManageSharesDialog } from "@/components/files/ManageSharesDialog";
 
 interface FileMetadata {
   format?: string;
@@ -128,6 +130,7 @@ const MyFiles = () => {
   const [newAlbumName, setNewAlbumName] = useState("");
   const [newAlbumDescription, setNewAlbumDescription] = useState("");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isManageSharesOpen, setIsManageSharesOpen] = useState(false);
   const [selectedAlbums, setSelectedAlbums] = useState<string[]>([]);
   const [isSharedView, setIsSharedView] = useState(false);
   const [selectedSharedAlbum, setSelectedSharedAlbum] = useState<any>(null);
@@ -507,13 +510,14 @@ const MyFiles = () => {
   const { data: sharedByMeContent } = useQuery({
     queryKey: ["shared-by-me", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { albums: [], photos: [], sharedAlbums: [] };
+      if (!user?.id)
+        return { albums: [], photos: [], sharedAlbums: [], raw: [] };
 
       try {
         const shareData: any = await shareApi.getSharedContent(user.id);
         const sharedByMe: ShareItem[] = shareData?.sharedByMe;
         if (!sharedByMe || sharedByMe.length === 0) {
-          return { albums: [], photos: [], sharedAlbums: [] };
+          return { albums: [], photos: [], sharedAlbums: [], raw: [] };
         }
 
         let allSharedPhotos = [];
@@ -557,11 +561,12 @@ const MyFiles = () => {
         return {
           albums: allSharedAlbums,
           photos: allSharedPhotos,
-          sharedAlbums: sharedAlbumsList
+          sharedAlbums: sharedAlbumsList,
+          raw: sharedByMe
         };
       } catch (error) {
         console.error("Error fetching content shared by user:", error);
-        return { albums: [], photos: [], sharedAlbums: [] };
+        return { albums: [], photos: [], sharedAlbums: [], raw: [] };
       }
     },
     staleTime: 0,
