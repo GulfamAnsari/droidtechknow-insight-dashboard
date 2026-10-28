@@ -1581,6 +1581,16 @@ const MyFiles = () => {
               </>
             )}
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsManageSharesOpen(true)}
+              className="gap-2"
+            >
+              <UserX className="h-4 w-4" />
+              Manage sharing
+            </Button>
+
             <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
               <DialogTrigger asChild>
                 <Button size="icon">
@@ -2324,6 +2334,18 @@ const MyFiles = () => {
         selectedFiles={selectedFiles}
         selectedAlbums={selectedAlbums}
         onShareComplete={handleShareComplete}
+      />
+
+      {/* Manage / remove existing shares */}
+      <ManageSharesDialog
+        open={isManageSharesOpen}
+        onOpenChange={setIsManageSharesOpen}
+        shares={sharedByMeContent?.raw || []}
+        onChanged={() =>
+          queryClient.invalidateQueries({
+            queryKey: ["shared-by-me", user?.id]
+          })
+        }
       />
     </div>
   );
