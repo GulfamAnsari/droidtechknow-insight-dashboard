@@ -465,7 +465,7 @@ const MyFiles = () => {
 
   const handleUnshareSelected = async () => {
     const raw = sharedByMeContent?.raw || [];
-    if (raw.length === 0 || selectedFiles.length === 0) return;
+    if (!user || raw.length === 0 || selectedFiles.length === 0) return;
     if (
       !window.confirm(
         `Remove sharing for ${selectedFiles.length} selected item(s)?`
