@@ -121,7 +121,7 @@ export function ManageSharesDialog({
       onChanged();
     } catch (error) {
       console.error("Failed to remove sharing:", error);
-      toast.error("Không gỡ được chia sẻ. Vui lòng thử lại.");
+      toast.error("Couldn't remove sharing. Please try again.");
     } finally {
       setRemovingKey(null);
     }
@@ -140,7 +140,7 @@ export function ManageSharesDialog({
             Quản lý chia sẻ
           </DialogTitle>
           <DialogDescription>
-            Xem những gì bạn đã chia sẻ và gỡ chia sẻ bất cứ lúc nào.
+            See what you've shared and remove sharing at any time.
           </DialogDescription>
         </DialogHeader>
 
@@ -154,7 +154,7 @@ export function ManageSharesDialog({
               {entries.map(
                 ({ share, recipientId, albumNames, photoIds, allPhotos }) => {
                   const key = recipientId;
-                  const name = nameById.get(recipientId) || "Người dùng";
+                  const name = nameById.get(recipientId) || "User";
                   const isRemovingAll = removingKey === `${key}-all`;
                   const isExpanded = expanded === key;
                   return (
@@ -173,7 +173,7 @@ export function ManageSharesDialog({
                             {name}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {albumNames.length} album · {photoIds.length} ảnh/video
+                            {albumNames.length} album · {photoIds.length} items
                           </div>
                         </div>
                         <Button
@@ -182,14 +182,14 @@ export function ManageSharesDialog({
                           disabled={isRemovingAll}
                           onClick={() =>
                             confirmThen(
-                              `Gỡ toàn bộ nội dung đã chia sẻ với ${name}?`,
+                              `Remove everything you shared with ${name}?`,
                               () =>
                                 remove(
                                   `${key}-all`,
                                   recipientId,
                                   albumNames,
                                   photoIds,
-                                  `Đã gỡ toàn bộ chia sẻ với ${name}`
+                                  `Removed all shared content for ${name}`
                                 )
                             )
                           }
@@ -199,7 +199,7 @@ export function ManageSharesDialog({
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}
-                          Gỡ tất cả
+                          Remove all
                         </Button>
                       </div>
 
@@ -216,19 +216,19 @@ export function ManageSharesDialog({
                                 <FolderOpen className="h-3 w-3" />
                                 {albumName}
                                 <button
-                                  aria-label={`Gỡ chia sẻ album ${albumName}`}
+                                  aria-label={`Remove album ${albumName} sharing`}
                                   className="ml-1 rounded-full hover:bg-destructive/15 p-0.5 text-destructive"
                                   disabled={removingKey === btnKey}
                                   onClick={() =>
                                     confirmThen(
-                                      `Gỡ chia sẻ album "${albumName}" với ${name}?`,
+                                      `Remove sharing of album "${albumName}" with ${name}?`,
                                       () =>
                                         remove(
                                           btnKey,
                                           recipientId,
                                           [albumName],
                                           undefined,
-                                          `Đã gỡ chia sẻ album "${albumName}"`
+                                          `Removed album "${albumName}" sharing`
                                         )
                                     )
                                   }
@@ -255,8 +255,8 @@ export function ManageSharesDialog({
                           >
                             <ImageIcon className="h-3 w-3" />
                             {isExpanded
-                              ? "Ẩn ảnh/video"
-                              : `Xem ${allPhotos.length} ảnh/video`}
+                              ? "Hide items"
+                              : `View ${allPhotos.length} items`}
                           </button>
                           {isExpanded && (
                             <div className="mt-2 grid grid-cols-4 sm:grid-cols-5 gap-2">
@@ -276,19 +276,19 @@ export function ManageSharesDialog({
                                       loading="lazy"
                                     />
                                     <button
-                                      aria-label="Gỡ chia sẻ ảnh này"
+                                      aria-label="Remove sharing for this item"
                                       className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                                       disabled={removingKey === btnKey}
                                       onClick={() =>
                                         confirmThen(
-                                          "Gỡ chia sẻ mục này?",
+                                          "Remove sharing for this item?",
                                           () =>
                                             remove(
                                               btnKey,
                                               recipientId,
                                               undefined,
                                               [pid],
-                                              "Đã gỡ chia sẻ"
+                                              "Sharing removed"
                                             )
                                         )
                                       }
