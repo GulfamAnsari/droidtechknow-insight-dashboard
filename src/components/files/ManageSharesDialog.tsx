@@ -147,7 +147,7 @@ export function ManageSharesDialog({
         <ScrollArea className="flex-1 min-h-0 px-4 pb-4">
           {entries.length === 0 ? (
             <div className="text-center py-8 text-sm text-muted-foreground">
-              Bạn chưa chia sẻ nội dung nào với người khác.
+              You haven't shared anything with anyone yet.
             </div>
           ) : (
             <div className="space-y-3">
