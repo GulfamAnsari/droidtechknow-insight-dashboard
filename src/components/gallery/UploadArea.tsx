@@ -25,16 +25,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
   
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
-      'video/*': ['.mp4', '.webm', '.mov', '.avi'],
-      'audio/*': ['.mp3', '.wav', '.ogg', '.aac'],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc', '.docx'],
-      'application/vnd.ms-excel': ['.xls', '.xlsx'],
-      'application/vnd.ms-powerpoint': ['.ppt', '.pptx'],
-      'text/plain': ['.txt']
-    },
     multiple: true
   });
   
@@ -111,6 +101,8 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
           fileType = 'audio';
         } else if (file.type.startsWith('application/') || file.type.startsWith('text/')) {
           fileType = 'document';
+        } else {
+          fileType = 'other';
         }
 
         const formData = new FormData();
@@ -187,7 +179,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
               : "Drag and drop files here or click to select"}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Supports: Images, Videos, Audio, Documents & more
+            Any file type is supported — images, videos, audio, documents, archives and more
           </p>
         </div>
       </Card>
