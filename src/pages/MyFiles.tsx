@@ -64,6 +64,7 @@ import {
   downloadFile,
   DownloadButton
 } from "@/components/files/FileUtils";
+import VideoPreview from "@/components/files/VideoPreview";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Slider } from "@/components/ui/slider";
 import { useSwipeable } from "react-swipeable";
