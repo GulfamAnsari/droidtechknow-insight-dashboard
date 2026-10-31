@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Info, Tag, X, ChevronLeft, ChevronRight, Download, Trash2, ZoomIn } from "lucide-react";
 import { getFileIcon, getFileType, getFileTypeLabel, formatFileSize, downloadFile } from "./FileUtils";
+import VideoPreview from "./VideoPreview";
 import { useSwipeable } from "react-swipeable";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -252,10 +253,8 @@ const FileGrid: React.FC<FileGridProps> = ({ files, allFiles, onViewFile, onDele
                     draggable={false}
                   />
                 ) : selectedFile?.fileType === 'video' ? (
-                  <video
+                  <VideoPreview
                     src={selectedFile?.url.startsWith('http') ? selectedFile.url : `https://droidtechknow.com/admin/api/files/${selectedFile.url}`}
-                    controls
-                    playsInline
                     className="max-h-full max-w-full w-auto h-auto"
                   />
                 ) : selectedFile?.fileType === 'audio' ? (
