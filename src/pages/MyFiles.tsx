@@ -195,9 +195,12 @@ const MyFiles = () => {
           location: file.location,
           album: file.album,
           favorite: file.favorite || false,
+          // Trust the server's type, but re-derive it from the filename when
+          // the server reports it as "other" (e.g. .webm uploads)
           fileType:
-            file.fileType ||
-            getFileType(file.title, file.metadata?.format || ""),
+            file.fileType && file.fileType !== "other"
+              ? file.fileType
+              : getFileType(file.title, file.metadata?.format || ""),
           metadata: file.metadata || {},
           thumbnail: file?.thumbnail
         }));
@@ -2186,20 +2189,18 @@ const MyFiles = () => {
                     style={{ maxHeight: "calc(90vh - 140px)" }} // Ensure image fits within the container
                   />
                 ) : selectedFile?.fileType === "video" ? (
-                  <video
+                  <VideoPreview
                     src={
                       selectedFile?.url.startsWith("http")
                         ? selectedFile.url
                         : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
                     }
-                    controls
                     className="max-h-full max-w-full rounded-lg shadow-lg"
                     style={{
                       maxHeight: "calc(90vh - 200px)",
                       backgroundColor: "#000"
                     }}
                     controlsList="nodownload"
-                    playsInline
                   />
                 ) : selectedFile?.fileType === "audio" ? (
                   <div className="p-8 w-full">
