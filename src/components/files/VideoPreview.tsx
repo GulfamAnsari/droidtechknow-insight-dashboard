@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import videojs from "video.js";
-import type { Player } from "video.js";
 import "video.js/dist/video-js.css";
 import { Download, AlertCircle } from "lucide-react";
 
@@ -34,7 +33,7 @@ const mimeFor = (url: string, fallback?: string | null) => {
  */
 const VideoPreview: React.FC<VideoPreviewProps> = ({ src, className, style, onError }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<Player | null>(null);
+  const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const triedFallbackRef = useRef(false);
   const [failed, setFailed] = useState(false);

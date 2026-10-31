@@ -2196,12 +2196,11 @@ const MyFiles = () => {
                         ? selectedFile.url
                         : `https://droidtechknow.com/admin/api/files/uploads/${selectedFile.url}`
                     }
-                    className="max-h-full max-w-full rounded-lg shadow-lg"
+                    className="max-h-full max-w-full w-full rounded-lg shadow-lg"
                     style={{
                       maxHeight: "calc(90vh - 200px)",
                       backgroundColor: "#000"
                     }}
-                    controlsList="nodownload"
                   />
                 ) : selectedFile?.fileType === "audio" ? (
                   <div className="p-8 w-full">
