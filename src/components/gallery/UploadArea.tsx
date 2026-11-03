@@ -160,12 +160,12 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
   };
   
   return (
-    <div className="flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden">
+    <div className="flex h-full max-h-[calc(100dvh-1rem)] flex-col overflow-hidden">
       <div className="shrink-0 px-4 pt-4 pb-2">
         <h2 className="text-xl font-semibold">Upload Files</h2>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
       <Card className={`border-2 border-dashed p-4 sm:p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
           {...getRootProps()}
