@@ -1428,7 +1428,7 @@ const MyFiles = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <div className="flex items-center space-x-1 border rounded-md p-1">
               {/* 1 column - List */}
               <button
