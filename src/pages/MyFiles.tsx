@@ -1601,7 +1601,7 @@ const MyFiles = () => {
                   <Upload className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[calc(100vw-1rem)] max-w-3xl max-h-[calc(100dvh-1rem)] overflow-hidden p-0">
+              <DialogContent className="left-0 top-0 h-[100dvh] max-h-none w-screen max-w-full translate-x-0 translate-y-0 overflow-hidden rounded-none border-none p-0 sm:left-[50%] sm:top-[50%] sm:h-auto sm:max-h-[calc(100dvh-1rem)] sm:w-[calc(100vw-1rem)] sm:max-w-3xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:border">
                 <UploadArea
                   onUploadSuccess={handleUploadSuccess}
                   userId={user?.id}
