@@ -166,7 +166,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-      <Card className={`border-2 border-dashed p-4 sm:p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
+      <Card style={{ height: "auto" }} className={`border-2 border-dashed p-4 sm:p-6 ${isDragActive ? 'border-primary' : 'border-muted'}`}>
         <div 
           {...getRootProps()}
           className="h-32 sm:h-40 flex flex-col items-center justify-center cursor-pointer"
@@ -185,7 +185,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({ onUploadSuccess, userId, album 
       </Card>
       
       {files.length > 0 && (
-        <Card>
+        <Card style={{ height: "auto" }}>
           <CardContent className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-medium">Selected Files ({files.length})</h3>
